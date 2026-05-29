@@ -122,16 +122,23 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
 </head>
 <body>
 
+<div id="login-gate" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px;">
+  <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:.06em;">BotDash</div>
+  <div style="font-size:12px;color:#666;font-family:'IBM Plex Mono',monospace;">faça login com discord para acessar o dashboard</div>
+  <a href="/auth/discord" class="btn-w" style="text-decoration:none;background:#5865f2;color:#fff;">entrar com discord</a>
+  <div id="login-err" style="font-size:11px;color:#ff5f5f;font-family:'IBM Plex Mono',monospace;"></div>
+</div>
+
 <div class="topbar">
   <div class="tl">
-    <div class="avatar">B</div>
-    <span class="bname">BotDash</span>
-    <span class="spill">● online</span>
+    <div class="avatar" id="bot-avatar">B</div>
+    <span class="bname" id="bot-name">BotDash</span>
+    <span class="spill" id="bot-status">● online</span>
   </div>
   <div class="tr2">
-    <span>API: <span style="color:#fff">198ms</span></span>
-    <span style="color:#888">uptime <span style="color:#fff">99.8%</span></span>
-    <span>servidor: <span style="color:#fff">Meu Discord</span></span>
+    <span>API: <span id="api-latency" style="color:#fff">—</span></span>
+    <span style="color:#888">conectado como <span id="me-tag" style="color:#fff">—</span></span>
+    <span><a href="#" onclick="doLogout(event)" style="color:#888;text-decoration:none;">sair</a></span>
   </div>
 </div>
 
@@ -148,11 +155,11 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
 
 <div id="page-geral" class="page show">
   <div class="mgrid">
-    <div class="mc"><div class="mlabel">membros totais</div><div class="mval">2.847</div><div class="mdelta up">↑ +34 esta semana</div></div>
-    <div class="mc dim"><div class="mlabel">online agora</div><div class="mval">312</div><div class="mdelta nt">11% do total</div></div>
-    <div class="mc dim"><div class="mlabel">comandos hoje</div><div class="mval">1.204</div><div class="mdelta up">↑ +18%</div></div>
-    <div class="mc dim"><div class="mlabel">ações mod</div><div class="mval">17</div><div class="mdelta dn">↑ +5</div></div>
-    <div class="mc dim"><div class="mlabel">receita mensal</div><div class="mval">R$4.820</div><div class="mdelta up">↑ +12%</div></div>
+    <div class="mc"><div class="mlabel">membros totais</div><div class="mval" id="m-total">—</div><div class="mdelta up" id="m-join-week">—</div></div>
+    <div class="mc dim"><div class="mlabel">online agora</div><div class="mval" id="m-online">—</div><div class="mdelta nt">&nbsp;</div></div>
+    <div class="mc dim"><div class="mlabel">comandos hoje</div><div class="mval" id="m-cmds">—</div><div class="mdelta nt">&nbsp;</div></div>
+    <div class="mc dim"><div class="mlabel">ações mod</div><div class="mval" id="m-mod">—</div><div class="mdelta nt">&nbsp;</div></div>
+    <div class="mc dim"><div class="mlabel">receita mensal</div><div class="mval" id="m-revenue">—</div><div class="mdelta nt">&nbsp;</div></div>
   </div>
   <div class="crow">
     <div class="card">
@@ -550,206 +557,12 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
     </div>
   </div>
   <div style="margin-top:14px;display:flex;gap:10px;">
-    <button class="btn-w">salvar alterações</button>
-    <button class="btn-g">resetar</button>
+    <button class="btn-w" onclick="saveConfig()">salvar alterações</button>
+    <button class="btn-g" onclick="loadConfig()">resetar</button>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-var produtos = [
-  {nome:'VIP Mensal', preco:'R$49,90', desc:'Acesso ao canal VIP, prioridade no suporte e cargo exclusivo.', dur:'30 dias'},
-  {nome:'VIP Anual', preco:'R$149,90', desc:'Todos os benefícios VIP por 12 meses com desconto especial.', dur:'anual'},
-  {nome:'Cargo Especial', preco:'R$19,90', desc:'Cargo personalizado com nome e cor exclusivos no servidor.', dur:'permanente'}
-];
-var agendamentos = [];
-var histCount = 2;
-
-function sp(id, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
-  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('show');
-  el.classList.add('active');
-  if (id==='membros' && !window._gDone){buildGrowth();window._gDone=true;}
-  if (id==='mod' && !window._mDone){buildMod();window._mDone=true;}
-  if (id==='vendas' && !window._vDone){buildVendas();window._vDone=true;}
-  if (id==='anuncios'){populateProdSelect();}
-}
-
-function toggleForm(id){
-  var el = document.getElementById(id);
-  el.style.display = el.style.display==='none' ? 'block' : 'none';
-}
-
-function addProduto(){
-  var nome = document.getElementById('pnome').value.trim();
-  var preco = document.getElementById('ppreco').value.trim();
-  var desc = document.getElementById('pdesc').value.trim();
-  var dur = document.getElementById('pdur');
-  var durTxt = dur.options[dur.selectedIndex].text;
-  if(!nome || !preco){alert('Preencha nome e preço.'); return;}
-  var p = {nome, preco:'R$'+parseFloat(preco).toFixed(2).replace('.',','), desc:desc||'Sem descrição.', dur:durTxt};
-  produtos.push(p);
-  var list = document.getElementById('prod-list');
-  var div = document.createElement('div');
-  div.className = 'prod-card';
-  div.innerHTML = `<div class="prod-thumb">sem imagem</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-      <div class="prod-name">${p.nome}</div><span class="status-pill status-ativo">ativo</span>
-    </div>
-    <div class="prod-price">${p.preco} <span style="font-size:10px;color:#444;font-family:'IBM Plex Mono',monospace;">/ ${p.dur}</span></div>
-    <div class="prod-desc">${p.desc}</div>
-    <div class="prod-footer"><span class="prod-sales">0 vendas</span></div>
-    <div class="prod-actions">
-      <button class="btn-sm">editar</button>
-      <button class="btn-sm pub" onclick="anunciarProd('${p.nome}','${p.preco}','${p.desc}')">anunciar</button>
-      <button class="btn-sm del" onclick="removerProd(this)">remover</button>
-    </div>`;
-  list.appendChild(div);
-  document.getElementById('prod-count').textContent = produtos.length;
-  document.getElementById('pnome').value='';
-  document.getElementById('ppreco').value='';
-  document.getElementById('pdesc').value='';
-  toggleForm('prod-form');
-}
-
-function removerProd(btn){
-  if(!confirm('Remover este produto?')) return;
-  btn.closest('.prod-card').remove();
-  document.getElementById('prod-count').textContent = document.querySelectorAll('#prod-list .prod-card').length;
-}
-
-function anunciarProd(nome, preco, desc){
-  sp('anuncios', document.querySelector('.ni:nth-child(7)'));
-  document.getElementById('anuncio-tipo').value = 'produto';
-  updatePreview();
-  setTimeout(()=>{
-    populateProdSelect();
-    var sel = document.getElementById('prod-select');
-    for(var o of sel.options){ if(o.text===nome){sel.value=o.value;break;} }
-    document.getElementById('anuncio-texto').value = `Produto disponível: ${nome} por ${preco}!\nUse /comprar para adquirir agora.`;
-    updatePreview();
-  }, 100);
-}
-
-function toggleCanal(el){
-  el.classList.toggle('sel');
-  updatePreview();
-}
-
-function addCanalCustom(e){
-  if(e.key!=='Enter') return;
-  var val = e.target.value.trim();
-  if(!val) return;
-  if(!val.startsWith('#')) val='#'+val;
-  var chip = document.createElement('div');
-  chip.className='canal-chip sel';
-  chip.textContent=val;
-  chip.onclick=function(){toggleCanal(this);};
-  document.getElementById('canal-chips').appendChild(chip);
-  e.target.value='';
-  updatePreview();
-}
-
-function populateProdSelect(){
-  var sel = document.getElementById('prod-select');
-  sel.innerHTML='<option value="">selecione um produto...</option>';
-  produtos.forEach((p,i)=>{
-    var o = document.createElement('option');
-    o.value=i; o.textContent=p.nome;
-    sel.appendChild(o);
-  });
-}
-
-function updatePreview(){
-  var tipo = document.getElementById('anuncio-tipo').value;
-  var texto = document.getElementById('anuncio-texto').value || 'sua mensagem vai aparecer aqui...';
-  var canais = Array.from(document.querySelectorAll('.canal-chip.sel')).map(c=>c.textContent).join(', ') || '#geral';
-  document.querySelector('.preview-label').textContent = 'discord — ' + canais;
-  document.getElementById('preview-msg').textContent = texto;
-  var emb = document.getElementById('preview-embed');
-  document.getElementById('embed-fields').style.display = tipo==='embed' ? 'block' : 'none';
-  document.getElementById('produto-field').style.display = tipo==='produto' ? 'block' : 'none';
-  if(tipo==='embed'){
-    var titulo = document.getElementById('embed-titulo').value || 'Título do Embed';
-    var cor = document.getElementById('embed-cor').value;
-    emb.innerHTML=`<div class="embed-box" style="border-left-color:${cor}"><div class="embed-title">${titulo}</div><div class="embed-desc">${texto}</div></div>`;
-    document.getElementById('preview-msg').textContent='';
-  } else if(tipo==='produto'){
-    var idx = document.getElementById('prod-select').value;
-    if(idx!=='' && produtos[idx]){
-      var p=produtos[idx];
-      emb.innerHTML=`<div class="embed-box"><div class="embed-title">${p.nome}</div><div class="embed-desc">${p.desc}</div><div class="embed-price">${p.preco} / ${p.dur}</div></div>`;
-    } else { emb.innerHTML=''; }
-  } else { emb.innerHTML=''; }
-}
-
-function enviarAnuncio(){
-  var texto = document.getElementById('anuncio-texto').value.trim();
-  var canais = Array.from(document.querySelectorAll('.canal-chip.sel')).map(c=>c.textContent);
-  if(!texto){alert('Digite uma mensagem para enviar.'); return;}
-  if(!canais.length){alert('Selecione pelo menos um canal.'); return;}
-  histCount++;
-  var now = new Date();
-  var ts = now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+' '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  var card = document.createElement('div');
-  card.className='anuncio-card';
-  card.innerHTML=`<div class="anuncio-header"><span class="anuncio-canal">${canais.join(', ')}</span><span class="anuncio-hora">${ts}</span></div>
-    <div class="anuncio-body">${texto}</div>
-    <div class="anuncio-footer"><span class="anuncio-status up">● enviado com sucesso</span><div style="display:flex;gap:6px;"><button class="btn-sm pub">reenviar</button><button class="btn-sm">ver canal</button></div></div>`;
-  var hist = document.getElementById('anuncio-hist');
-  hist.insertBefore(card, hist.firstChild);
-  document.getElementById('hist-count').textContent = histCount+' registros';
-  document.getElementById('anuncio-texto').value='';
-  document.getElementById('preview-msg').textContent='sua mensagem vai aparecer aqui...';
-  document.getElementById('preview-embed').innerHTML='';
-  alert('Anúncio enviado para: '+canais.join(', '));
-}
-
-function agendarAnuncio(){
-  var texto = document.getElementById('anuncio-texto').value.trim();
-  var canais = Array.from(document.querySelectorAll('.canal-chip.sel')).map(c=>c.textContent);
-  if(!texto){alert('Digite uma mensagem para agendar.'); return;}
-  var hora = prompt('Horário de envio (ex: 18:00):');
-  if(!hora) return;
-  agendamentos.push({texto, canais, hora});
-  var list = document.getElementById('sched-list');
-  if(agendamentos.length===1) list.innerHTML='';
-  var item = document.createElement('div');
-  item.style.cssText='padding:8px 10px;background:#0a0a0a;border-radius:5px;border:1px solid #1a1a1a;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;';
-  item.innerHTML=`<div><span style="color:#fff">${hora}</span> <span style="color:#444">→</span> <span style="color:#aaa">${canais.join(', ')}</span><div style="color:#555;font-size:10px;margin-top:2px;">${texto.substring(0,50)}${texto.length>50?'...':''}</div></div><button class="btn-sm del" onclick="this.parentElement.remove();agendamentos.splice(0,1);document.getElementById('sched-count').textContent=agendamentos.length+' pendentes';">cancelar</button>`;
-  list.appendChild(item);
-  document.getElementById('sched-count').textContent=agendamentos.length+' pendentes';
-}
-
-const gc = () => ({
-  x:{ticks:{color:'#333',font:{family:"'IBM Plex Mono'",size:10},maxRotation:0},grid:{color:'#161616'},border:{color:'#1a1a1a'}},
-  y:{ticks:{color:'#333',font:{family:"'IBM Plex Mono'",size:10}},grid:{color:'#161616'},border:{color:'#1a1a1a'}}
-});
-const d14=['09/03','10/03','11/03','12/03','13/03','14/03','15/03','16/03','17/03','18/03','19/03','20/03','21/03','22/03'];
-
-new Chart(document.getElementById('cMembros'),{type:'line',data:{labels:d14,datasets:[
-  {data:[12,19,8,21,15,28,14,22,18,31,10,25,17,34],borderColor:'#fff',backgroundColor:'rgba(255,255,255,0.05)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
-  {data:[5,8,12,6,9,11,7,10,8,12,6,9,7,11],borderColor:'#555',backgroundColor:'rgba(85,85,85,0.04)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}
-]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:gc()}});
-
-new Chart(document.getElementById('cVendasG'),{type:'bar',data:{labels:['Out','Nov','Dez','Jan','Fev','Mar'],datasets:[{data:[2100,3400,4800,3200,4100,4820],backgroundColor:'rgba(255,255,255,0.8)',borderColor:'#fff',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gc().x,y:{...gc().y,ticks:{color:'#333',font:{family:"'IBM Plex Mono'",size:10},callback:v=>'R$'+Math.round(v/1000)+'k'}}}}});
-
-function buildGrowth(){
-  var lb=d14.concat(['23/03','24/03','25/03','26/03','27/03','28/03','29/03','30/03']);
-  var dt=lb.map((_,i)=>2700+Math.round(i*5));
-  new Chart(document.getElementById('cGrowth'),{type:'line',data:{labels:lb,datasets:[{data:dt,borderColor:'#fff',backgroundColor:'rgba(255,255,255,0.04)',borderWidth:2,pointRadius:0,tension:0.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:gc()}});
-}
-
-function buildMod(){
-  new Chart(document.getElementById('cMod'),{type:'bar',data:{labels:['Out','Nov','Dez','Jan','Fev','Mar'],datasets:[{label:'bans',data:[3,5,2,6,4,8],backgroundColor:'#ff5f5f',borderRadius:3},{label:'kicks',data:[2,3,4,2,5,5],backgroundColor:'#ffdf5f',borderRadius:3},{label:'mutes',data:[5,8,6,10,9,12],backgroundColor:'#a0a0ff',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:gc()}});
-  new Chart(document.getElementById('cModPie'),{type:'doughnut',data:{labels:['bans','kicks','mutes','warns'],datasets:[{data:[8,5,12,31],backgroundColor:['#ff5f5f','#ffdf5f','#a0a0ff','#9fff5f'],borderColor:'#0a0a0a',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}});
-}
-
-function buildVendas(){
-  new Chart(document.getElementById('cVendasF'),{type:'bar',data:{labels:['Out','Nov','Dez','Jan','Fev','Mar'],datasets:[{data:[2100,3400,4800,3200,4100,4820],backgroundColor:'rgba(255,255,255,0.85)',borderColor:'#fff',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gc().x,y:{...gc().y,ticks:{color:'#333',font:{family:"'IBM Plex Mono'",size:10},callback:v=>'R$'+Math.round(v/1000)+'k'}}}}});
-  new Chart(document.getElementById('cProd'),{type:'doughnut',data:{labels:['VIP mensal','VIP anual','Cargo especial','Outros'],datasets:[{data:[42,18,27,13],backgroundColor:['#fff','#aaa','#555','#222'],borderColor:'#0a0a0a',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}});
-}
-</script>
+<script src="/app.js"></script>
 </body>
 </html>
