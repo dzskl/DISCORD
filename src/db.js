@@ -98,6 +98,28 @@ CREATE TABLE IF NOT EXISTS command_usage (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_cmd_created ON command_usage(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS coupons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  discount_percent INTEGER NOT NULL,
+  max_uses INTEGER,
+  uses INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS auto_replies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trigger TEXT NOT NULL,
+  match_type TEXT NOT NULL DEFAULT 'contains',
+  response TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  uses INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ar_active ON auto_replies(active);
 `);
 
 const defaultConfig = {

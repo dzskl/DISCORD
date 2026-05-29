@@ -49,6 +49,15 @@ footer{text-align:center;margin-top:40px;font-size:11px;font-family:'IBM Plex Mo
     </div>
   </div>
 
+  <div class="id-box">
+    <div class="id-label">cupom de desconto (opcional)</div>
+    <div style="display:flex;gap:8px;">
+      <input class="id-input" id="coupon-code" placeholder="ex: BLACKFRIDAY" style="text-transform:uppercase;flex:1;">
+      <button class="buy" id="coupon-btn" onclick="applyCoupon()" style="background:#222;padding:0 18px;flex-shrink:0;">aplicar</button>
+    </div>
+    <div class="id-help" id="coupon-status">se voce tem um codigo de desconto, aplique antes de comprar.</div>
+  </div>
+
   <div id="grid" class="grid"></div>
   <footer>BotDash · pagamentos processados via Stripe</footer>
 </div>
@@ -70,24 +79,56 @@ document.getElementById('discord-id').addEventListener('input', e => {
   localStorage.setItem('botdash_discord_id', e.target.value.trim());
 });
 
-async function load() {
+let activeProducts = [];
+let appliedCoupon = null;
+
+function renderProducts() {
   const grid = document.getElementById('grid');
+  if (!activeProducts.length) { grid.innerHTML = '<div class="empty">nenhum produto disponivel no momento.</div>'; return; }
+  const durMap = { permanent: 'permanente', '30d': '30 dias', '7d': '7 dias', '1d': '1 dia', '1y': 'anual' };
+  grid.innerHTML = activeProducts.map(p => {
+    const original = p.price_cents;
+    const final = appliedCoupon ? Math.max(50, Math.round(original * (100 - appliedCoupon.discount_percent) / 100)) : original;
+    const priceHtml = appliedCoupon
+      ? `<div class="price">R$ ${(final / 100).toFixed(2).replace('.', ',')}</div>
+         <div style="font-size:11px;color:#666;text-decoration:line-through;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">R$ ${(original / 100).toFixed(2).replace('.', ',')}</div>`
+      : `<div class="price">R$ ${(original / 100).toFixed(2).replace('.', ',')}</div>`;
+    return `<div class="card">
+      <div class="name">${esc(p.name)}</div>
+      <div class="desc">${esc(p.description || 'Sem descricao.')}</div>
+      ${priceHtml}
+      <div class="dur">${durMap[p.duration] || p.duration}</div>
+      <button class="buy" onclick="buy(${p.id}, this)">Comprar agora</button>
+    </div>`;
+  }).join('');
+}
+
+async function load() {
   try {
-    const products = await fetch('/api/checkout/products').then(r => r.json());
-    if (!products.length) { grid.innerHTML = '<div class="empty">nenhum produto disponivel no momento.</div>'; return; }
-    grid.innerHTML = products.map(p => {
-      const price = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ',');
-      const durMap = { permanent: 'permanente', '30d': '30 dias', '7d': '7 dias', '1d': '1 dia', '1y': 'anual' };
-      return `<div class="card">
-        <div class="name">${esc(p.name)}</div>
-        <div class="desc">${esc(p.description || 'Sem descricao.')}</div>
-        <div class="price">${price}</div>
-        <div class="dur">${durMap[p.duration] || p.duration}</div>
-        <button class="buy" onclick="buy(${p.id}, this)">Comprar agora</button>
-      </div>`;
-    }).join('');
+    activeProducts = await fetch('/api/checkout/products').then(r => r.json());
+    renderProducts();
+  } catch {
+    document.getElementById('grid').innerHTML = '<div class="empty">erro ao carregar produtos.</div>';
+  }
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+  const status = document.getElementById('coupon-status');
+  if (!code) { appliedCoupon = null; renderProducts(); status.textContent = 'cupom removido.'; status.style.color = '#666'; return; }
+  try {
+    const r = await fetch('/api/coupons/validate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })));
+    if (!r.ok) { appliedCoupon = null; renderProducts(); status.textContent = '✗ ' + (r.d.error || 'cupom invalido'); status.style.color = '#ff5f5f'; return; }
+    appliedCoupon = r.d;
+    status.textContent = `✓ cupom aplicado: -${r.d.discount_percent}% nos produtos`;
+    status.style.color = '#5fff5f';
+    renderProducts();
   } catch (e) {
-    grid.innerHTML = '<div class="empty">erro ao carregar produtos.</div>';
+    status.textContent = 'erro ao validar cupom.';
+    status.style.color = '#ff5f5f';
   }
 }
 
@@ -104,7 +145,7 @@ async function buy(id, btn) {
     const r = await fetch('/api/checkout/create-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: id, discord_id })
+      body: JSON.stringify({ product_id: id, discord_id, coupon_code: appliedCoupon?.code || null })
     }).then(r => r.json());
     if (r.url) location.href = r.url;
     else { alertEl.className = 'alert err'; alertEl.textContent = r.error || 'Erro ao iniciar pagamento.'; btn.disabled = false; btn.textContent = 'Comprar agora'; }

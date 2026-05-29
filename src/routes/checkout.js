@@ -18,11 +18,21 @@ router.post('/create-session', async (req, res) => {
   const s = stripe();
   if (!s) return res.status(503).json({ error: 'Stripe nao configurado' });
 
-  const { product_id, discord_id, discord_tag } = req.body || {};
+  const { product_id, discord_id, discord_tag, coupon_code } = req.body || {};
   if (!product_id || !discord_id) return res.status(400).json({ error: 'product_id e discord_id obrigatorios' });
 
   const product = db.prepare('SELECT * FROM products WHERE id=? AND active=1').get(product_id);
   if (!product) return res.status(404).json({ error: 'produto nao encontrado' });
+
+  let coupon = null;
+  let unit_amount = product.price_cents;
+  if (coupon_code) {
+    coupon = db.prepare('SELECT * FROM coupons WHERE code=? AND active=1').get(coupon_code.trim().toUpperCase());
+    if (!coupon) return res.status(400).json({ error: 'cupom invalido' });
+    if (coupon.expires_at && coupon.expires_at < Math.floor(Date.now() / 1000)) return res.status(400).json({ error: 'cupom expirado' });
+    if (coupon.max_uses != null && coupon.uses >= coupon.max_uses) return res.status(400).json({ error: 'cupom esgotado' });
+    unit_amount = Math.max(50, Math.round(unit_amount * (100 - coupon.discount_percent) / 100));
+  }
 
   const currency = (process.env.STRIPE_CURRENCY || 'brl').toLowerCase();
   const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3000';
@@ -34,9 +44,9 @@ router.post('/create-session', async (req, res) => {
         quantity: 1,
         price_data: {
           currency,
-          unit_amount: product.price_cents,
+          unit_amount,
           product_data: {
-            name: product.name,
+            name: product.name + (coupon ? ` (-${coupon.discount_percent}%)` : ''),
             description: product.description || undefined
           }
         }
@@ -46,14 +56,15 @@ router.post('/create-session', async (req, res) => {
       metadata: {
         product_id: String(product.id),
         discord_id: String(discord_id),
-        discord_tag: String(discord_tag || '')
+        discord_tag: String(discord_tag || ''),
+        coupon_id: coupon ? String(coupon.id) : ''
       }
     });
 
     db.prepare(`
       INSERT INTO sales (product_id,discord_id,discord_tag,amount_cents,status,stripe_session_id)
       VALUES (?,?,?,?, 'pending', ?)
-    `).run(product.id, discord_id, discord_tag || null, product.price_cents, session.id);
+    `).run(product.id, discord_id, discord_tag || null, unit_amount, session.id);
 
     res.json({ url: session.url, session_id: session.id });
   } catch (e) {
@@ -87,6 +98,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         UPDATE sales SET status='paid', paid_at=strftime('%s','now'),
         stripe_payment_intent=?, expires_at=? WHERE id=?
       `).run(session.payment_intent || null, expiresAt, sale.id);
+
+      if (meta.coupon_id) {
+        db.prepare('UPDATE coupons SET uses=uses+1 WHERE id=?').run(parseInt(meta.coupon_id));
+      }
 
       if (product?.role_id) {
         try {

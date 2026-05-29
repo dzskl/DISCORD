@@ -38,6 +38,9 @@ function buildApp() {
   app.use('/api/sales', require('./routes/sales'));
   app.use('/api/announcements', require('./routes/announcements'));
   app.use('/api/config', require('./routes/config'));
+  app.use('/api/coupons', require('./routes/coupons'));
+  app.use('/api/customers', require('./routes/customers'));
+  app.use('/api/auto-replies', require('./routes/auto_replies'));
   app.use('/api/checkout', checkoutRouter);
 
   app.use(express.static(path.join(__dirname, '..', 'public')));

@@ -69,6 +69,25 @@ client.on('interactionCreate', (i) => {
   logEvent({ type: 'cmd', message: `/${i.commandName} executado`, discord_id: i.user.id, discord_tag: i.user.tag, channel: i.channel?.name || null });
 });
 
+client.on('messageCreate', async (msg) => {
+  if (msg.author.bot || msg.guild?.id !== GUILD_ID) return;
+  const text = msg.content.toLowerCase();
+  if (!text) return;
+  const replies = db.prepare('SELECT * FROM auto_replies WHERE active=1').all();
+  for (const r of replies) {
+    const trig = r.trigger.toLowerCase();
+    let hit = false;
+    if (r.match_type === 'equals') hit = text === trig;
+    else if (r.match_type === 'starts_with') hit = text.startsWith(trig);
+    else hit = text.includes(trig);
+    if (hit) {
+      await msg.reply(r.response).catch(() => {});
+      db.prepare('UPDATE auto_replies SET uses=uses+1 WHERE id=?').run(r.id);
+      break;
+    }
+  }
+});
+
 async function fetchGuild() {
   if (!GUILD_ID) throw new Error('DISCORD_GUILD_ID nao definido');
   return client.guilds.fetch(GUILD_ID);

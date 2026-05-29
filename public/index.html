@@ -122,12 +122,6 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
 </head>
 <body>
 
-<div id="login-gate" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px;">
-  <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:.06em;">BotDash</div>
-  <div style="font-size:12px;color:#666;font-family:'IBM Plex Mono',monospace;">faça login com discord para acessar o dashboard</div>
-  <a href="/auth/discord" class="btn-w" style="text-decoration:none;background:#5865f2;color:#fff;">entrar com discord</a>
-  <div id="login-err" style="font-size:11px;color:#ff5f5f;font-family:'IBM Plex Mono',monospace;"></div>
-</div>
 
 <div class="topbar">
   <div class="tl">
@@ -149,7 +143,10 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
   <div class="ni" onclick="sp('mod',this)">moderação</div>
   <div class="ni" onclick="sp('vendas',this)">vendas</div>
   <div class="ni" onclick="sp('produtos',this)">produtos</div>
+  <div class="ni" onclick="sp('clientes',this)">clientes</div>
+  <div class="ni" onclick="sp('cupons',this)">cupons</div>
   <div class="ni" onclick="sp('anuncios',this)">anúncios</div>
+  <div class="ni" onclick="sp('autoreply',this)">auto-respostas</div>
   <div class="ni" onclick="sp('config',this)">config</div>
 </div>
 
@@ -422,6 +419,59 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
   </div>
 </div>
 
+<!-- CLIENTES -->
+<div id="page-clientes" class="page">
+  <div class="mgrid4">
+    <div class="mc"><div class="mlabel">clientes totais</div><div class="mval" id="cli-total">—</div></div>
+    <div class="mc dim"><div class="mlabel">novos hoje</div><div class="mval" id="cli-new">—</div></div>
+    <div class="mc dim"><div class="mlabel">LTV médio</div><div class="mval" id="cli-ltv">—</div></div>
+    <div class="mc dim"><div class="mlabel">top cliente</div><div class="mval" id="cli-top" style="font-size:13px">—</div></div>
+  </div>
+  <div class="card">
+    <div class="ctitle">lista de clientes <span class="cbadge" id="cli-count">0 registros</span></div>
+    <table class="vtable">
+      <thead><tr><th>discord</th><th>compras</th><th>total gasto</th><th>última compra</th><th>reembolsos</th><th></th></tr></thead>
+      <tbody id="cli-tbody"><tr><td colspan="6" style="color:#444">carregando...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CUPONS -->
+<div id="page-cupons" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">
+      <span id="cup-count" style="color:#fff">0</span> cupons ativos
+    </div>
+    <button class="btn-w" onclick="toggleForm('cup-form')">+ novo cupom</button>
+  </div>
+
+  <div id="cup-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+    <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">novo cupom</div>
+    <div class="frow">
+      <div>
+        <div class="fgroup"><div class="flabel">código</div><input class="inp" id="cup-code" placeholder="ex: BLACKFRIDAY" style="text-transform:uppercase;"></div>
+        <div class="fgroup"><div class="flabel">desconto (%)</div><input class="inp" id="cup-pct" type="number" min="1" max="100" placeholder="15"></div>
+      </div>
+      <div>
+        <div class="fgroup"><div class="flabel">limite de usos (opcional)</div><input class="inp" id="cup-max" type="number" min="1" placeholder="ilimitado se vazio"></div>
+        <div class="fgroup"><div class="flabel">expira em (opcional)</div><input class="inp" id="cup-exp" type="datetime-local"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn-w" onclick="addCupom()">criar cupom</button>
+      <button class="btn-g" onclick="toggleForm('cup-form')">cancelar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">cupons cadastrados</div>
+    <table class="vtable">
+      <thead><tr><th>código</th><th>desconto</th><th>usos</th><th>limite</th><th>expira</th><th>status</th><th></th></tr></thead>
+      <tbody id="cup-tbody"><tr><td colspan="7" style="color:#444">nenhum cupom ainda.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ANÚNCIOS -->
 <div id="page-anuncios" class="page">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
@@ -516,6 +566,47 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
         <div class="anuncio-footer"><span class="anuncio-status up">● enviado com sucesso</span><div style="display:flex;gap:6px;"><button class="btn-sm pub">reenviar</button><button class="btn-sm">ver canal</button></div></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- AUTO-RESPOSTAS -->
+<div id="page-autoreply" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">
+      <span id="ar-count" style="color:#fff">0</span> auto-respostas configuradas
+    </div>
+    <button class="btn-w" onclick="toggleForm('ar-form')">+ nova auto-resposta</button>
+  </div>
+
+  <div id="ar-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+    <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">nova auto-resposta</div>
+    <div class="frow">
+      <div>
+        <div class="fgroup"><div class="flabel">gatilho (o que o usuário digita)</div><input class="inp" id="ar-trigger" placeholder="ex: bom dia"></div>
+        <div class="fgroup"><div class="flabel">tipo de correspondência</div>
+          <select class="inp" id="ar-match" style="cursor:pointer;">
+            <option value="contains">Contém (em qualquer parte)</option>
+            <option value="equals">Mensagem exata</option>
+            <option value="starts_with">Começa com</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="fgroup"><div class="flabel">resposta do bot</div><textarea class="inp" id="ar-response" placeholder="ex: Bom dia! Como posso ajudar?"></textarea></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn-w" onclick="addAutoReply()">salvar</button>
+      <button class="btn-g" onclick="toggleForm('ar-form')">cancelar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">auto-respostas <span class="cbadge">o bot responde automaticamente</span></div>
+    <table class="vtable">
+      <thead><tr><th style="width:25%">gatilho</th><th style="width:13%">tipo</th><th>resposta</th><th style="width:60px">usos</th><th style="width:60px">status</th><th style="width:80px"></th></tr></thead>
+      <tbody id="ar-tbody"><tr><td colspan="6" style="color:#444">nenhuma auto-resposta cadastrada.</td></tr></tbody>
+    </table>
   </div>
 </div>
 

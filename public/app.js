@@ -2,7 +2,7 @@
 const api = (path, opts = {}) =>
   fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts })
     .then(async r => {
-      if (r.status === 401) { showLogin(); throw new Error('auth'); }
+      if (r.status === 401) { location.href = '/login.html'; throw new Error('auth'); }
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
       return r.json();
     });
@@ -12,29 +12,18 @@ let produtos = [];
 let agendamentos = [];
 let canalDisponivel = [];
 
-function showLogin(msg) {
-  document.getElementById('login-gate').style.display = 'flex';
-  if (msg) document.getElementById('login-err').textContent = msg;
-}
-
 function doLogout(e) {
   e?.preventDefault();
-  fetch('/auth/logout', { method: 'POST', credentials: 'include' }).then(() => location.reload());
+  fetch('/auth/logout', { method: 'POST', credentials: 'include' }).then(() => location.href = '/login.html');
 }
 
 async function bootstrap() {
-  const params = new URLSearchParams(location.search);
-  if (params.get('login') === 'denied') return showLogin('Sua conta nao tem permissao.');
-  if (params.get('login') === 'fail') return showLogin('Falha no login.');
-
   let me;
   try { me = await fetch('/auth/me', { credentials: 'include' }).then(r => r.json()); }
-  catch { return showLogin('Erro de conexao.'); }
+  catch { location.href = '/login.html'; return; }
 
-  if (!me.authenticated) return showLogin();
-  if (!me.admin) return showLogin('Sua conta nao tem permissao.');
+  if (!me.authenticated || !me.admin) { location.href = '/login.html?login=denied'; return; }
 
-  document.getElementById('login-gate').style.display = 'none';
   document.getElementById('me-tag').textContent = me.user.username;
   if (me.user.avatar) {
     const av = document.getElementById('bot-avatar');
@@ -455,6 +444,9 @@ function sp(id, el) {
   if (id === 'mod') loadMod();
   if (id === 'vendas') loadVendas();
   if (id === 'produtos') loadProdutos();
+  if (id === 'clientes') loadClientes();
+  if (id === 'cupons') loadCupons();
+  if (id === 'autoreply') loadAutoReplies();
   if (id === 'anuncios') { populateProdSelect(); loadAnuncios(); }
   if (id === 'config') loadConfig();
 }
@@ -579,6 +571,136 @@ function last6MonthLabels() {
   for (let i = 5; i >= 0; i--) { const d = new Date(now); d.setMonth(d.getMonth() - i); out.push(d.toLocaleDateString('pt-BR', { month: 'short' })); }
   return out;
 }
+
+// ---------- CLIENTES ----------
+async function loadClientes() {
+  try {
+    const [sum, list] = await Promise.all([
+      api('/api/customers/_/summary'),
+      api('/api/customers?limit=200')
+    ]);
+    setText('cli-total', formatNum(sum.total_customers));
+    setText('cli-new', formatNum(sum.new_today));
+    setText('cli-ltv', 'R$' + (sum.avg_ltv_cents / 100).toFixed(2).replace('.', ','));
+    setText('cli-top', list[0]?.discord_tag || list[0]?.discord_id || '—');
+    setText('cli-count', list.length + ' registros');
+
+    const tbody = document.getElementById('cli-tbody');
+    tbody.innerHTML = list.length ? list.map(c => `
+      <tr>
+        <td class="hi">${escapeHtml(c.discord_tag || c.discord_id)}</td>
+        <td>${c.paid_count} pagas</td>
+        <td class="gr">R$${(c.total_cents / 100).toFixed(2).replace('.', ',')}</td>
+        <td>${c.last_purchase_at ? formatDate(c.last_purchase_at) : '—'}</td>
+        <td>${c.refunded_count > 0 ? `<span class="badge ban">${c.refunded_count}</span>` : '—'}</td>
+        <td><button class="btn-sm" onclick="verCliente('${escapeAttr(c.discord_id)}')">detalhes</button></td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" style="color:#444">nenhum cliente ainda.</td></tr>';
+  } catch (e) { console.warn('clientes', e.message); }
+}
+
+async function verCliente(id) {
+  try {
+    const list = await api('/api/customers/' + encodeURIComponent(id));
+    const txt = list.map(s => `${new Date(s.created_at * 1000).toLocaleString('pt-BR')} · ${s.product_name || '—'} · R$${(s.amount_cents / 100).toFixed(2)} · ${s.status}`).join('\n');
+    alert(`Compras de ${id}:\n\n` + (txt || 'sem compras.'));
+  } catch (e) { alert('Erro: ' + e.message); }
+}
+
+// ---------- CUPONS ----------
+async function loadCupons() {
+  try {
+    const list = await api('/api/coupons');
+    document.getElementById('cup-count').textContent = list.filter(c => c.active).length;
+    const tbody = document.getElementById('cup-tbody');
+    tbody.innerHTML = list.length ? list.map(c => `
+      <tr>
+        <td class="hi" style="font-family:'IBM Plex Mono',monospace;">${escapeHtml(c.code)}</td>
+        <td class="gr">-${c.discount_percent}%</td>
+        <td>${c.uses}</td>
+        <td>${c.max_uses ?? '∞'}</td>
+        <td>${c.expires_at ? formatDate(c.expires_at) : 'sem expiração'}</td>
+        <td>${c.active ? '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>' : '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">inativo</span>'}</td>
+        <td>${c.active ? `<button class="btn-sm del" onclick="removerCupom(${c.id})">desativar</button>` : ''}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="7" style="color:#444">nenhum cupom cadastrado.</td></tr>';
+  } catch (e) { console.warn('cupons', e.message); }
+}
+
+async function addCupom() {
+  const code = document.getElementById('cup-code').value.trim();
+  const discount_percent = document.getElementById('cup-pct').value.trim();
+  const max_uses = document.getElementById('cup-max').value.trim() || null;
+  const expVal = document.getElementById('cup-exp').value;
+  const expires_at = expVal ? Math.floor(new Date(expVal).getTime() / 1000) : null;
+  if (!code || !discount_percent) return alert('Preencha código e desconto.');
+  try {
+    await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, expires_at }) });
+    document.getElementById('cup-code').value = '';
+    document.getElementById('cup-pct').value = '';
+    document.getElementById('cup-max').value = '';
+    document.getElementById('cup-exp').value = '';
+    toggleForm('cup-form');
+    loadCupons();
+  } catch (e) { alert('Erro: ' + e.message); }
+}
+
+async function removerCupom(id) {
+  if (!confirm('Desativar este cupom?')) return;
+  try { await api('/api/coupons/' + id, { method: 'DELETE' }); loadCupons(); }
+  catch (e) { alert('Erro: ' + e.message); }
+}
+
+// ---------- AUTO-RESPOSTAS ----------
+async function loadAutoReplies() {
+  try {
+    const list = await api('/api/auto-replies');
+    document.getElementById('ar-count').textContent = list.filter(a => a.active).length;
+    const tbody = document.getElementById('ar-tbody');
+    const matchLabel = { contains: 'contém', equals: 'exata', starts_with: 'começa' };
+    tbody.innerHTML = list.length ? list.map(a => `
+      <tr>
+        <td class="hi" style="font-family:'IBM Plex Mono',monospace;">${escapeHtml(a.trigger)}</td>
+        <td>${matchLabel[a.match_type] || a.match_type}</td>
+        <td style="white-space:pre-wrap;color:#888;">${escapeHtml(a.response.substring(0, 120))}${a.response.length > 120 ? '...' : ''}</td>
+        <td>${a.uses}</td>
+        <td><div class="toggle ${a.active ? 'on' : ''}" onclick="toggleAutoReply(${a.id}, this)" style="display:inline-block;"></div></td>
+        <td><button class="btn-sm del" onclick="removerAutoReply(${a.id})">remover</button></td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" style="color:#444">nenhuma auto-resposta cadastrada. crie uma para o bot responder automaticamente.</td></tr>';
+  } catch (e) { console.warn('autoreply', e.message); }
+}
+
+async function addAutoReply() {
+  const trigger = document.getElementById('ar-trigger').value.trim();
+  const match_type = document.getElementById('ar-match').value;
+  const response = document.getElementById('ar-response').value.trim();
+  if (!trigger || !response) return alert('Preencha gatilho e resposta.');
+  try {
+    await api('/api/auto-replies', { method: 'POST', body: JSON.stringify({ trigger, match_type, response }) });
+    document.getElementById('ar-trigger').value = '';
+    document.getElementById('ar-response').value = '';
+    toggleForm('ar-form');
+    loadAutoReplies();
+  } catch (e) { alert('Erro: ' + e.message); }
+}
+
+async function toggleAutoReply(id, el) {
+  const active = !el.classList.contains('on');
+  try {
+    await api('/api/auto-replies/' + id, { method: 'PUT', body: JSON.stringify({ active }) });
+    el.classList.toggle('on', active);
+    loadAutoReplies();
+  } catch (e) { alert('Erro: ' + e.message); }
+}
+
+async function removerAutoReply(id) {
+  if (!confirm('Remover esta auto-resposta?')) return;
+  try { await api('/api/auto-replies/' + id, { method: 'DELETE' }); loadAutoReplies(); }
+  catch (e) { alert('Erro: ' + e.message); }
+}
+
+function escapeAttr(s) { return String(s ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 bootstrap();
 setInterval(() => { if (document.getElementById('page-geral').classList.contains('show')) loadOverview(); }, 30000);

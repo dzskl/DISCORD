@@ -29,8 +29,8 @@ if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
 router.get('/discord', passport.authenticate('discord'));
 
 router.get('/discord/callback',
-  passport.authenticate('discord', { failureRedirect: '/?login=fail' }),
-  (req, res) => res.redirect(isAdmin(req.user) ? '/' : '/?login=denied')
+  passport.authenticate('discord', { failureRedirect: '/login.html?login=fail' }),
+  (req, res) => res.redirect(isAdmin(req.user) ? '/' : '/login.html?login=denied')
 );
 
 router.post('/logout', (req, res) => {
