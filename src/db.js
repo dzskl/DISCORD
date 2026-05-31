@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS products (
   price_cents INTEGER NOT NULL,
   role_id TEXT,
   duration TEXT NOT NULL DEFAULT 'permanent',
+  image_url TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
@@ -122,6 +123,14 @@ CREATE TABLE IF NOT EXISTS auto_replies (
 CREATE INDEX IF NOT EXISTS idx_ar_active ON auto_replies(active);
 `);
 
+function ensureColumn(table, column, type) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.find(c => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+ensureColumn('products', 'image_url', 'TEXT');
+
 const defaultConfig = {
   bot_name: 'BotDash',
   prefix: '/',
@@ -130,6 +139,7 @@ const defaultConfig = {
   maintenance: '0',
   logs_channel: 'bot-logs',
   welcome_channel: 'geral',
+  welcome_message: 'Bem-vindo(a), {user}! 👋 Voce e o membro #{count} do {server}.',
   sales_channel: 'vendas',
   mod_channel: 'mod-log',
   anti_spam: '1',

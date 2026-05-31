@@ -15,23 +15,25 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', requireAuth, (req, res) => {
-  const { name, description, price, role_id, duration } = req.body || {};
+  const { name, description, price, role_id, duration, image_url } = req.body || {};
   if (!name || price == null) return res.status(400).json({ error: 'nome e preco obrigatorios' });
   const price_cents = Math.round(parseFloat(price) * 100);
   if (!(price_cents > 0)) return res.status(400).json({ error: 'preco invalido' });
+  if (image_url && !/^https?:\/\//.test(image_url)) return res.status(400).json({ error: 'image_url deve ser uma URL http(s)' });
 
   const info = db.prepare(`
-    INSERT INTO products (name,description,price_cents,role_id,duration,active)
-    VALUES (?,?,?,?,?,1)
-  `).run(name.trim(), (description || '').trim(), price_cents, role_id || null, duration || 'permanent');
+    INSERT INTO products (name,description,price_cents,role_id,duration,image_url,active)
+    VALUES (?,?,?,?,?,?,1)
+  `).run(name.trim(), (description || '').trim(), price_cents, role_id || null, duration || 'permanent', image_url || null);
 
   res.json(db.prepare('SELECT * FROM products WHERE id=?').get(info.lastInsertRowid));
 });
 
 router.put('/:id', requireAuth, (req, res) => {
-  const { name, description, price, role_id, duration, active } = req.body || {};
+  const { name, description, price, role_id, duration, image_url, active } = req.body || {};
   const existing = db.prepare('SELECT * FROM products WHERE id=?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'nao encontrado' });
+  if (image_url && !/^https?:\/\//.test(image_url)) return res.status(400).json({ error: 'image_url deve ser uma URL http(s)' });
 
   db.prepare(`
     UPDATE products SET
@@ -40,6 +42,7 @@ router.put('/:id', requireAuth, (req, res) => {
       price_cents = COALESCE(?, price_cents),
       role_id = COALESCE(?, role_id),
       duration = COALESCE(?, duration),
+      image_url = COALESCE(?, image_url),
       active = COALESCE(?, active)
     WHERE id=?
   `).run(
@@ -48,6 +51,7 @@ router.put('/:id', requireAuth, (req, res) => {
     price != null ? Math.round(parseFloat(price) * 100) : null,
     role_id ?? null,
     duration ?? null,
+    image_url ?? null,
     active != null ? (active ? 1 : 0) : null,
     req.params.id
   );

@@ -1,5 +1,6 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, AuditLogEvent } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, AuditLogEvent, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const { db, getConfig, logEvent } = require('./db');
+const logger = require('./logger');
 
 const client = new Client({
   intents: [
@@ -19,9 +20,28 @@ const recordMember = db.prepare('INSERT INTO member_events (discord_id,discord_t
 const recordMod = db.prepare('INSERT INTO mod_actions (action,target_id,target_tag,moderator_id,moderator_tag,reason) VALUES (?,?,?,?,?,?)');
 const recordCmd = db.prepare('INSERT INTO command_usage (command,discord_id) VALUES (?,?)');
 
-client.once('ready', () => {
-  console.log(`[BOT] online como ${client.user.tag}`);
+client.once('ready', async () => {
+  logger.info({ tag: client.user.tag }, 'bot online');
+  try { await registerCommands(); }
+  catch (e) { logger.warn({ err: e }, 'falha ao registrar slash commands'); }
 });
+
+async function registerCommands() {
+  if (!process.env.DISCORD_CLIENT_ID || !GUILD_ID) return;
+  const commands = [
+    new SlashCommandBuilder().setName('produtos').setDescription('Lista os produtos a venda'),
+    new SlashCommandBuilder().setName('comprar').setDescription('Mostra o link da loja'),
+    new SlashCommandBuilder().setName('cupom').setDescription('Valida um cupom de desconto')
+      .addStringOption(o => o.setName('codigo').setDescription('Codigo do cupom').setRequired(true)),
+    new SlashCommandBuilder().setName('meusprodutos').setDescription('Mostra suas compras')
+  ].map(c => c.toJSON());
+
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  await rest.put(Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, GUILD_ID), { body: commands });
+  logger.info({ count: commands.length }, 'slash commands registrados');
+}
+
+function publicUrl() { return process.env.PUBLIC_URL || 'http://localhost:3000'; }
 
 client.on('guildMemberAdd', (m) => {
   if (m.guild.id !== GUILD_ID) return;
@@ -30,10 +50,16 @@ client.on('guildMemberAdd', (m) => {
 
   const cfg = getConfig();
   const welcomeName = (cfg.welcome_channel || '').replace(/^#/, '');
-  if (welcomeName) {
-    const ch = m.guild.channels.cache.find(c => c.name === welcomeName && c.isTextBased && c.isTextBased());
-    if (ch) ch.send(`Bem-vindo(a), <@${m.id}>! 👋`).catch(() => {});
-  }
+  if (!welcomeName) return;
+  const ch = m.guild.channels.cache.find(c => c.name === welcomeName && c.isTextBased && c.isTextBased());
+  if (!ch) return;
+  const template = cfg.welcome_message || 'Bem-vindo(a), {user}! 👋 Voce e o membro #{count} do {server}.';
+  const msg = template
+    .replace(/\{user\}/g, `<@${m.id}>`)
+    .replace(/\{tag\}/g, m.user.tag)
+    .replace(/\{server\}/g, m.guild.name)
+    .replace(/\{count\}/g, m.guild.memberCount);
+  ch.send(msg).catch(() => {});
 });
 
 client.on('guildMemberRemove', (m) => {
@@ -63,10 +89,41 @@ client.on('guildMemberUpdate', async (oldM, newM) => {
   }
 });
 
-client.on('interactionCreate', (i) => {
+client.on('interactionCreate', async (i) => {
   if (!i.isChatInputCommand()) return;
   recordCmd.run(i.commandName, i.user.id);
   logEvent({ type: 'cmd', message: `/${i.commandName} executado`, discord_id: i.user.id, discord_tag: i.user.tag, channel: i.channel?.name || null });
+
+  try {
+    if (i.commandName === 'produtos') {
+      const list = db.prepare('SELECT * FROM products WHERE active=1 ORDER BY price_cents').all();
+      if (!list.length) return i.reply({ content: 'Nenhum produto disponivel.', ephemeral: true });
+      const eb = new EmbedBuilder().setTitle('Produtos disponiveis').setColor(0x5865f2)
+        .setDescription(list.map(p => `**${p.name}** — R$ ${(p.price_cents / 100).toFixed(2).replace('.', ',')}\n${p.description || ''}`).join('\n\n'))
+        .setFooter({ text: `Compre em ${publicUrl()}/loja.html` });
+      await i.reply({ embeds: [eb], ephemeral: true });
+    } else if (i.commandName === 'comprar') {
+      await i.reply({ content: `🛒 Acesse a loja: ${publicUrl()}/loja.html\nSeu ID do Discord: \`${i.user.id}\``, ephemeral: true });
+    } else if (i.commandName === 'cupom') {
+      const code = i.options.getString('codigo').toUpperCase();
+      const c = db.prepare('SELECT * FROM coupons WHERE code=? AND active=1').get(code);
+      if (!c) return i.reply({ content: '❌ Cupom invalido.', ephemeral: true });
+      if (c.expires_at && c.expires_at < Math.floor(Date.now() / 1000)) return i.reply({ content: '❌ Cupom expirado.', ephemeral: true });
+      if (c.max_uses != null && c.uses >= c.max_uses) return i.reply({ content: '❌ Cupom esgotado.', ephemeral: true });
+      await i.reply({ content: `✅ Cupom **${c.code}** valido — desconto de **${c.discount_percent}%**. Use no checkout.`, ephemeral: true });
+    } else if (i.commandName === 'meusprodutos') {
+      const buys = db.prepare(`
+        SELECT s.*, p.name AS pname FROM sales s LEFT JOIN products p ON p.id=s.product_id
+        WHERE s.discord_id=? AND s.status='paid' ORDER BY s.paid_at DESC LIMIT 20
+      `).all(i.user.id);
+      if (!buys.length) return i.reply({ content: 'Voce ainda nao comprou nada.', ephemeral: true });
+      const lines = buys.map(b => `• ${b.pname || '—'} — R$ ${(b.amount_cents / 100).toFixed(2).replace('.', ',')} (${new Date(b.paid_at * 1000).toLocaleDateString('pt-BR')})`);
+      await i.reply({ content: '**Suas compras:**\n' + lines.join('\n'), ephemeral: true });
+    }
+  } catch (e) {
+    logger.error({ err: e, cmd: i.commandName }, 'erro em slash command');
+    if (!i.replied) await i.reply({ content: 'Erro ao processar comando.', ephemeral: true }).catch(() => {});
+  }
 });
 
 client.on('messageCreate', async (msg) => {
@@ -198,7 +255,7 @@ async function notifySaleChannel(text) {
 
 function start() {
   if (!process.env.DISCORD_TOKEN) {
-    console.warn('[BOT] DISCORD_TOKEN nao definido — bot nao iniciado.');
+    logger.warn('DISCORD_TOKEN nao definido — bot nao iniciado');
     return Promise.resolve();
   }
   return client.login(process.env.DISCORD_TOKEN);

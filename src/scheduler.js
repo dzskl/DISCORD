@@ -1,11 +1,12 @@
 const cron = require('node-cron');
 const { db, logEvent } = require('./db');
 const bot = require('./bot');
+const logger = require('./logger');
 
 function start() {
   cron.schedule('* * * * *', runScheduledAnnouncements);
   cron.schedule('*/5 * * * *', expireRoles);
-  console.log('[SCHED] cron iniciado');
+  logger.info('scheduler iniciado');
 }
 
 async function runScheduledAnnouncements() {
@@ -50,7 +51,7 @@ async function expireRoles() {
       db.prepare(`UPDATE sales SET role_granted=0, status='expired' WHERE id=?`).run(sale.id);
       logEvent({ type: 'expiracao', message: `Cargo expirado para ${sale.discord_tag || sale.discord_id}`, discord_id: sale.discord_id });
     } catch (e) {
-      console.error('[SCHED] erro expirando cargo:', e.message);
+      logger.error({ err: e, sale: sale.id }, 'erro expirando cargo');
     }
   }
 }

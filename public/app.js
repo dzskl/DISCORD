@@ -7,6 +7,59 @@ const api = (path, opts = {}) =>
       return r.json();
     });
 
+function toast(msg, type = 'ok', ms = 3500) {
+  const w = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .25s'; setTimeout(() => el.remove(), 250); }, ms);
+}
+
+function openModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('show'); }
+
+function confirmAsync(msg) {
+  return new Promise(resolve => {
+    openModal(`
+      <div class="modal-title">confirmar<button class="modal-close" onclick="closeModal()">×</button></div>
+      <div style="font-size:13px;color:#aaa;font-family:'IBM Plex Mono',monospace;margin-bottom:18px;line-height:1.6;">${msg}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn-g" onclick="window.__cf(false)">cancelar</button>
+        <button class="btn-w" onclick="window.__cf(true)">confirmar</button>
+      </div>
+    `);
+    window.__cf = (v) => { closeModal(); resolve(v); };
+  });
+}
+
+function filterTable(tbodyId, query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll('#' + tbodyId + ' tr').forEach(tr => {
+    tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function escapeAttr(s) { return String(s ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function exportCsv(kind) {
+  const url = kind === 'sales' ? '/api/sales/export.csv' : '/api/customers/_/export.csv';
+  fetch(url, { credentials: 'include' }).then(r => {
+    if (!r.ok) { toast('Erro no export', 'err'); return; }
+    return r.blob().then(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = kind + '.csv';
+      a.click();
+      toast('Arquivo baixado', 'ok');
+    });
+  });
+}
+
 const charts = {};
 let produtos = [];
 let agendamentos = [];
@@ -195,21 +248,23 @@ async function loadVendas() {
       { data: sum.by_product.map(b => b.c), backgroundColor: shades, borderColor: '#0a0a0a', borderWidth: 3 }
     ], { cutout: '60%', noScales: true });
 
-    const txs = await api('/api/sales?limit=20');
-    const tbody = document.querySelector('#page-vendas .vtable tbody');
-    if (tbody) tbody.innerHTML = txs.map(t => {
-      const cls = t.status === 'paid' ? 'gr' : t.status === 'refunded' ? '' : '';
+    const txs = await api('/api/sales?limit=50');
+    const tbody = document.getElementById('vendas-tbody');
+    if (tbody) tbody.innerHTML = txs.length ? txs.map(t => {
+      const cls = t.status === 'paid' ? 'gr' : '';
       const badge = t.status === 'paid'
         ? `<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">pago</span>`
         : t.status === 'pending'
         ? `<span class="badge kick">pendente</span>`
         : `<span class="badge ban">${t.status}</span>`;
+      const action = t.status === 'paid' ? `<button class="btn-sm del" onclick="refundSale(${t.id})">reembolsar</button>` : '';
       return `<tr><td>${formatTime(t.created_at)}</td>
         <td class="hi">${escapeHtml(t.discord_tag || t.discord_id)}</td>
         <td>${escapeHtml(t.product_name || '—')}</td>
         <td class="${cls}">R$${(t.amount_cents / 100).toFixed(2).replace('.', ',')}</td>
-        <td>${badge}</td></tr>`;
-    }).join('') || '<tr><td colspan="5" style="color:#444">sem vendas ainda.</td></tr>';
+        <td>${badge}</td>
+        <td>${action}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" style="color:#444">sem vendas ainda.</td></tr>';
   } catch (e) { console.warn('vendas', e.message); }
 }
 
@@ -228,8 +283,11 @@ function productCard(p) {
   const price = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ',');
   const durMap = { permanent: 'permanente', '30d': '30 dias', '7d': '7 dias', '1d': '1 dia', '1y': 'anual' };
   const dur = durMap[p.duration] || p.duration;
+  const thumb = p.image_url
+    ? `<div class="prod-thumb" style="background:#000 url(${escapeAttr(p.image_url)}) center/cover;"></div>`
+    : `<div class="prod-thumb">sem imagem</div>`;
   return `<div class="prod-card" data-id="${p.id}">
-    <div class="prod-thumb">sem imagem</div>
+    ${thumb}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
       <div class="prod-name">${escapeHtml(p.name)}</div>
       <span class="status-pill ${p.active ? 'status-ativo' : 'status-inativo'}">${p.active ? 'ativo' : 'inativo'}</span>
@@ -238,8 +296,9 @@ function productCard(p) {
     <div class="prod-desc">${escapeHtml(p.description || 'Sem descricao.')}</div>
     <div class="prod-footer"><span class="prod-sales">${p.sales_count || 0} vendas</span></div>
     <div class="prod-actions">
+      <button class="btn-sm" onclick="editProduto(${p.id})">editar</button>
       <button class="btn-sm pub" onclick="anunciarProd(${p.id})">anunciar</button>
-      <button class="btn-sm del" onclick="removerProd(${p.id})">remover</button>
+      <button class="btn-sm del" onclick="removerProd(${p.id})">${p.active ? 'desativar' : 'reativar'}</button>
     </div>
   </div>`;
 }
@@ -250,22 +309,67 @@ async function addProduto() {
   const description = document.getElementById('pdesc').value.trim();
   const duration = document.getElementById('pdur').value;
   const role_id = document.getElementById('pcargo').value.trim();
-  if (!name || !price) return alert('Preencha nome e preco.');
+  const image_url = document.getElementById('pimg').value.trim();
+  if (!name || !price) return toast('Preencha nome e preco.', 'warn');
   try {
-    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, description, duration, role_id }) });
-    document.getElementById('pnome').value = '';
-    document.getElementById('ppreco').value = '';
-    document.getElementById('pdesc').value = '';
-    document.getElementById('pcargo').value = '';
+    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, description, duration, role_id, image_url }) });
+    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg'].forEach(id => document.getElementById(id).value = '');
     toggleForm('prod-form');
     loadProdutos();
-  } catch (e) { alert('Erro: ' + e.message); }
+    toast('Produto criado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function editProduto(id) {
+  const p = produtos.find(x => x.id === id);
+  if (!p) return;
+  openModal(`
+    <div class="modal-title">editar produto<button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="fgroup"><div class="flabel">nome</div><input class="inp" id="ep-name" value="${escapeAttr(p.name)}"></div>
+    <div class="fgroup"><div class="flabel">preço (R$)</div><input class="inp" id="ep-price" type="number" step="0.01" value="${(p.price_cents / 100).toFixed(2)}"></div>
+    <div class="fgroup"><div class="flabel">descrição</div><textarea class="inp" id="ep-desc">${escapeHtml(p.description || '')}</textarea></div>
+    <div class="fgroup"><div class="flabel">cargo</div><input class="inp" id="ep-role" value="${escapeAttr(p.role_id || '')}"></div>
+    <div class="fgroup"><div class="flabel">duração</div>
+      <select class="inp" id="ep-dur">
+        ${['permanent', '1d', '7d', '30d', '1y'].map(d => `<option value="${d}" ${p.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fgroup"><div class="flabel">URL da imagem</div><input class="inp" id="ep-img" value="${escapeAttr(p.image_url || '')}"></div>
+    <div class="fgroup"><div class="flabel">status</div>
+      <select class="inp" id="ep-active">
+        <option value="1" ${p.active ? 'selected' : ''}>ativo</option>
+        <option value="0" ${!p.active ? 'selected' : ''}>inativo</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn-g" onclick="closeModal()">cancelar</button>
+      <button class="btn-w" onclick="saveProduto(${id})">salvar</button>
+    </div>
+  `);
+}
+
+async function saveProduto(id) {
+  const payload = {
+    name: document.getElementById('ep-name').value.trim(),
+    price: document.getElementById('ep-price').value,
+    description: document.getElementById('ep-desc').value.trim(),
+    role_id: document.getElementById('ep-role').value.trim() || null,
+    duration: document.getElementById('ep-dur').value,
+    image_url: document.getElementById('ep-img').value.trim() || null,
+    active: document.getElementById('ep-active').value === '1'
+  };
+  try {
+    await api('/api/products/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+    closeModal();
+    loadProdutos();
+    toast('Produto atualizado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function removerProd(id) {
-  if (!confirm('Remover este produto?')) return;
-  try { await api('/api/products/' + id, { method: 'DELETE' }); loadProdutos(); }
-  catch (e) { alert('Erro: ' + e.message); }
+  if (!await confirmAsync('Desativar este produto? Ele some da loja mas o histórico fica.')) return;
+  try { await api('/api/products/' + id, { method: 'DELETE' }); loadProdutos(); toast('Produto desativado.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- ANUNCIOS ----------
@@ -291,8 +395,8 @@ async function enviarAnuncio() {
   const body = document.getElementById('anuncio-texto').value.trim();
   const channels = [...document.querySelectorAll('.canal-chip.sel')].map(c => c.textContent);
   const kind = document.getElementById('anuncio-tipo').value;
-  if (!body) return alert('Digite uma mensagem.');
-  if (!channels.length) return alert('Selecione pelo menos um canal.');
+  if (!body) return toast('Digite uma mensagem.', 'warn');
+  if (!channels.length) return toast('Selecione pelo menos um canal.', 'warn');
 
   const payload = { channels, body, kind };
   if (kind === 'embed') {
@@ -305,19 +409,19 @@ async function enviarAnuncio() {
     await api('/api/announcements', { method: 'POST', body: JSON.stringify(payload) });
     document.getElementById('anuncio-texto').value = '';
     loadAnuncios();
-    alert('Anuncio enviado.');
-  } catch (e) { alert('Erro: ' + e.message); }
+    toast('Anuncio enviado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function agendarAnuncio() {
   const body = document.getElementById('anuncio-texto').value.trim();
   const channels = [...document.querySelectorAll('.canal-chip.sel')].map(c => c.textContent);
-  if (!body) return alert('Digite uma mensagem.');
-  if (!channels.length) return alert('Selecione pelo menos um canal.');
+  if (!body) return toast('Digite uma mensagem.', 'warn');
+  if (!channels.length) return toast('Selecione pelo menos um canal.', 'warn');
   const when = prompt('Quando enviar? (formato AAAA-MM-DD HH:MM)');
   if (!when) return;
   const ts = Math.floor(new Date(when.replace(' ', 'T')).getTime() / 1000);
-  if (!ts) return alert('Data invalida.');
+  if (!ts) return toast('Data invalida.', 'warn');
   try {
     await api('/api/announcements', {
       method: 'POST',
@@ -330,7 +434,7 @@ async function agendarAnuncio() {
       })
     });
     loadAnuncios();
-  } catch (e) { alert('Erro: ' + e.message); }
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function loadAnuncios() {
@@ -369,18 +473,16 @@ async function loadAnuncios() {
 }
 
 async function cancelarAgendamento(id) {
-  if (!confirm('Cancelar este agendamento?')) return;
+  if (!await confirmAsync('Cancelar este agendamento?')) return;
   await api('/api/announcements/' + id, { method: 'DELETE' });
   loadAnuncios();
+  toast('Agendamento cancelado.', 'ok');
 }
 
 // ---------- CONFIG ----------
 async function loadConfig() {
   try {
     const cfg = await api('/api/config');
-    const map = {
-      bot_name: 1, prefix: 0, logs_channel: 0, welcome_channel: 0, sales_channel: 0, mod_channel: 0
-    };
     document.querySelectorAll('#page-config input').forEach(inp => {
       const labelEl = inp.closest('.cfgitem')?.querySelector('.cfgtxt');
       if (!labelEl) return;
@@ -392,6 +494,8 @@ async function loadConfig() {
       const k = configKeyFromLabel(labelEl?.textContent || '');
       if (k && cfg[k] != null) t.classList.toggle('on', cfg[k] === '1');
     });
+    const wm = document.getElementById('welcome-msg');
+    if (wm && cfg.welcome_message != null) wm.value = cfg.welcome_message;
   } catch (e) { console.warn('config', e.message); }
 }
 
@@ -405,8 +509,10 @@ async function saveConfig() {
     const k = configKeyFromLabel(t.closest('.cfgitem')?.querySelector('.cfgtxt')?.textContent || '');
     if (k) payload[k] = t.classList.contains('on') ? '1' : '0';
   });
-  try { await api('/api/config', { method: 'PUT', body: JSON.stringify(payload) }); alert('Salvo.'); }
-  catch (e) { alert('Erro: ' + e.message); }
+  const wm = document.getElementById('welcome-msg');
+  if (wm) payload.welcome_message = wm.value;
+  try { await api('/api/config', { method: 'PUT', body: JSON.stringify(payload) }); toast('Configuracao salva.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
 }
 
 function configKeyFromLabel(label) {
@@ -560,7 +666,6 @@ function typeBadge(type) {
   };
   return `<span class="badge" style="${styles[type] || styles.cmd}">${type}</span>`;
 }
-function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function last14Labels() {
   const out = []; const now = new Date();
   for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate() - i); out.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })); }
@@ -602,9 +707,28 @@ async function loadClientes() {
 async function verCliente(id) {
   try {
     const list = await api('/api/customers/' + encodeURIComponent(id));
-    const txt = list.map(s => `${new Date(s.created_at * 1000).toLocaleString('pt-BR')} · ${s.product_name || '—'} · R$${(s.amount_cents / 100).toFixed(2)} · ${s.status}`).join('\n');
-    alert(`Compras de ${id}:\n\n` + (txt || 'sem compras.'));
-  } catch (e) { alert('Erro: ' + e.message); }
+    const rows = list.length ? list.map(s => `
+      <tr>
+        <td style="font-size:10px;color:#666;">${new Date(s.created_at * 1000).toLocaleString('pt-BR')}</td>
+        <td>${escapeHtml(s.product_name || '—')}</td>
+        <td class="gr">R$${(s.amount_cents / 100).toFixed(2).replace('.', ',')}</td>
+        <td>${s.status}</td>
+      </tr>`).join('') : '<tr><td colspan="4" style="color:#444">sem compras.</td></tr>';
+    openModal(`
+      <div class="modal-title">cliente ${escapeHtml(id)}<button class="modal-close" onclick="closeModal()">×</button></div>
+      <table class="vtable"><thead><tr><th>data</th><th>produto</th><th>valor</th><th>status</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    `);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function refundSale(id) {
+  if (!await confirmAsync('Reembolsar esta venda? Isso vai cancelar no Stripe e remover o cargo do comprador.')) return;
+  try {
+    await api('/api/sales/' + id + '/refund', { method: 'POST' });
+    toast('Reembolso processado.', 'ok');
+    loadVendas();
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- CUPONS ----------
@@ -633,7 +757,7 @@ async function addCupom() {
   const max_uses = document.getElementById('cup-max').value.trim() || null;
   const expVal = document.getElementById('cup-exp').value;
   const expires_at = expVal ? Math.floor(new Date(expVal).getTime() / 1000) : null;
-  if (!code || !discount_percent) return alert('Preencha código e desconto.');
+  if (!code || !discount_percent) return toast('Preencha código e desconto.', 'warn');
   try {
     await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, expires_at }) });
     document.getElementById('cup-code').value = '';
@@ -642,13 +766,13 @@ async function addCupom() {
     document.getElementById('cup-exp').value = '';
     toggleForm('cup-form');
     loadCupons();
-  } catch (e) { alert('Erro: ' + e.message); }
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function removerCupom(id) {
-  if (!confirm('Desativar este cupom?')) return;
-  try { await api('/api/coupons/' + id, { method: 'DELETE' }); loadCupons(); }
-  catch (e) { alert('Erro: ' + e.message); }
+  if (!await confirmAsync('Desativar este cupom?')) return;
+  try { await api('/api/coupons/' + id, { method: 'DELETE' }); loadCupons(); toast('Cupom desativado.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- AUTO-RESPOSTAS ----------
@@ -675,14 +799,14 @@ async function addAutoReply() {
   const trigger = document.getElementById('ar-trigger').value.trim();
   const match_type = document.getElementById('ar-match').value;
   const response = document.getElementById('ar-response').value.trim();
-  if (!trigger || !response) return alert('Preencha gatilho e resposta.');
+  if (!trigger || !response) return toast('Preencha gatilho e resposta.', 'warn');
   try {
     await api('/api/auto-replies', { method: 'POST', body: JSON.stringify({ trigger, match_type, response }) });
     document.getElementById('ar-trigger').value = '';
     document.getElementById('ar-response').value = '';
     toggleForm('ar-form');
     loadAutoReplies();
-  } catch (e) { alert('Erro: ' + e.message); }
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function toggleAutoReply(id, el) {
@@ -691,16 +815,14 @@ async function toggleAutoReply(id, el) {
     await api('/api/auto-replies/' + id, { method: 'PUT', body: JSON.stringify({ active }) });
     el.classList.toggle('on', active);
     loadAutoReplies();
-  } catch (e) { alert('Erro: ' + e.message); }
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 async function removerAutoReply(id) {
-  if (!confirm('Remover esta auto-resposta?')) return;
-  try { await api('/api/auto-replies/' + id, { method: 'DELETE' }); loadAutoReplies(); }
-  catch (e) { alert('Erro: ' + e.message); }
+  if (!await confirmAsync('Remover esta auto-resposta?')) return;
+  try { await api('/api/auto-replies/' + id, { method: 'DELETE' }); loadAutoReplies(); toast('Auto-resposta removida.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
 }
-
-function escapeAttr(s) { return String(s ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 bootstrap();
 setInterval(() => { if (document.getElementById('page-geral').classList.contains('show')) loadOverview(); }, 30000);

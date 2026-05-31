@@ -49,4 +49,30 @@ router.get('/_/summary', requireAuth, (req, res) => {
   res.json({ total_customers: total, new_today: newToday, avg_ltv_cents: ltv });
 });
 
+router.get('/_/export.csv', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT discord_id, MAX(discord_tag) AS discord_tag, COUNT(*) AS compras,
+      SUM(CASE WHEN status='paid' THEN amount_cents ELSE 0 END) AS total_cents,
+      MAX(paid_at) AS last_purchase_at
+    FROM sales WHERE discord_id IS NOT NULL GROUP BY discord_id ORDER BY total_cents DESC
+  `).all();
+  const header = 'discord_id,discord_tag,compras,total_brl,ultima_compra\n';
+  const body = rows.map(r => [
+    r.discord_id,
+    csvEscape(r.discord_tag),
+    r.compras,
+    (r.total_cents / 100).toFixed(2),
+    r.last_purchase_at ? new Date(r.last_purchase_at * 1000).toISOString() : ''
+  ].join(',')).join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="clientes.csv"');
+  res.send(header + body);
+});
+
+function csvEscape(v) {
+  if (v == null) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 module.exports = router;

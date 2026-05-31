@@ -1,8 +1,14 @@
 const express = require('express');
-const { db } = require('../db');
+const { db, logEvent } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const bot = require('../bot');
 
 const router = express.Router();
+
+function stripe() {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  return require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
 
 router.get('/', requireAuth, (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 500);
@@ -53,9 +59,50 @@ router.get('/summary', requireAuth, (req, res) => {
   });
 });
 
-router.post('/:id/refund', requireAuth, (req, res) => {
-  db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(req.params.id);
-  res.json({ ok: true });
+router.post('/:id/refund', requireAuth, async (req, res, next) => {
+  const sale = db.prepare('SELECT * FROM sales WHERE id=?').get(req.params.id);
+  if (!sale) return res.status(404).json({ error: 'venda nao encontrada' });
+  if (sale.status !== 'paid') return res.status(400).json({ error: 'venda nao esta paga' });
+
+  const s = stripe();
+  try {
+    if (s && sale.stripe_payment_intent) {
+      await s.refunds.create({ payment_intent: sale.stripe_payment_intent });
+    }
+    db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
+    const product = db.prepare('SELECT * FROM products WHERE id=?').get(sale.product_id);
+    if (product?.role_id) await bot.revokeRole(sale.discord_id, product.role_id).catch(() => {});
+    logEvent({ type: 'reembolso', message: `Reembolso aplicado — ${product?.name || ''}`, discord_id: sale.discord_id });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
+
+router.get('/export.csv', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT s.id, s.created_at, s.paid_at, s.discord_id, s.discord_tag, p.name AS product, s.amount_cents, s.status
+    FROM sales s LEFT JOIN products p ON p.id=s.product_id
+    ORDER BY s.created_at DESC
+  `).all();
+  const header = 'id,criada_em,paga_em,discord_id,discord_tag,produto,valor_brl,status\n';
+  const body = rows.map(r => [
+    r.id,
+    new Date(r.created_at * 1000).toISOString(),
+    r.paid_at ? new Date(r.paid_at * 1000).toISOString() : '',
+    r.discord_id,
+    csvEscape(r.discord_tag),
+    csvEscape(r.product),
+    (r.amount_cents / 100).toFixed(2),
+    r.status
+  ].join(',')).join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="vendas.csv"');
+  res.send(header + body);
+});
+
+function csvEscape(v) {
+  if (v == null) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 module.exports = router;

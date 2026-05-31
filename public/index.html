@@ -118,10 +118,32 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
 .canal-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .canal-chip{font-size:11px;font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:4px;cursor:pointer;border:1px solid #222;color:#555;background:#0a0a0a;transition:all .15s;}
 .canal-chip.sel{background:#1a1a1a;color:#fff;border-color:#444;}
+.toast-wrap{position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px;max-width:340px;}
+.toast{background:#111;border:1px solid #222;border-left:3px solid #fff;border-radius:6px;padding:11px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:#ccc;box-shadow:0 8px 22px rgba(0,0,0,.4);animation:tin .25s ease;line-height:1.5;}
+.toast.ok{border-left-color:#5fff5f;}
+.toast.err{border-left-color:#ff5f5f;color:#ff8f8f;}
+.toast.warn{border-left-color:#ffdf5f;}
+@keyframes tin{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg.show{display:flex;}
+.modal{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:10px;padding:24px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+.modal-close{cursor:pointer;color:#555;font-size:16px;background:none;border:none;}
+.modal-close:hover{color:#fff;}
+.search-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.search-inp{flex:1;background:#0a0a0a;border:1px solid #222;border-radius:5px;padding:8px 11px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#ccc;outline:none;}
+.search-inp:focus{border-color:#444;}
+.skel{display:inline-block;height:1em;width:60px;background:linear-gradient(90deg,#1a1a1a,#222,#1a1a1a);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:3px;}
+@keyframes sh{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@media(max-width:780px){.mgrid,.mgrid4{grid-template-columns:repeat(2,1fr);}.crow,.cfgrow{grid-template-columns:1fr;}.brow,.frow,.prod-grid{grid-template-columns:1fr;}.nav{overflow-x:auto;}.tr2{display:none;}}
 </style>
 </head>
 <body>
 
+<div class="toast-wrap" id="toast-wrap"></div>
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-body"></div>
+</div>
 
 <div class="topbar">
   <div class="tl">
@@ -324,16 +346,11 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
     </div>
   </div>
   <div class="card">
-    <div class="ctitle">últimas transações</div>
+    <div class="ctitle">últimas transações <button class="btn-sm" onclick="exportCsv('sales')" style="margin-left:auto">↓ exportar CSV</button></div>
+    <div class="search-bar"><input class="search-inp" placeholder="filtrar por discord, produto ou status..." oninput="filterTable('vendas-tbody', this.value)"></div>
     <table class="vtable">
-      <thead><tr><th>data</th><th>usuário</th><th>produto</th><th>valor</th><th>status</th></tr></thead>
-      <tbody>
-        <tr><td>22/03 22:23</td><td class="hi">user#7731</td><td>VIP mensal</td><td class="gr">R$49,90</td><td><span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">pago</span></td></tr>
-        <tr><td>22/03 19:41</td><td class="hi">user#4212</td><td>Cargo especial</td><td class="gr">R$19,90</td><td><span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">pago</span></td></tr>
-        <tr><td>22/03 15:12</td><td class="hi">user#8833</td><td>VIP anual</td><td class="gr">R$149,90</td><td><span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">pago</span></td></tr>
-        <tr><td>22/03 11:05</td><td class="hi">user#0192</td><td>VIP mensal</td><td class="gr">R$49,90</td><td><span class="badge kick">pendente</span></td></tr>
-        <tr><td>21/03 23:58</td><td class="hi">user#6677</td><td>Cargo especial</td><td style="color:#ff5f5f">R$19,90</td><td><span class="badge ban">reembolso</span></td></tr>
-      </tbody>
+      <thead><tr><th>data</th><th>usuário</th><th>produto</th><th>valor</th><th>status</th><th></th></tr></thead>
+      <tbody id="vendas-tbody"><tr><td colspan="6" style="color:#444">carregando...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -365,6 +382,7 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
             <option value="1d">1 dia</option>
           </select>
         </div>
+        <div class="fgroup"><div class="flabel">URL da imagem (opcional)</div><input class="inp" id="pimg" placeholder="https://..."></div>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:4px;">
@@ -428,7 +446,8 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
     <div class="mc dim"><div class="mlabel">top cliente</div><div class="mval" id="cli-top" style="font-size:13px">—</div></div>
   </div>
   <div class="card">
-    <div class="ctitle">lista de clientes <span class="cbadge" id="cli-count">0 registros</span></div>
+    <div class="ctitle">lista de clientes <span class="cbadge" id="cli-count">0 registros</span><button class="btn-sm" onclick="exportCsv('customers')" style="margin-left:auto">↓ exportar CSV</button></div>
+    <div class="search-bar"><input class="search-inp" placeholder="filtrar por discord..." oninput="filterTable('cli-tbody', this.value)"></div>
     <table class="vtable">
       <thead><tr><th>discord</th><th>compras</th><th>total gasto</th><th>última compra</th><th>reembolsos</th><th></th></tr></thead>
       <tbody id="cli-tbody"><tr><td colspan="6" style="color:#444">carregando...</td></tr></tbody>
@@ -628,6 +647,10 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.5;}
         <div class="cfgitem"><span class="cfgtxt">canal de boas-vindas</span><input class="inp" value="#geral" style="width:130px;"></div>
         <div class="cfgitem"><span class="cfgtxt">canal de vendas</span><input class="inp" value="#vendas" style="width:130px;"></div>
         <div class="cfgitem"><span class="cfgtxt">canal de moderação</span><input class="inp" value="#mod-log" style="width:130px;"></div>
+        <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <span class="cfgtxt">mensagem de boas-vindas <small style="color:#444">— use {user} {tag} {server} {count}</small></span>
+          <textarea class="inp" id="welcome-msg" placeholder="Bem-vindo {user}!" style="width:100%;min-height:60px;"></textarea>
+        </div>
       </div>
     </div>
     <div>

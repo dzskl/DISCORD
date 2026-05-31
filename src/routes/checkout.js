@@ -36,10 +36,13 @@ router.post('/create-session', async (req, res) => {
 
   const currency = (process.env.STRIPE_CURRENCY || 'brl').toLowerCase();
   const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3000';
+  const methods = (process.env.STRIPE_PAYMENT_METHODS || 'card,pix')
+    .split(',').map(m => m.trim()).filter(Boolean);
 
   try {
     const session = await s.checkout.sessions.create({
       mode: 'payment',
+      payment_method_types: methods,
       line_items: [{
         quantity: 1,
         price_data: {
@@ -47,7 +50,8 @@ router.post('/create-session', async (req, res) => {
           unit_amount,
           product_data: {
             name: product.name + (coupon ? ` (-${coupon.discount_percent}%)` : ''),
-            description: product.description || undefined
+            description: product.description || undefined,
+            images: product.image_url ? [product.image_url] : undefined
           }
         }
       }],
@@ -77,6 +81,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   if (!s) return res.status(503).send('Stripe nao configurado');
 
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    return res.status(503).send('STRIPE_WEBHOOK_SECRET obrigatorio em producao');
+  }
+
   let event;
   try {
     event = secret
@@ -115,7 +123,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           });
           await bot.notifySaleChannel(`🛒 Nova venda: **${product.name}** — <@${sale.discord_id}>`);
         } catch (e) {
-          console.error('[CHECKOUT] erro ao dar cargo:', e.message);
+          require('../logger').error({ err: e, sale: sale.id }, 'erro ao dar cargo');
           logEvent({ type: 'erro', message: `Falha ao dar cargo: ${e.message}`, discord_id: sale.discord_id });
         }
       } else {

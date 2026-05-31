@@ -1,7 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
-const { isAdmin, DEV_USER } = require('../middleware/auth');
+const { isAdmin, DEV_USER, bypassActive } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -38,7 +38,7 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/me', (req, res) => {
-  if (process.env.DEV_BYPASS_AUTH === '1') {
+  if (bypassActive()) {
     return res.json({ authenticated: true, user: req.user || DEV_USER, admin: true, dev: true });
   }
   if (!req.user) return res.json({ authenticated: false });
