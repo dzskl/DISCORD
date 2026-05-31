@@ -46,6 +46,22 @@ function filterTable(tbodyId, query) {
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function escapeAttr(s) { return String(s ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
+function emptyRow(cols, icon, text, ctaText, ctaCall) {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:50px 20px;border-bottom:none;">
+    <div style="font-size:32px;opacity:.25;margin-bottom:10px;">${icon}</div>
+    <div style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#555;line-height:1.6;max-width:340px;margin:0 auto;">${text}</div>
+    ${ctaText ? `<button class="btn-g" style="margin-top:16px;" onclick="${ctaCall}">${ctaText}</button>` : ''}
+  </td></tr>`;
+}
+
+function emptyBlock(icon, text, ctaText, ctaCall) {
+  return `<div style="text-align:center;padding:50px 20px;">
+    <div style="font-size:32px;opacity:.25;margin-bottom:10px;">${icon}</div>
+    <div style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#555;line-height:1.6;max-width:340px;margin:0 auto;">${text}</div>
+    ${ctaText ? `<button class="btn-g" style="margin-top:16px;" onclick="${ctaCall}">${ctaText}</button>` : ''}
+  </div>`;
+}
+
 function exportCsv(kind) {
   const url = kind === 'sales' ? '/api/sales/export.csv' : '/api/customers/_/export.csv';
   fetch(url, { credentials: 'include' }).then(r => {
@@ -224,7 +240,7 @@ async function loadMod() {
       <td>${escapeHtml(a.target_tag || a.target_id)}</td>
       <td><span class="badge ${a.action === 'ban' ? 'ban' : a.action === 'kick' ? 'kick' : a.action === 'mute' ? 'mute' : 'warn'}">${a.action}</span></td>
       <td>${escapeHtml(a.reason || '—')}</td></tr>
-    `).join('') || '<tr><td colspan="5" style="color:#444">sem acoes registradas.</td></tr>';
+    `).join('') || emptyRow(5, '🛡️', 'Nenhuma ação de moderação registrada. Bans, kicks e mutes vão aparecer aqui.');
   } catch (e) { console.warn('mod', e.message); }
 }
 
@@ -264,7 +280,7 @@ async function loadVendas() {
         <td class="${cls}">R$${(t.amount_cents / 100).toFixed(2).replace('.', ',')}</td>
         <td>${badge}</td>
         <td>${action}</td></tr>`;
-    }).join('') : '<tr><td colspan="6" style="color:#444">sem vendas ainda.</td></tr>';
+    }).join('') : emptyRow(6, '💸', 'Nenhuma venda ainda. Crie um produto e divulgue sua loja para começar.', 'ver produtos', "sp('produtos',document.querySelector('[data-page=produtos]'))");
   } catch (e) { console.warn('vendas', e.message); }
 }
 
@@ -452,7 +468,7 @@ async function loadAnuncios() {
         <div class="anuncio-body">${escapeHtml(a.body)}</div>
         <div class="anuncio-footer"><span class="anuncio-status up">● enviado</span></div>
       </div>
-    `).join('') || '<div style="color:#444;font-size:11px;font-family:IBM Plex Mono,monospace">nenhum anuncio enviado ainda.</div>';
+    `).join('') || emptyBlock('📢', 'Nenhum anúncio enviado ainda. Crie sua primeira campanha acima.');
     document.getElementById('hist-count').textContent = real.length + ' registros';
 
     const list = document.getElementById('sched-list');
@@ -643,14 +659,40 @@ function renderChart(id, type, labels, datasets, opts = {}) {
   const el = document.getElementById(id);
   if (!el) return;
   if (charts[id]) charts[id].destroy();
+
+  const hasData = datasets.some(d => d.data && d.data.some(v => v));
+  if (!hasData) {
+    el.parentElement.innerHTML = `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#333;font-family:'IBM Plex Mono',monospace;font-size:11px;gap:6px;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>sem dados ainda</span>
+    </div>`;
+    return;
+  }
+
+  if (type === 'line') {
+    datasets = datasets.map(d => ({
+      pointRadius: 2, pointBackgroundColor: d.borderColor || '#fff',
+      pointHoverRadius: 5, tension: 0.4, fill: true, borderWidth: 2, ...d
+    }));
+  }
+
   const scales = opts.noScales ? {} : { ...gc(), ...(opts.y ? { y: { ...gc().y, ...opts.y } } : {}) };
   charts[id] = new Chart(el, {
     type, data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111', borderColor: '#2a2a2a', borderWidth: 1,
+          titleColor: '#fff', bodyColor: '#aaa', padding: 10, cornerRadius: 6,
+          titleFont: { family: "'IBM Plex Mono'", size: 10 },
+          bodyFont: { family: "'IBM Plex Mono'", size: 11 }
+        }
+      },
       scales: opts.noScales ? {} : scales,
-      cutout: opts.cutout
+      cutout: opts.cutout,
+      interaction: { mode: 'index', intersect: false }
     }
   });
 }
@@ -720,7 +762,7 @@ async function loadClientes() {
         <td>${c.refunded_count > 0 ? `<span class="badge ban">${c.refunded_count}</span>` : '—'}</td>
         <td><button class="btn-sm" onclick="verCliente('${escapeAttr(c.discord_id)}')">detalhes</button></td>
       </tr>
-    `).join('') : '<tr><td colspan="6" style="color:#444">nenhum cliente ainda.</td></tr>';
+    `).join('') : emptyRow(6, '👥', 'Ainda sem clientes. Quando alguém comprar pela loja, aparece aqui agregado por Discord.');
   } catch (e) { console.warn('clientes', e.message); }
 }
 
@@ -767,7 +809,7 @@ async function loadCupons() {
         <td>${c.active ? '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>' : '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">inativo</span>'}</td>
         <td>${c.active ? `<button class="btn-sm del" onclick="removerCupom(${c.id})">desativar</button>` : ''}</td>
       </tr>
-    `).join('') : '<tr><td colspan="7" style="color:#444">nenhum cupom cadastrado.</td></tr>';
+    `).join('') : emptyRow(7, '🎟️', 'Nenhum cupom cadastrado. Crie códigos de desconto para promover sua loja.', '+ novo cupom', "toggleForm('cup-form')");
   } catch (e) { console.warn('cupons', e.message); }
 }
 
@@ -811,7 +853,7 @@ async function loadAutoReplies() {
         <td><div class="toggle ${a.active ? 'on' : ''}" onclick="toggleAutoReply(${a.id}, this)" style="display:inline-block;"></div></td>
         <td><button class="btn-sm del" onclick="removerAutoReply(${a.id})">remover</button></td>
       </tr>
-    `).join('') : '<tr><td colspan="6" style="color:#444">nenhuma auto-resposta cadastrada. crie uma para o bot responder automaticamente.</td></tr>';
+    `).join('') : emptyRow(6, '💬', 'Nenhuma auto-resposta cadastrada. O bot pode responder automaticamente quando alguém digitar palavras-chave.', '+ nova auto-resposta', "toggleForm('ar-form')");
   } catch (e) { console.warn('autoreply', e.message); }
 }
 
@@ -844,5 +886,100 @@ async function removerAutoReply(id) {
   catch (e) { toast(e.message, 'err'); }
 }
 
+// ---------- BUSCA GLOBAL ----------
+let _searchCache = { products: [], coupons: [], customers: [], at: 0 };
+async function refreshSearchCache() {
+  if (Date.now() - _searchCache.at < 30000) return;
+  try {
+    const [products, coupons, customers] = await Promise.all([
+      api('/api/products').catch(() => []),
+      api('/api/coupons').catch(() => []),
+      api('/api/customers').catch(() => [])
+    ]);
+    _searchCache = { products, coupons, customers, at: Date.now() };
+  } catch {}
+}
+
+async function globalSearch(q) {
+  const box = document.getElementById('gs-results');
+  q = q.trim().toLowerCase();
+  if (!q) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  await refreshSearchCache();
+  const hits = [];
+  _searchCache.products.filter(p => p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+    .slice(0, 4).forEach(p => hits.push({ kind: 'produto', label: p.name, meta: 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ','), goto: () => sp('produtos', document.querySelector('[data-page=produtos]')) }));
+  _searchCache.coupons.filter(c => c.code.toLowerCase().includes(q))
+    .slice(0, 4).forEach(c => hits.push({ kind: 'cupom', label: c.code, meta: `-${c.discount_percent}%`, goto: () => sp('cupons', document.querySelector('[data-page=cupons]')) }));
+  _searchCache.customers.filter(c => (c.discord_tag || c.discord_id || '').toLowerCase().includes(q))
+    .slice(0, 4).forEach(c => hits.push({ kind: 'cliente', label: c.discord_tag || c.discord_id, meta: `R$ ${((c.total_cents || 0) / 100).toFixed(2).replace('.', ',')}`, goto: () => verCliente(c.discord_id) }));
+
+  box.innerHTML = hits.length
+    ? hits.map((h, i) => `<div class="gs-row" data-i="${i}"><span class="gs-kind">${h.kind}</span>${escapeHtml(h.label)}<span class="gs-meta">${escapeHtml(h.meta)}</span></div>`).join('')
+    : '<div class="gs-empty">nada encontrado para "' + escapeHtml(q) + '"</div>';
+  box.style.display = 'block';
+  window._gsHits = hits;
+  box.querySelectorAll('.gs-row').forEach(r => r.onmousedown = e => { e.preventDefault(); hits[r.dataset.i].goto(); document.getElementById('gsearch').value = ''; box.style.display = 'none'; });
+}
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    document.getElementById('gsearch')?.focus();
+  }
+  if (e.key === 'Escape') {
+    closeModal();
+    const gs = document.getElementById('gs-results'); if (gs) gs.style.display = 'none';
+    document.getElementById('notif-panel')?.classList.remove('show');
+  }
+});
+
+// ---------- NOTIFICACOES ----------
+let _lastSeenLog = parseInt(localStorage.getItem('botdash_last_seen') || '0');
+
+async function pollNotifs() {
+  try {
+    const logs = await api('/api/logs?limit=10');
+    const unseen = logs.filter(l => l.created_at > _lastSeenLog);
+    document.getElementById('notif-dot').style.display = unseen.length ? 'block' : 'none';
+    const panel = document.getElementById('notif-panel');
+    panel.innerHTML = `
+      <div class="notif-head">
+        <span>notificações${unseen.length ? ` · ${unseen.length}` : ''}</span>
+        <button class="btn-sm" onclick="markAllSeen()">marcar lidas</button>
+      </div>
+      <div class="notif-list">
+        ${logs.length ? logs.map(l => `
+          <div class="notif-item">
+            <div class="dot ${dotClass(l.type)}"></div>
+            <div style="flex:1;min-width:0;">
+              <div class="ltxt" style="font-size:11.5px;">${escapeHtml(l.message)}</div>
+              <div class="ltime">${timeAgo(l.created_at)} · ${l.type}</div>
+            </div>
+          </div>`).join('') : '<div class="gs-empty">sem notificações.</div>'}
+      </div>`;
+  } catch {}
+}
+
+function toggleNotif(e) {
+  e.stopPropagation();
+  document.getElementById('notif-panel').classList.toggle('show');
+  pollNotifs();
+}
+
+function markAllSeen() {
+  _lastSeenLog = Math.floor(Date.now() / 1000);
+  localStorage.setItem('botdash_last_seen', String(_lastSeenLog));
+  document.getElementById('notif-dot').style.display = 'none';
+  document.getElementById('notif-panel').classList.remove('show');
+  toast('Notificações marcadas como lidas.', 'ok');
+}
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notif-panel');
+  if (panel && !e.target.closest('.notif-wrap')) panel.classList.remove('show');
+});
+
 bootstrap();
 setInterval(() => { if (document.getElementById('page-geral').classList.contains('show')) loadOverview(); }, 30000);
+setInterval(pollNotifs, 45000);
+setTimeout(pollNotifs, 2000);
