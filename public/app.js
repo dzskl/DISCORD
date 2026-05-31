@@ -539,11 +539,31 @@ function configKeyFromLabel(label) {
 }
 
 // ---------- NAVEGACAO + UTILS ----------
+const PAGE_META = {
+  geral: ['Visão geral', 'resumo em tempo real do seu servidor'],
+  membros: ['Membros', 'crescimento, lista e detalhes'],
+  logs: ['Logs', 'todos os eventos do bot e do servidor'],
+  mod: ['Moderação', 'bans, kicks, mutes e auto-mod'],
+  vendas: ['Vendas', 'transações, receita e relatórios'],
+  produtos: ['Produtos', 'gerencie seu catálogo'],
+  clientes: ['Clientes', 'compradores agregados e LTV'],
+  cupons: ['Cupons', 'descontos para a loja'],
+  anuncios: ['Anúncios', 'envie e agende mensagens'],
+  autoreply: ['Auto-respostas', 'gatilhos automáticos do bot'],
+  config: ['Configurações', 'preferências do bot e canais']
+};
+
 function sp(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('show');
   el.classList.add('active');
+  const meta = PAGE_META[id];
+  if (meta) {
+    document.getElementById('page-title').textContent = meta[0];
+    document.getElementById('page-sub').textContent = meta[1];
+  }
+  document.getElementById('sidebar')?.classList.remove('open');
   if (id === 'geral') loadOverview();
   if (id === 'membros') loadMembros();
   if (id === 'logs') loadLogs();
