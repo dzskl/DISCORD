@@ -285,7 +285,7 @@ function productCard(p) {
   const dur = durMap[p.duration] || p.duration;
   const thumb = p.image_url
     ? `<div class="prod-thumb" style="background:#000 url(${escapeAttr(p.image_url)}) center/cover;"></div>`
-    : `<div class="prod-thumb">sem imagem</div>`;
+    : `<div class="prod-thumb"></div>`;
   return `<div class="prod-card" data-id="${p.id}">
     ${thumb}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
