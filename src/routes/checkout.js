@@ -111,17 +111,22 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         db.prepare('UPDATE coupons SET uses=uses+1 WHERE id=?').run(parseInt(meta.coupon_id));
       }
 
+      const { getConfig } = require('../db');
+      const cfg = getConfig();
+      const valueStr = `R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')}`;
+
       if (product?.role_id) {
         try {
           const tag = await bot.grantRole(meta.discord_id || sale.discord_id, product.role_id);
           db.prepare('UPDATE sales SET role_granted=1, discord_tag=COALESCE(discord_tag,?) WHERE id=?').run(tag, sale.id);
           logEvent({
             type: 'venda',
-            message: `Venda R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')} — ${product.name}`,
+            message: `Venda ${valueStr} — ${product.name}`,
             discord_id: sale.discord_id,
             discord_tag: tag
           });
           await bot.notifySaleChannel(`🛒 Nova venda: **${product.name}** — <@${sale.discord_id}>`);
+          bot.broadcast?.('venda', `${tag} comprou ${product.name} (${valueStr})`, { payload: { discord_id: sale.discord_id, product_id: product.id, amount_cents: sale.amount_cents } });
         } catch (e) {
           require('../logger').error({ err: e, sale: sale.id }, 'erro ao dar cargo');
           logEvent({ type: 'erro', message: `Falha ao dar cargo: ${e.message}`, discord_id: sale.discord_id });
@@ -129,9 +134,17 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       } else {
         logEvent({
           type: 'venda',
-          message: `Venda R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')} — ${product?.name || 'produto'}`,
+          message: `Venda ${valueStr} — ${product?.name || 'produto'}`,
           discord_id: sale.discord_id
         });
+      }
+
+      // DM pro comprador
+      if (cfg.dm_purchase === '1' && product) {
+        const expiryStr = sale.expires_at
+          ? `\n⏰ Expira em: ${new Date(sale.expires_at * 1000).toLocaleDateString('pt-BR')}`
+          : '\n♾️ Acesso permanente';
+        await bot.dmUser(sale.discord_id, `✅ Compra confirmada!\n\n**${product.name}** — ${valueStr}${expiryStr}\n\nObrigado pela compra! 🎉`);
       }
     }
   }

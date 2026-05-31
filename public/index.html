@@ -881,13 +881,33 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfgitem"><span class="cfgtxt">anti-flood</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">filtro de links</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">filtro de palavrões</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">palavras proibidas <small style="color:#444">— separadas por vírgula</small></span>
+                <input class="inp" id="forbidden-words" placeholder="palavra1,palavra2,palavra3">
+              </div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">domínios permitidos <small style="color:#444">— links de outros sites são bloqueados</small></span>
+                <input class="inp" id="link-allowlist" placeholder="discord.com,discord.gg,tenor.com">
+              </div>
+            </div>
+            <div class="cfgcard" style="margin-top:14px">
+              <div class="cfglbl">conteúdo</div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">texto das regras <small style="color:#444">— mostrado em /regras</small></span>
+                <textarea class="inp" id="rules-text" style="min-height:80px"></textarea>
+              </div>
             </div>
             <div class="cfgcard">
               <div class="cfglbl">notificações</div>
               <div class="cfgitem"><span class="cfgtxt">alertas de ban</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">alertas de venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">DM ao comprador</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">relatório diário</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
-              <div class="cfgitem"><span class="cfgtxt">webhook URL</span><input class="inp" value="https://discord.com/api/..." style="width:100%;font-size:10px;margin-top:6px;"></div>
+              <div class="cfgitem"><span class="cfgtxt">hora do relatório</span><input class="inp" id="daily-hour" type="number" min="0" max="23" placeholder="9" style="width:60px;text-align:center;"></div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">webhook URL <small style="color:#444">— recebe eventos em JSON</small></span>
+                <input class="inp" id="webhook-url" placeholder="https://...">
+              </div>
             </div>
           </div>
         </div>

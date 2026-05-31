@@ -512,6 +512,11 @@ async function loadConfig() {
     });
     const wm = document.getElementById('welcome-msg');
     if (wm && cfg.welcome_message != null) wm.value = cfg.welcome_message;
+    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour' };
+    for (const [id, k] of Object.entries(extras)) {
+      const el = document.getElementById(id);
+      if (el && cfg[k] != null) el.value = cfg[k];
+    }
   } catch (e) { console.warn('config', e.message); }
 }
 
@@ -527,6 +532,11 @@ async function saveConfig() {
   });
   const wm = document.getElementById('welcome-msg');
   if (wm) payload.welcome_message = wm.value;
+  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour' };
+  for (const [id, k] of Object.entries(extras)) {
+    const el = document.getElementById(id);
+    if (el) payload[k] = el.value;
+  }
   try { await api('/api/config', { method: 'PUT', body: JSON.stringify(payload) }); toast('Configuracao salva.', 'ok'); }
   catch (e) { toast(e.message, 'err'); }
 }
@@ -549,7 +559,7 @@ function configKeyFromLabel(label) {
     'alertas de ban': 'alert_bans',
     'alertas de venda': 'alert_sales',
     'relatório diário': 'daily_report',
-    'webhook URL': 'webhook_url'
+    'DM ao comprador': 'dm_purchase'
   };
   return m[label.trim()] || null;
 }

@@ -130,6 +130,7 @@ function ensureColumn(table, column, type) {
   }
 }
 ensureColumn('products', 'image_url', 'TEXT');
+ensureColumn('sales', 'expiry_warned', 'INTEGER NOT NULL DEFAULT 0');
 
 const defaultConfig = {
   bot_name: 'BotDash',
@@ -149,7 +150,12 @@ const defaultConfig = {
   alert_bans: '1',
   alert_sales: '1',
   daily_report: '1',
-  webhook_url: ''
+  webhook_url: '',
+  forbidden_words: 'palavrao1,palavrao2',
+  link_allowlist: 'discord.com,discord.gg,tenor.com,giphy.com',
+  dm_purchase: '1',
+  rules_text: '1. Respeite todos os membros.\n2. Nada de spam ou flood.\n3. Nada de NSFW fora dos canais apropriados.\n4. Sem links suspeitos.',
+  daily_report_hour: '9'
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);
