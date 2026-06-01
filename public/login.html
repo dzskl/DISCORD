@@ -85,7 +85,7 @@ if (params.get('login') === 'fail') { a.className = 'alert err'; a.textContent =
 fetch('/api/setup/status').then(r => r.json()).then(d => {
   if (!d.complete) { location.href = '/setup.html'; return; }
   fetch('/auth/me', { credentials: 'include' }).then(r => r.json()).then(d => {
-    if (d.authenticated && d.admin) location.href = '/';
+    if (d.authenticated && d.admin) location.href = '/app.html';
   }).catch(() => {});
 }).catch(() => {});
 </script>
