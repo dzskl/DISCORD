@@ -579,7 +579,7 @@ async function loadConfig() {
     });
     const wm = document.getElementById('welcome-msg');
     if (wm && cfg.welcome_message != null) wm.value = cfg.welcome_message;
-    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents' };
+    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale' };
     for (const [id, k] of Object.entries(extras)) {
       const el = document.getElementById(id);
       if (el && cfg[k] != null) el.value = cfg[k];
@@ -607,7 +607,7 @@ async function saveConfig() {
   });
   const wm = document.getElementById('welcome-msg');
   if (wm) payload.welcome_message = wm.value;
-  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents' };
+  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale' };
   for (const [id, k] of Object.entries(extras)) {
     const el = document.getElementById(id);
     if (el) payload[k] = el.value;
@@ -645,7 +645,8 @@ function configKeyFromLabel(label) {
     'DM ao comprador': 'dm_purchase',
     'DM ao admin a cada venda': 'dm_admin_on_sale',
     'anúncio automático de reposição': 'restock_announce',
-    'repassar taxa do Stripe ao cliente': 'pass_fees_to_customer'
+    'repassar taxa do Stripe ao cliente': 'pass_fees_to_customer',
+    'habilitar rastreamento': 'invite_tracker_enabled'
   };
   return m[label.trim()] || null;
 }
@@ -661,9 +662,11 @@ const PAGE_META = {
   clientes: ['Clientes', 'compradores agregados e LTV'],
   cupons: ['Cupons', 'descontos para a loja'],
   categorias: ['Categorias', 'organize seu catálogo por seção'],
+  afiliados: ['Afiliados', 'sistema de indicações com comissão'],
   anuncios: ['Anúncios', 'envie e agende mensagens'],
   autoreply: ['Auto-respostas', 'gatilhos automáticos do bot'],
   sorteios: ['Sorteios', 'crie giveaways no Discord'],
+  invites: ['Invite Tracker', 'quem trouxe quem para o servidor'],
   auditoria: ['Auditoria', 'log de todas ações administrativas'],
   config: ['Configurações', 'preferências do bot e canais']
 };
@@ -690,7 +693,9 @@ function sp(id, el) {
   if (id === 'autoreply') loadAutoReplies();
   if (id === 'anuncios') { populateProdSelect(); loadAnuncios(); }
   if (id === 'categorias') loadCategorias();
+  if (id === 'afiliados') loadAfiliados();
   if (id === 'sorteios') loadSorteios();
+  if (id === 'invites') loadInvites();
   if (id === 'auditoria') loadAuditoria();
   if (id === 'config') loadConfig();
 }
@@ -921,12 +926,15 @@ async function addCupom() {
   const discount_percent = document.getElementById('cup-pct').value.trim();
   const max_uses = document.getElementById('cup-max').value.trim() || null;
   const min_amount = document.getElementById('cup-min').value.trim() || null;
+  const required_role_id = document.getElementById('cup-role').value.trim() || null;
+  const min_quantity = document.getElementById('cup-qmin').value.trim() || null;
+  const max_quantity = document.getElementById('cup-qmax').value.trim() || null;
   const expVal = document.getElementById('cup-exp').value;
   const expires_at = expVal ? Math.floor(new Date(expVal).getTime() / 1000) : null;
   if (!code || !discount_percent) return toast('Preencha código e desconto.', 'warn');
   try {
-    await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, min_amount, expires_at }) });
-    ['cup-code', 'cup-pct', 'cup-max', 'cup-min', 'cup-exp'].forEach(id => document.getElementById(id).value = '');
+    await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, min_amount, required_role_id, min_quantity, max_quantity, expires_at }) });
+    ['cup-code', 'cup-pct', 'cup-max', 'cup-min', 'cup-exp', 'cup-role', 'cup-qmin', 'cup-qmax'].forEach(id => document.getElementById(id).value = '');
     toggleForm('cup-form');
     loadCupons();
     toast('Cupom criado.', 'ok');
@@ -1163,6 +1171,84 @@ async function encerrarSorteio(id) {
   if (!await confirmAsync('Encerrar este sorteio agora e sortear os vencedores?')) return;
   try { await api('/api/giveaways/' + id + '/end', { method: 'POST' }); loadSorteios(); toast('Sorteio encerrado.', 'ok'); }
   catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- AFILIADOS ----------
+async function loadAfiliados() {
+  try {
+    const list = await api('/api/affiliates');
+    setText('af-active', list.filter(a => a.active).length);
+    setText('af-sales', list.reduce((s, a) => s + a.sales_paid, 0));
+    setText('af-paid', 'R$' + formatNum(Math.round(list.reduce((s, a) => s + a.total_commission_cents, 0) / 100)));
+    const tbody = document.getElementById('af-tbody');
+    tbody.innerHTML = list.length ? list.map(a => `
+      <tr>
+        <td class="hi" style="font-family:'IBM Plex Mono',monospace;">${escapeHtml(a.code)}</td>
+        <td>${escapeHtml(a.discord_tag || a.discord_id)}</td>
+        <td>${a.commission_percent}%</td>
+        <td>${a.sales_paid}</td>
+        <td class="gr">R$${(a.total_commission_cents / 100).toFixed(2).replace('.', ',')}</td>
+        <td>${a.active ? '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>' : '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">inativo</span>'}</td>
+        <td>${a.active ? `<button class="btn-sm del" onclick="desativarAfiliado(${a.id})">desativar</button>` : ''}</td>
+      </tr>
+    `).join('') : emptyRow(7, '🤝', 'Crie afiliados que ganham comissão divulgando sua loja. Eles compartilham o link com ?ref=CODIGO.', '+ novo afiliado', "toggleForm('af-form')");
+  } catch (e) { console.warn('afiliados', e.message); }
+}
+
+async function addAfiliado() {
+  const discord_id = document.getElementById('af-id').value.trim();
+  const discord_tag = document.getElementById('af-tag').value.trim() || null;
+  const code = document.getElementById('af-code').value.trim();
+  const commission_percent = document.getElementById('af-pct').value;
+  if (!discord_id || !code) return toast('Preencha discord ID e código.', 'warn');
+  try {
+    await api('/api/affiliates', { method: 'POST', body: JSON.stringify({ discord_id, discord_tag, code, commission_percent }) });
+    ['af-id', 'af-tag', 'af-code'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('af-pct').value = '10';
+    toggleForm('af-form');
+    loadAfiliados();
+    toast('Afiliado criado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function desativarAfiliado(id) {
+  if (!await confirmAsync('Desativar este afiliado?')) return;
+  try { await api('/api/affiliates/' + id, { method: 'DELETE' }); loadAfiliados(); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- INVITE TRACKER ----------
+async function loadInvites() {
+  try {
+    const [list, leaderboard] = await Promise.all([
+      api('/api/invites'),
+      api('/api/invites/leaderboard')
+    ]);
+    setText('inv-total', list.length);
+    setText('inv-top', leaderboard[0]?.inviter_tag || leaderboard[0]?.inviter_id || '—');
+
+    const lead = document.getElementById('inv-lead-tbody');
+    lead.innerHTML = leaderboard.length ? leaderboard.map((l, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td class="hi">${escapeHtml(l.inviter_tag || l.inviter_id)}</td>
+        <td><strong style="color:#fff">${l.total_invites}</strong></td>
+        <td class="gr">${l.active_invites}</td>
+        <td style="color:#ff5f5f">${l.lost_invites}</td>
+      </tr>
+    `).join('') : emptyRow(5, '👥', 'Ninguém convidou ninguém ainda.');
+
+    const log = document.getElementById('inv-log-tbody');
+    log.innerHTML = list.length ? list.map(l => `
+      <tr>
+        <td>${formatDate(l.joined_at)}</td>
+        <td class="hi">${escapeHtml(l.member_tag || l.member_id)}</td>
+        <td>${escapeHtml(l.inviter_tag || l.inviter_id || 'link direto')}</td>
+        <td><code style="background:#161616;padding:1px 5px;border-radius:3px;color:#aaa;font-size:10px;">${l.invite_code || '—'}</code></td>
+        <td>${l.left_at ? '<span class="badge ban">saiu</span>' : '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>'}</td>
+      </tr>
+    `).join('') : emptyRow(5, '🔗', 'Ainda sem registros de entradas.');
+  } catch (e) { console.warn('invites', e.message); }
 }
 
 // ---------- AUDITORIA ----------

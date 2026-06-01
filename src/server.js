@@ -75,6 +75,8 @@ function buildApp() {
   app.use('/api/categories', require('./routes/categories'));
   app.use('/api/giveaways', require('./routes/giveaways'));
   app.use('/api/audit', require('./routes/audit'));
+  app.use('/api/affiliates', require('./routes/affiliates'));
+  app.use('/api/invites', require('./routes/invites'));
   app.use('/api/checkout', checkoutRouter);
 
   app.use(express.static(path.join(__dirname, '..', 'public')));

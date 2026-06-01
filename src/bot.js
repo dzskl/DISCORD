@@ -24,11 +24,33 @@ const recordCmd = db.prepare('INSERT INTO command_usage (command,discord_id) VAL
 function publicUrl() { return process.env.PUBLIC_URL || 'http://localhost:3000'; }
 
 // ---------- READY ----------
+const inviteCache = new Map();
+
+async function cacheInvites() {
+  try {
+    const guild = await fetchGuild();
+    const invites = await guild.invites.fetch();
+    inviteCache.clear();
+    invites.forEach(inv => inviteCache.set(inv.code, { uses: inv.uses, inviter: inv.inviter }));
+  } catch (e) { logger.warn({ err: e }, 'falha ao cachear convites'); }
+}
+
 client.once('ready', async () => {
   logger.info({ tag: client.user.tag, guilds: client.guilds.cache.size }, 'bot online');
   await checkIntents();
+  await cacheInvites();
   try { await registerCommands(); }
   catch (e) { logger.warn({ err: e }, 'falha ao registrar slash commands'); }
+});
+
+client.on('inviteCreate', (inv) => {
+  if (inv.guild.id !== GUILD_ID) return;
+  inviteCache.set(inv.code, { uses: inv.uses, inviter: inv.inviter });
+});
+
+client.on('inviteDelete', (inv) => {
+  if (inv.guild?.id !== GUILD_ID) return;
+  inviteCache.delete(inv.code);
 });
 
 async function checkIntents() {
@@ -127,9 +149,38 @@ client.on('guildMemberAdd', async (m) => {
   const cfg = getConfig();
   broadcast('entrada', `${m.user.tag} entrou`, { payload: { discord_id: m.id } });
 
-  // Welcome message
+  // Invite tracker
+  let inviter = null, inviteCode = null, inviterTotalInvites = 0;
+  if (cfg.invite_tracker_enabled === '1') {
+    try {
+      const newInvites = await m.guild.invites.fetch();
+      for (const [code, inv] of newInvites) {
+        const cached = inviteCache.get(code);
+        if (cached && inv.uses > cached.uses) { inviter = inv.inviter; inviteCode = code; break; }
+        inviteCache.set(code, { uses: inv.uses, inviter: inv.inviter });
+      }
+      newInvites.forEach(inv => inviteCache.set(inv.code, { uses: inv.uses, inviter: inv.inviter }));
+      db.prepare('INSERT INTO invites_log (member_id,member_tag,inviter_id,inviter_tag,invite_code) VALUES (?,?,?,?,?)')
+        .run(m.id, m.user.tag, inviter?.id || null, inviter?.tag || null, inviteCode);
+      if (inviter) {
+        inviterTotalInvites = db.prepare('SELECT COUNT(*) AS c FROM invites_log WHERE inviter_id=?').get(inviter.id).c;
+      }
+    } catch (e) { logger.warn({ err: e }, 'invite tracker falhou'); }
+
+    const joinChannelName = (cfg.invite_join_channel || '').replace(/^#/, '');
+    if (joinChannelName) {
+      const ch = m.guild.channels.cache.find(c => c.name === joinChannelName && c.isTextBased && c.isTextBased());
+      if (ch) {
+        const tpl = cfg.invite_join_message || '👋 {member} chegou! Convidado por **{invitername}**.';
+        const msg = applyInviteVars(tpl, m, inviter, inviterTotalInvites);
+        ch.send({ content: msg, allowedMentions: { users: [m.id] } }).catch(() => {});
+      }
+    }
+  }
+
+  // Welcome message (separado do invite tracker)
   const welcomeName = (cfg.welcome_channel || '').replace(/^#/, '');
-  if (welcomeName) {
+  if (welcomeName && welcomeName !== (cfg.invite_join_channel || '').replace(/^#/, '')) {
     const ch = m.guild.channels.cache.find(c => c.name === welcomeName && c.isTextBased && c.isTextBased());
     if (ch) {
       const template = cfg.welcome_message || 'Bem-vindo(a), {user}! 👋';
@@ -188,7 +239,32 @@ client.on('guildMemberRemove', async (m) => {
     logEvent({ type: 'saida', message: `${tag} saiu do servidor`, discord_id: m.id, discord_tag: tag });
     broadcast('saida', `${tag} saiu`, { payload: { discord_id: m.id } });
   }
+
+  // Marca invite log com left_at + dispara invite-leave message
+  const cfg = getConfig();
+  if (cfg.invite_tracker_enabled === '1') {
+    db.prepare(`UPDATE invites_log SET left_at=strftime('%s','now') WHERE member_id=? AND left_at IS NULL`).run(m.id);
+    const inv = db.prepare(`SELECT * FROM invites_log WHERE member_id=? ORDER BY joined_at DESC LIMIT 1`).get(m.id);
+    const joinChannelName = (cfg.invite_join_channel || '').replace(/^#/, '');
+    if (joinChannelName && cfg.invite_leave_message) {
+      const ch = m.guild.channels.cache.find(c => c.name === joinChannelName && c.isTextBased && c.isTextBased());
+      if (ch) {
+        const inviterStub = inv?.inviter_id ? { id: inv.inviter_id, tag: inv.inviter_tag } : null;
+        const msg = applyInviteVars(cfg.invite_leave_message, { id: m.id, user: { tag } }, inviterStub, 0);
+        ch.send({ content: msg, allowedMentions: { parse: [] } }).catch(() => {});
+      }
+    }
+  }
 });
+
+function applyInviteVars(template, m, inviter, totalInvites) {
+  return template
+    .replace(/\{member\}/g, `<@${m.id}>`)
+    .replace(/\{membername\}/g, m.user?.tag || m.user?.username || m.id)
+    .replace(/\{inviter\}/g, inviter ? `<@${inviter.id}>` : 'link direto / vanity')
+    .replace(/\{invitername\}/g, inviter?.tag || inviter?.username || 'desconhecido')
+    .replace(/\{invites\}/g, String(totalInvites || 0));
+}
 
 client.on('guildBanAdd', async (ban) => {
   if (ban.guild.id !== GUILD_ID) return;

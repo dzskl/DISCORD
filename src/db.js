@@ -139,9 +139,14 @@ ensureColumn('products', 'hook_url', 'TEXT');
 ensureColumn('products', 'discord_channel', 'TEXT');
 ensureColumn('products', 'discord_message_id', 'TEXT');
 ensureColumn('coupons', 'min_amount_cents', 'INTEGER');
+ensureColumn('coupons', 'required_role_id', 'TEXT');
+ensureColumn('coupons', 'min_quantity', 'INTEGER');
+ensureColumn('coupons', 'max_quantity', 'INTEGER');
 ensureColumn('sales', 'expiry_warned', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('sales', 'cart_items', 'TEXT');
 ensureColumn('sales', 'delivery_status', 'TEXT');
+ensureColumn('sales', 'affiliate_id', 'INTEGER');
+ensureColumn('sales', 'commission_cents', 'INTEGER');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS wishlist (
@@ -223,6 +228,31 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS affiliates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  discord_id TEXT NOT NULL UNIQUE,
+  discord_tag TEXT,
+  code TEXT NOT NULL UNIQUE,
+  commission_percent INTEGER NOT NULL DEFAULT 10,
+  total_sales INTEGER NOT NULL DEFAULT 0,
+  total_commission_cents INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS invites_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id TEXT NOT NULL,
+  member_tag TEXT,
+  inviter_id TEXT,
+  inviter_tag TEXT,
+  invite_code TEXT,
+  joined_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  left_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_invites_inviter ON invites_log(inviter_id);
+CREATE INDEX IF NOT EXISTS idx_invites_joined ON invites_log(joined_at DESC);
 `);
 
 const defaultConfig = {
@@ -261,7 +291,13 @@ const defaultConfig = {
   role_verified: '',
   role_customer: '',
   role_member: '',
-  auto_role_on_join: ''
+  auto_role_on_join: '',
+  currency_code: 'BRL',
+  locale: 'pt-BR',
+  invite_tracker_enabled: '1',
+  invite_join_channel: 'geral',
+  invite_join_message: '👋 {member} chegou! Convidado por **{invitername}** (total de {invites} convites).',
+  invite_leave_message: '👋 {membername} saiu do servidor. Foi convidado por **{invitername}**.'
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);

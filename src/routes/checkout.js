@@ -21,8 +21,13 @@ router.post('/create-session', async (req, res) => {
   const s = stripe();
   if (!s) return res.status(503).json({ error: 'Stripe nao configurado' });
 
-  let { product_id, items, discord_id, discord_tag, coupon_code } = req.body || {};
+  let { product_id, items, discord_id, discord_tag, coupon_code, affiliate_code } = req.body || {};
   if (!discord_id) return res.status(400).json({ error: 'discord_id obrigatorio' });
+
+  let affiliate = null;
+  if (affiliate_code) {
+    affiliate = db.prepare('SELECT * FROM affiliates WHERE code=? AND active=1').get(affiliate_code.trim().toUpperCase());
+  }
 
   // Compat: aceita ou items[] (carrinho) ou product_id (compra unica)
   if (!Array.isArray(items) || !items.length) {
@@ -114,20 +119,22 @@ router.post('/create-session', async (req, res) => {
         cart: JSON.stringify(cart_meta).slice(0, 490),
         discord_id: String(discord_id),
         discord_tag: String(discord_tag || ''),
-        coupon_id: coupon ? String(coupon.id) : ''
+        coupon_id: coupon ? String(coupon.id) : '',
+        affiliate_id: affiliate ? String(affiliate.id) : ''
       }
     });
 
     db.prepare(`
-      INSERT INTO sales (product_id,discord_id,discord_tag,amount_cents,status,stripe_session_id,cart_items)
-      VALUES (?,?,?,?, 'pending', ?, ?)
+      INSERT INTO sales (product_id,discord_id,discord_tag,amount_cents,status,stripe_session_id,cart_items,affiliate_id)
+      VALUES (?,?,?,?, 'pending', ?, ?, ?)
     `).run(
       cartProducts[0].product.id,
       discord_id,
       discord_tag || null,
       total,
       session.id,
-      JSON.stringify(cart_meta)
+      JSON.stringify(cart_meta),
+      affiliate?.id || null
     );
 
     res.json({ url: session.url, session_id: session.id });
@@ -169,6 +176,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       `).run(session.payment_intent || null, expiresAt, sale.id);
 
       if (meta.coupon_id) db.prepare('UPDATE coupons SET uses=uses+1 WHERE id=?').run(parseInt(meta.coupon_id));
+
+      // Comissao do afiliado
+      if (meta.affiliate_id || sale.affiliate_id) {
+        const aid = parseInt(meta.affiliate_id || sale.affiliate_id);
+        const aff = db.prepare('SELECT * FROM affiliates WHERE id=?').get(aid);
+        if (aff) {
+          const commission = Math.round(sale.amount_cents * aff.commission_percent / 100);
+          db.prepare('UPDATE sales SET affiliate_id=?, commission_cents=? WHERE id=?').run(aid, commission, sale.id);
+          db.prepare('UPDATE affiliates SET total_sales=total_sales+1, total_commission_cents=total_commission_cents+? WHERE id=?').run(commission, aid);
+          await bot.dmUser(aff.discord_id, `💰 Voce ganhou R$ ${(commission / 100).toFixed(2).replace('.', ',')} de comissao pela venda do seu link de afiliado!`).catch(() => {});
+        }
+      }
 
       const cfg = getConfig();
       const valueStr = `R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')}`;

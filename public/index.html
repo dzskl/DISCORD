@@ -337,6 +337,10 @@ footer.appfoot a:hover{color:var(--text);}
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         categorias
       </div>
+      <div class="ni" data-page="afiliados" onclick="sp('afiliados',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M8 3.13a4 4 0 0 0 0 7.75"/></svg>
+        afiliados
+      </div>
 
       <div class="nav-group">comunicação</div>
       <div class="ni" data-page="anuncios" onclick="sp('anuncios',this)">
@@ -350,6 +354,10 @@ footer.appfoot a:hover{color:var(--text);}
       <div class="ni" data-page="sorteios" onclick="sp('sorteios',this)">
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
         sorteios
+      </div>
+      <div class="ni" data-page="invites" onclick="sp('invites',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        invite tracker
       </div>
 
       <div class="nav-group">sistema</div>
@@ -725,6 +733,11 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="fgroup"><div class="flabel">limite de usos (opcional)</div><input class="inp" id="cup-max" type="number" min="1" placeholder="ilimitado se vazio"></div>
               <div class="fgroup"><div class="flabel">valor minimo R$ (opcional)</div><input class="inp" id="cup-min" type="number" step="0.01" min="0" placeholder="ex: 50.00"></div>
               <div class="fgroup"><div class="flabel">expira em (opcional)</div><input class="inp" id="cup-exp" type="datetime-local"></div>
+              <div class="fgroup"><div class="flabel">cargo obrigatório (role_id, opcional)</div><input class="inp" id="cup-role" placeholder="123456789..."></div>
+              <div class="frow">
+                <div class="fgroup"><div class="flabel">qty mínima carrinho</div><input class="inp" id="cup-qmin" type="number" min="1" placeholder="opcional"></div>
+                <div class="fgroup"><div class="flabel">qty máxima carrinho</div><input class="inp" id="cup-qmax" type="number" min="1" placeholder="opcional"></div>
+              </div>
             </div>
           </div>
           <div style="display:flex;gap:10px;margin-top:4px;">
@@ -803,6 +816,65 @@ footer.appfoot a:hover{color:var(--text);}
           <table class="vtable">
             <thead><tr><th>prêmio</th><th>vencedores</th><th>participantes</th><th>termina</th><th>status</th><th></th></tr></thead>
             <tbody id="gv-tbody"><tr><td colspan="6" style="color:#444">nenhum sorteio.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AFILIADOS -->
+      <div id="page-afiliados" class="page">
+        <div class="mgrid4">
+          <div class="mc"><div class="mlabel">afiliados ativos</div><div class="mval" id="af-active">—</div></div>
+          <div class="mc dim"><div class="mlabel">vendas atribuídas</div><div class="mval" id="af-sales">—</div></div>
+          <div class="mc dim"><div class="mlabel">comissões pagas</div><div class="mval" id="af-paid">—</div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">cada afiliado divulga com link <code style="background:#161616;padding:2px 5px;border-radius:3px;color:#fff;">?ref=CODIGO</code></div>
+          <button class="btn-w" onclick="toggleForm('af-form')">+ novo afiliado</button>
+        </div>
+        <div id="af-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">novo afiliado</div>
+          <div class="frow">
+            <div>
+              <div class="fgroup"><div class="flabel">discord ID</div><input class="inp" id="af-id" placeholder="123456789012345678" inputmode="numeric"></div>
+              <div class="fgroup"><div class="flabel">tag (opcional)</div><input class="inp" id="af-tag" placeholder="usuario#0000"></div>
+            </div>
+            <div>
+              <div class="fgroup"><div class="flabel">código de afiliado</div><input class="inp" id="af-code" placeholder="ex: JOAOBR" style="text-transform:uppercase;"></div>
+              <div class="fgroup"><div class="flabel">comissão (%)</div><input class="inp" id="af-pct" type="number" min="1" max="100" value="10"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-w" onclick="addAfiliado()">criar</button>
+            <button class="btn-g" onclick="toggleForm('af-form')">cancelar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ctitle">afiliados cadastrados</div>
+          <table class="vtable">
+            <thead><tr><th>código</th><th>discord</th><th>comissão</th><th>vendas</th><th>total ganho</th><th>status</th><th></th></tr></thead>
+            <tbody id="af-tbody"><tr><td colspan="7" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INVITE TRACKER -->
+      <div id="page-invites" class="page">
+        <div class="mgrid4">
+          <div class="mc"><div class="mlabel">convites totais</div><div class="mval" id="inv-total">—</div></div>
+          <div class="mc dim"><div class="mlabel">top inviter</div><div class="mval" id="inv-top" style="font-size:13px">—</div></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ctitle">ranking de quem mais convidou</div>
+          <table class="vtable">
+            <thead><tr><th>posição</th><th>usuário</th><th>convites</th><th>ativos</th><th>saíram</th></tr></thead>
+            <tbody id="inv-lead-tbody"><tr><td colspan="5" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="ctitle">histórico de entradas</div>
+          <table class="vtable">
+            <thead><tr><th>quando</th><th>membro</th><th>convidado por</th><th>código</th><th>status</th></tr></thead>
+            <tbody id="inv-log-tbody"><tr><td colspan="5" style="color:#444">carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1036,6 +1108,36 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:8px;">
                 <span class="cfgtxt">categorias disponíveis <small style="color:#444">— uma por linha: nome | role_id (opcional) | descrição</small></span>
                 <textarea class="inp" id="ticket-types-text" style="min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:11px;" placeholder="Suporte | | Ajuda com produtos&#10;Resgate | 123456789 | Resgate produtos pagos"></textarea>
+              </div>
+            </div>
+            <div class="cfgcard" style="margin-top:14px">
+              <div class="cfglbl">invite tracker</div>
+              <div class="cfgitem"><span class="cfgtxt">habilitar rastreamento</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">canal de entradas/saídas</span><input class="inp" id="invite-channel" placeholder="ex: geral" style="width:130px;"></div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">mensagem de entrada <small style="color:#444">— {member} {membername} {inviter} {invitername} {invites}</small></span>
+                <textarea class="inp" id="invite-join-msg" style="min-height:55px"></textarea>
+              </div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="cfgtxt">mensagem de saída</span>
+                <textarea class="inp" id="invite-leave-msg" style="min-height:55px"></textarea>
+              </div>
+            </div>
+            <div class="cfgcard" style="margin-top:14px">
+              <div class="cfglbl">localização</div>
+              <div class="cfgitem"><span class="cfgtxt">moeda</span>
+                <select class="inp" id="currency-code" style="width:120px;">
+                  <option value="BRL">Real (R$)</option>
+                  <option value="USD">Dólar ($)</option>
+                  <option value="EUR">Euro (€)</option>
+                </select>
+              </div>
+              <div class="cfgitem"><span class="cfgtxt">idioma</span>
+                <select class="inp" id="locale" style="width:140px;">
+                  <option value="pt-BR">Português (BR)</option>
+                  <option value="en-US">English (US)</option>
+                  <option value="es-ES">Español</option>
+                </select>
               </div>
             </div>
           </div>

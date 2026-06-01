@@ -137,6 +137,17 @@ const savedId = localStorage.getItem('botdash_discord_id');
 if (savedId) document.getElementById('discord-id').value = savedId;
 document.getElementById('discord-id').addEventListener('input', e => localStorage.setItem('botdash_discord_id', e.target.value.trim()));
 
+// Captura referral do link ?ref=CODE
+const refFromUrl = params.get('ref');
+if (refFromUrl) localStorage.setItem('botdash_affiliate', refFromUrl.toUpperCase());
+const affiliateCode = localStorage.getItem('botdash_affiliate') || null;
+if (affiliateCode) {
+  const el = document.createElement('div');
+  el.className = 'alert ok';
+  el.textContent = `✓ Você foi indicado por ${affiliateCode} — eles ganham comissão na sua compra.`;
+  alertEl.parentNode.insertBefore(el, alertEl.nextSibling);
+}
+
 let activeProducts = [];
 let appliedCoupon = null;
 let cart = JSON.parse(localStorage.getItem('botdash_cart') || '[]');
@@ -303,7 +314,8 @@ async function checkout() {
       body: JSON.stringify({
         items: cart.map(it => ({ product_id: it.id, quantity: it.q })),
         discord_id,
-        coupon_code: appliedCoupon?.code || null
+        coupon_code: appliedCoupon?.code || null,
+        affiliate_code: affiliateCode
       })
     }).then(r => r.json());
     if (r.url) location.href = r.url;
