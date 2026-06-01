@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
+:root {
+  --bg: #0a0a0a; --surface: #111; --surface-2: #161616; --surface-3: #1a1a1a;
+  --border: #1f1f1f; --border-strong: #2a2a2a;
+  --text: #e8e8e8; --text-dim: #888; --text-faint: #555; --text-mute: #333;
+  --primary: #5865f2; --primary-hov: #4752c4; --primary-glow: rgba(88,101,242,0.18);
+  --success: #5fff5f; --success-bg: #0a1f0a; --success-bd: #1a4a1a;
+  --warn: #ffdf5f; --danger: #ff5f5f; --danger-bg: #1f0a0a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:40px 20px 80px;}
+.bg{position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(circle at 20% 20%, rgba(88,101,242,0.10), transparent 50%),
+  radial-gradient(circle at 80% 80%, rgba(95,255,95,0.04), transparent 50%),
+  var(--bg);}
+.bg-grid{position:fixed;inset:0;z-index:-1;background-image:
+  linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size:48px 48px;}
+
+.wrap{max-width:780px;margin:0 auto;}
+.head{text-align:center;margin-bottom:30px;}
+.brand-logo{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:26px;box-shadow:0 8px 24px var(--primary-glow);margin-bottom:18px;}
+h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:8px;}
+.sub{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);}
+
+.summary{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;}
+.summary-progress{flex:1;}
+.summary-bar{height:10px;background:var(--surface-3);border-radius:5px;overflow:hidden;margin-top:10px;}
+.summary-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));transition:width .5s ease;border-radius:5px;}
+.summary-stat{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;}
+.summary-num{font-size:14px;color:#fff;font-weight:700;margin-top:2px;}
+.summary-num strong{font-size:24px;}
+.summary-ok{color:var(--success);font-size:11px;font-family:'IBM Plex Mono',monospace;}
+.summary-btn{background:var(--primary);color:#fff;border:none;padding:11px 22px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;text-decoration:none;transition:all .15s;}
+.summary-btn:hover{background:var(--primary-hov);transform:translateY(-1px);}
+.summary-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.section{margin-bottom:24px;}
+.section-title{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-left:4px;}
+
+.step{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;transition:border-color .15s;}
+.step:hover{border-color:var(--border-strong);}
+.step.done{border-color:var(--success-bd);}
+.step.optional{opacity:.92;}
+.step-head{padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;}
+.step-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700;}
+.step.done .step-icon{background:var(--success-bg);color:var(--success);border:1px solid var(--success-bd);}
+.step.pending .step-icon{background:var(--surface-3);color:var(--text-faint);border:1px solid var(--border-strong);}
+.step-info{flex:1;min-width:0;}
+.step-title{font-size:14px;font-weight:600;color:#fff;}
+.step-desc{font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-top:3px;}
+.step-key{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-mute);background:var(--surface-3);padding:3px 8px;border-radius:4px;}
+.step-status{font-size:11px;font-family:'IBM Plex Mono',monospace;}
+.step-status.ok{color:var(--success);}
+.step-status.bad{color:var(--danger);}
+.step-chev{color:var(--text-mute);transition:transform .2s;}
+.step.open .step-chev{transform:rotate(180deg);}
+.step-body{padding:0 20px 20px;display:none;border-top:1px solid var(--surface-3);padding-top:18px;}
+.step.open .step-body{display:block;animation:slide .2s ease;}
+@keyframes slide{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+.howto{background:#0a0a0a;border:1px solid var(--surface-3);border-radius:8px;padding:14px 16px;margin-bottom:14px;}
+.howto-title{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.howto ol{padding-left:18px;}
+.howto li{font-size:12px;color:#aaa;line-height:1.7;margin-bottom:4px;}
+.howto a{color:var(--primary);text-decoration:none;}
+.howto a:hover{text-decoration:underline;}
+.howto code{font-family:'IBM Plex Mono',monospace;background:var(--surface-3);color:#fff;padding:2px 6px;border-radius:3px;font-size:11px;}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.btn{background:transparent;border:1px solid var(--border-strong);color:var(--text-dim);padding:8px 16px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;cursor:pointer;}
+.btn:hover{border-color:var(--text-faint);color:var(--text);}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn.primary:hover{background:var(--primary-hov);}
+
+.test-result{margin-top:10px;padding:10px 14px;border-radius:7px;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;display:none;}
+.test-result.ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-bd);display:block;}
+.test-result.err{background:var(--danger-bg);color:var(--danger);border:1px solid #3a1010;display:block;}
+
+footer{text-align:center;margin-top:30px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-mute);}
+footer a{color:var(--text-faint);text-decoration:none;}
+footer a:hover{color:var(--text);}
+
+.tip{background:#0e1a2e;border:1px solid #1a3a5e;border-radius:8px;padding:12px 14px;margin-bottom:18px;color:#a0bfff;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;}
+.tip b{color:#fff;}
+
+.refresh-btn{background:var(--surface-3);border:1px solid var(--border);color:var(--text-dim);width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+.refresh-btn:hover{color:#fff;border-color:var(--border-strong);}
+.refresh-btn.spinning svg{animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="bg-grid"></div>
+
+<div class="wrap">
+  <div class="head">
+    <div class="brand-logo">B</div>
+    <h1>Configure o seu BotDash</h1>
+    <div class="sub">passo a passo pra deixar tudo funcionando · uns 5–10 minutos</div>
+  </div>
+
+  <div id="tip-env" class="tip" style="display:none;">
+    💡 <b>Como adicionar variáveis:</b> no Railway/Render, vai em <b>Variables</b> e adiciona cada uma. No PC, edita o arquivo <code>.env</code> na raiz do projeto. Depois clica em <b>recarregar</b> aqui pra revalidar.
+  </div>
+
+  <div class="summary">
+    <div class="summary-progress">
+      <div class="summary-stat">progresso</div>
+      <div class="summary-num"><strong id="sum-done">0</strong>/<span id="sum-total">7</span> obrigatórios</div>
+      <div class="summary-bar"><div class="summary-fill" id="sum-fill" style="width:0%"></div></div>
+    </div>
+    <button class="refresh-btn" id="refresh" onclick="loadStatus(true)" title="recarregar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+    <a id="continue-btn" href="/login.html" class="summary-btn" style="display:none;">acessar dashboard →</a>
+  </div>
+
+  <div class="section">
+    <div class="section-title">obrigatório · sem isso o dashboard não funciona</div>
+    <div id="required-steps"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">opcional · pra começar a vender (Stripe)</div>
+    <div id="optional-steps"></div>
+  </div>
+
+  <footer>
+    BotDash · <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal ↗</a> · <a href="https://dashboard.stripe.com" target="_blank">Stripe ↗</a>
+  </footer>
+</div>
+
+<script>
+const HOWTO = {
+  session: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Gera uma string aleatória bem longa (mínimo 32 caracteres).</li>
+    <li>No terminal você pode usar: <code>openssl rand -hex 32</code></li>
+    <li>Ou só inventa qualquer texto grande tipo: <code>meu-bot-2026-supersegredo-trocar-isto</code></li>
+    <li>Cola na variável <code>SESSION_SECRET</code>.</li>
+  </ol></div>`,
+  public_url: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Local: <code>http://localhost:3000</code></li>
+    <li>Railway: pega o domínio gerado (ex: <code>https://botdash.up.railway.app</code>) — Settings → Networking → Generate Domain</li>
+    <li>⚠️ <b>Sem barra no final</b> e sem <code>/auth/discord/callback</code></li>
+    <li>Cola na variável <code>PUBLIC_URL</code>.</li>
+  </ol></div>`,
+  discord_token: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Abre <a href="https://discord.com/developers/applications" target="_blank">discord.com/developers/applications</a></li>
+    <li>Clica <b>New Application</b> (ou na existente)</li>
+    <li>Menu lateral → <b>Bot</b> → <b>Reset Token</b> → copia o token</li>
+    <li>Ainda na aba Bot, ativa os 3 <b>Privileged Gateway Intents</b>: Presence, Server Members, Message Content</li>
+    <li>Cola em <code>DISCORD_TOKEN</code></li>
+  </ol></div>`,
+  discord_client_id: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>No Developer Portal, menu lateral → <b>OAuth2</b></li>
+    <li>Copia o <b>Client ID</b> (é um número de ~19 dígitos)</li>
+    <li>Cola em <code>DISCORD_CLIENT_ID</code></li>
+  </ol></div>`,
+  discord_client_secret: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Mesma página OAuth2</li>
+    <li>Clica <b>Reset Secret</b> → confirma → copia <b>antes de fechar</b></li>
+    <li>Cola em <code>DISCORD_CLIENT_SECRET</code></li>
+    <li>⚠️ Depois adiciona <code>{PUBLIC_URL}/auth/discord/callback</code> em <b>Redirects</b> e salva</li>
+  </ol></div>`,
+  discord_guild_id: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>No Discord (app), Configurações → Avançado → ativa <b>Modo Desenvolvedor</b></li>
+    <li>Botão direito no nome do servidor (canto superior esquerdo) → <b>Copiar ID do servidor</b></li>
+    <li>Cola em <code>DISCORD_GUILD_ID</code></li>
+    <li>⚠️ O bot tem que estar no servidor! Use Developer Portal → OAuth2 → URL Generator com scope <code>bot</code> + <code>applications.commands</code></li>
+  </ol></div>`,
+  admin_ids: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Com Modo Desenvolvedor ativo, botão direito no seu nome → <b>Copiar ID do Usuário</b></li>
+    <li>Cola em <code>ADMIN_DISCORD_IDS</code> (só o número, sem aspas)</li>
+    <li>Pra mais de um admin: separa por vírgula <code>123,456,789</code></li>
+    <li>🛡️ Sem isso, qualquer usuário Discord pode logar como admin</li>
+  </ol></div>`,
+  stripe_secret: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Abre <a href="https://dashboard.stripe.com/apikeys" target="_blank">dashboard.stripe.com/apikeys</a></li>
+    <li>Modo teste: copia a <b>Secret key</b> (começa com <code>sk_test_</code>)</li>
+    <li>Cola em <code>STRIPE_SECRET_KEY</code></li>
+    <li>Quando for pra produção, troca pela live key e ativa pagamentos PIX no painel Stripe (Settings → Payments)</li>
+  </ol></div>`,
+  stripe_webhook: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Abre <a href="https://dashboard.stripe.com/webhooks" target="_blank">dashboard.stripe.com/webhooks</a> → <b>Add endpoint</b></li>
+    <li>URL: <code id="webhook-url-display">{PUBLIC_URL}/api/checkout/webhook</code></li>
+    <li>Eventos: <code>checkout.session.completed</code> e <code>charge.refunded</code></li>
+    <li>Após criar, clica nele → <b>Signing secret</b> → Reveal → copia (começa com <code>whsec_</code>)</li>
+    <li>Cola em <code>STRIPE_WEBHOOK_SECRET</code></li>
+  </ol></div>`
+};
+
+const TESTS = {
+  discord_token: { endpoint: '/api/setup/test/discord', label: 'testar conexão com Discord' },
+  stripe_secret: { endpoint: '/api/setup/test/stripe', label: 'testar conexão com Stripe' },
+  public_url: { endpoint: '/api/setup/test/oauth', label: 'gerar URL de redirect' }
+};
+
+let lastStatus = null;
+
+async function loadStatus(animate) {
+  if (animate) document.getElementById('refresh').classList.add('spinning');
+  try {
+    const data = await fetch('/api/setup/status').then(r => r.json());
+    lastStatus = data;
+    document.getElementById('tip-env').style.display = data.required_done === data.required_total ? 'none' : 'block';
+    document.getElementById('sum-done').textContent = data.required_done;
+    document.getElementById('sum-total').textContent = data.required_total;
+    document.getElementById('sum-fill').style.width = (data.required_done / data.required_total * 100) + '%';
+
+    if (data.complete) {
+      document.getElementById('continue-btn').style.display = 'inline-flex';
+    }
+
+    const req = ['session', 'public_url', 'discord_token', 'discord_client_id', 'discord_client_secret', 'discord_guild_id', 'admin_ids'];
+    const opt = ['stripe_secret', 'stripe_webhook'];
+    document.getElementById('required-steps').innerHTML = req.map(k => renderStep(k, data.checks[k])).join('');
+    document.getElementById('optional-steps').innerHTML = opt.map(k => renderStep(k, data.checks[k])).join('');
+
+    // replace webhook URL placeholder
+    document.querySelectorAll('#webhook-url-display').forEach(el => {
+      el.textContent = (lastStatus?.checks?.public_url?.ok ? '' : '{PUBLIC_URL}/api/checkout/webhook')
+        || `${window.location.origin}/api/checkout/webhook`;
+    });
+  } catch (e) {
+    console.error(e);
+  } finally {
+    setTimeout(() => document.getElementById('refresh').classList.remove('spinning'), 600);
+  }
+}
+
+function renderStep(key, c) {
+  const test = TESTS[key];
+  return `<div class="step ${c.ok ? 'done' : 'pending'} ${c.required ? '' : 'optional'}" id="step-${key}">
+    <div class="step-head" onclick="document.getElementById('step-${key}').classList.toggle('open')">
+      <div class="step-icon">${c.ok ? '✓' : '!'}</div>
+      <div class="step-info">
+        <div class="step-title">${esc(c.label)}</div>
+        <div class="step-desc">${esc(c.description)}</div>
+      </div>
+      <div class="step-key">${esc(c.key)}</div>
+      <div class="step-status ${c.ok ? 'ok' : 'bad'}">${c.ok ? 'configurado' : 'pendente'}</div>
+      <svg class="step-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="step-body">
+      ${HOWTO[key] || ''}
+      ${test ? `
+        <div class="actions">
+          <button class="btn primary" onclick="runTest('${key}','${test.endpoint}')">${test.label}</button>
+        </div>
+        <div class="test-result" id="test-${key}"></div>
+      ` : ''}
+    </div>
+  </div>`;
+}
+
+async function runTest(key, endpoint) {
+  const out = document.getElementById('test-' + key);
+  out.className = 'test-result';
+  out.style.display = 'block';
+  out.innerHTML = '⏳ testando...';
+  try {
+    const r = await fetch(endpoint, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) {
+      out.className = 'test-result err';
+      out.innerHTML = `✗ ${esc(data.error || 'erro desconhecido')}`;
+      return;
+    }
+    out.className = 'test-result ok';
+    if (data.bot) {
+      out.innerHTML = `✓ conectado como <b>${esc(data.bot.username)}</b>` +
+        (data.guild ? `<br>servidor: <b>${esc(data.guild.name)}</b> (${data.guild.members || '?'} membros)` : '');
+    } else if (data.account) {
+      out.innerHTML = `✓ conta Stripe: <b>${esc(data.account.email || data.account.id)}</b><br>` +
+        `país: ${esc(data.account.country)} · moeda padrão: ${esc(data.account.default_currency?.toUpperCase() || '?')} · pagamentos: ${data.account.charges_enabled ? 'ativos' : 'pendentes'}`;
+    } else if (data.redirect_uri) {
+      out.innerHTML = `✓ redirect URL gerada:<br><code style="background:#000;padding:6px 9px;display:inline-block;margin-top:6px;border-radius:4px;color:#fff;font-size:11px;">${esc(data.redirect_uri)}</code><br><small style="color:#7fbf7f;display:block;margin-top:8px;">copia isso e cola em Discord Developer Portal → OAuth2 → Redirects</small>`;
+    } else {
+      out.innerHTML = '✓ ok';
+    }
+  } catch (e) {
+    out.className = 'test-result err';
+    out.innerHTML = '✗ erro de conexão';
+  }
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+loadStatus();
+</script>
+</body>
+</html>

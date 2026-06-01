@@ -81,8 +81,12 @@ const a = document.getElementById('alert');
 if (params.get('login') === 'denied') { a.className = 'alert err'; a.textContent = 'sua conta discord nao tem permissao de admin.'; a.style.display = 'block'; }
 if (params.get('login') === 'fail') { a.className = 'alert err'; a.textContent = 'falha no login. tente novamente.'; a.style.display = 'block'; }
 
-fetch('/auth/me', { credentials: 'include' }).then(r => r.json()).then(d => {
-  if (d.authenticated && d.admin) location.href = '/';
+// Se setup incompleto, manda pra wizard
+fetch('/api/setup/status').then(r => r.json()).then(d => {
+  if (!d.complete) { location.href = '/setup.html'; return; }
+  fetch('/auth/me', { credentials: 'include' }).then(r => r.json()).then(d => {
+    if (d.authenticated && d.admin) location.href = '/';
+  }).catch(() => {});
 }).catch(() => {});
 </script>
 </body>
