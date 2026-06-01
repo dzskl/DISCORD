@@ -248,12 +248,15 @@ async function loadMod() {
 async function loadVendas() {
   try {
     const sum = await api('/api/sales/summary');
-    const cards = document.querySelectorAll('#page-vendas .mc');
-    if (cards[0]) cards[0].querySelector('.mval').textContent = 'R$' + formatNum(Math.round(sum.month_revenue_cents / 100));
-    if (cards[1]) cards[1].querySelector('.mval').textContent = sum.today_count;
-    if (cards[2]) cards[2].querySelector('.mval').textContent = 'R$' + (sum.avg_ticket_cents / 100).toFixed(2).replace('.', ',');
-    if (cards[3]) cards[3].querySelector('.mval').textContent = sum.top_product;
-    if (cards[4]) cards[4].querySelector('.mval').textContent = sum.refunds;
+    setText('v-revenue', 'R$' + formatNum(Math.round(sum.month_revenue_cents / 100)));
+    setText('v-profit', 'R$' + formatNum(Math.round(sum.month_profit_cents / 100)));
+    setText('v-today', sum.today_count);
+    setText('v-avg', 'R$' + (sum.avg_ticket_cents / 100).toFixed(2).replace('.', ','));
+    setText('v-top', sum.top_product);
+    if (sum.month_revenue_cents > 0) {
+      const margin = Math.round(sum.month_profit_cents / sum.month_revenue_cents * 100);
+      setText('v-margin', `${margin}% de margem`);
+    }
 
     renderChart('cVendasF', 'bar', last6MonthLabels(), [
       { data: sum.monthly_revenue, backgroundColor: 'rgba(255,255,255,0.85)', borderColor: '#fff', borderWidth: 1, borderRadius: 4 }
@@ -329,11 +332,12 @@ async function addProduto() {
   const role_id = document.getElementById('pcargo').value.trim();
   const image_url = document.getElementById('pimg').value.trim();
   const stock = document.getElementById('pstock').value;
+  const cost = document.getElementById('pcost').value;
   const accent_color = document.getElementById('pcolor').value;
   if (!name || !price) return toast('Preencha nome e preco.', 'warn');
   try {
-    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, description, duration, role_id, image_url, stock, accent_color }) });
-    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg', 'pstock'].forEach(id => document.getElementById(id).value = '');
+    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, cost, description, duration, role_id, image_url, stock, accent_color }) });
+    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg', 'pstock', 'pcost'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pcolor').value = '#5865f2';
     toggleForm('prod-form');
     loadProdutos();
@@ -351,15 +355,10 @@ function editProduto(id) {
     <div class="fgroup"><div class="flabel">descrição</div><textarea class="inp" id="ep-desc">${escapeHtml(p.description || '')}</textarea></div>
     <div class="fgroup"><div class="flabel">cargo (role_id)</div><input class="inp" id="ep-role" value="${escapeAttr(p.role_id || '')}"></div>
     <div class="frow">
+      <div class="fgroup"><div class="flabel">custo (R$)</div><input class="inp" id="ep-cost" type="number" step="0.01" min="0" value="${p.cost_cents != null ? (p.cost_cents/100).toFixed(2) : ''}"></div>
       <div class="fgroup"><div class="flabel">duração</div>
         <select class="inp" id="ep-dur">
           ${['permanent', '1d', '7d', '30d', '1y'].map(d => `<option value="${d}" ${p.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
-        </select>
-      </div>
-      <div class="fgroup"><div class="flabel">status</div>
-        <select class="inp" id="ep-active">
-          <option value="1" ${p.active ? 'selected' : ''}>ativo</option>
-          <option value="0" ${!p.active ? 'selected' : ''}>inativo</option>
         </select>
       </div>
     </div>
@@ -367,7 +366,15 @@ function editProduto(id) {
       <div class="fgroup"><div class="flabel">estoque (vazio = ilimitado)</div><input class="inp" id="ep-stock" type="number" min="0" value="${p.stock ?? ''}"></div>
       <div class="fgroup"><div class="flabel">cor de destaque</div><input class="inp" id="ep-color" type="color" value="${p.accent_color || '#5865f2'}" style="height:38px;padding:4px;cursor:pointer;"></div>
     </div>
-    <div class="fgroup"><div class="flabel">URL da imagem</div><input class="inp" id="ep-img" value="${escapeAttr(p.image_url || '')}"></div>
+    <div class="frow">
+      <div class="fgroup"><div class="flabel">status</div>
+        <select class="inp" id="ep-active">
+          <option value="1" ${p.active ? 'selected' : ''}>ativo</option>
+          <option value="0" ${!p.active ? 'selected' : ''}>inativo</option>
+        </select>
+      </div>
+      <div class="fgroup"><div class="flabel">URL da imagem</div><input class="inp" id="ep-img" value="${escapeAttr(p.image_url || '')}"></div>
+    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button class="btn-g" onclick="closeModal()">cancelar</button>
       <button class="btn-w" onclick="saveProduto(${id})">salvar</button>
@@ -380,6 +387,7 @@ async function saveProduto(id) {
   const payload = {
     name: document.getElementById('ep-name').value.trim(),
     price: document.getElementById('ep-price').value,
+    cost: document.getElementById('ep-cost').value,
     description: document.getElementById('ep-desc').value.trim(),
     role_id: document.getElementById('ep-role').value.trim() || null,
     duration: document.getElementById('ep-dur').value,
@@ -547,6 +555,14 @@ async function loadConfig() {
       const el = document.getElementById(id);
       if (el && cfg[k] != null) el.value = cfg[k];
     }
+    // Tipos de ticket: JSON <-> textarea (uma linha por tipo)
+    const tt = document.getElementById('ticket-types-text');
+    if (tt && cfg.ticket_types) {
+      try {
+        const arr = JSON.parse(cfg.ticket_types);
+        tt.value = arr.map(t => `${t.name} | ${t.role_id || ''} | ${t.description || ''}`).join('\n');
+      } catch { tt.value = ''; }
+    }
   } catch (e) { console.warn('config', e.message); }
 }
 
@@ -566,6 +582,14 @@ async function saveConfig() {
   for (const [id, k] of Object.entries(extras)) {
     const el = document.getElementById(id);
     if (el) payload[k] = el.value;
+  }
+  const tt = document.getElementById('ticket-types-text');
+  if (tt) {
+    const arr = tt.value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+      const [name, role_id, ...descParts] = l.split('|').map(s => s.trim());
+      return { name, role_id: role_id || null, description: descParts.join(' | ') || '' };
+    }).filter(t => t.name);
+    payload.ticket_types = JSON.stringify(arr);
   }
   try { await api('/api/config', { method: 'PUT', body: JSON.stringify(payload) }); toast('Configuracao salva.', 'ok'); }
   catch (e) { toast(e.message, 'err'); }
@@ -590,6 +614,8 @@ function configKeyFromLabel(label) {
     'alertas de venda': 'alert_sales',
     'relatório diário': 'daily_report',
     'DM ao comprador': 'dm_purchase',
+    'DM ao admin a cada venda': 'dm_admin_on_sale',
+    'anúncio automático de reposição': 'restock_announce',
     'repassar taxa do Stripe ao cliente': 'pass_fees_to_customer'
   };
   return m[label.trim()] || null;

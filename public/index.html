@@ -550,11 +550,11 @@ footer.appfoot a:hover{color:var(--text);}
       <!-- VENDAS -->
       <div id="page-vendas" class="page">
         <div class="mgrid">
-          <div class="mc"><div class="mlabel">receita mensal</div><div class="mval">R$4.820</div><div class="mdelta up">↑ +12%</div></div>
-          <div class="mc dim"><div class="mlabel">vendas hoje</div><div class="mval">7</div><div class="mdelta up">↑ +2</div></div>
-          <div class="mc dim"><div class="mlabel">ticket médio</div><div class="mval">R$68,90</div></div>
-          <div class="mc dim"><div class="mlabel">produto top</div><div class="mval" style="font-size:13px">VIP mensal</div></div>
-          <div class="mc dim"><div class="mlabel">reembolsos</div><div class="mval">2</div><div class="mdelta nt">0.4%</div></div>
+          <div class="mc"><div class="mlabel">receita mensal</div><div class="mval" id="v-revenue">—</div><div class="mdelta nt">bruto</div></div>
+          <div class="mc dim"><div class="mlabel">lucro mensal</div><div class="mval" id="v-profit">—</div><div class="mdelta nt" id="v-margin">—</div></div>
+          <div class="mc dim"><div class="mlabel">vendas hoje</div><div class="mval" id="v-today">—</div></div>
+          <div class="mc dim"><div class="mlabel">ticket médio</div><div class="mval" id="v-avg">—</div></div>
+          <div class="mc dim"><div class="mlabel">produto top</div><div class="mval" id="v-top" style="font-size:13px">—</div></div>
         </div>
         <div class="crow">
           <div class="card">
@@ -608,6 +608,7 @@ footer.appfoot a:hover{color:var(--text);}
                 <div class="fgroup"><div class="flabel">estoque (vazio = ilimitado)</div><input class="inp" id="pstock" type="number" min="0" placeholder="ex: 10"></div>
                 <div class="fgroup"><div class="flabel">cor de destaque</div><input class="inp" id="pcolor" type="color" value="#5865f2" style="height:38px;padding:4px;cursor:pointer;"></div>
               </div>
+              <div class="fgroup"><div class="flabel">custo do produto (R$) <small style="color:#444">— para calcular lucro</small></div><input class="inp" id="pcost" type="number" step="0.01" min="0" placeholder="ex: 20.00"></div>
             </div>
           </div>
           <div style="display:flex;gap:10px;margin-top:4px;">
@@ -907,6 +908,8 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfgitem"><span class="cfgtxt">alertas de ban</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">alertas de venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">DM ao comprador</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">DM ao admin a cada venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">anúncio automático de reposição</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">repassar taxa do Stripe ao cliente</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem" style="display:flex;align-items:center;gap:10px;">
                 <span class="cfgtxt">taxa estimada</span>
@@ -922,6 +925,13 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">
                 <span class="cfgtxt">webhook URL <small style="color:#444">— recebe eventos em JSON</small></span>
                 <input class="inp" id="webhook-url" placeholder="https://...">
+              </div>
+            </div>
+            <div class="cfgcard" style="margin-top:14px">
+              <div class="cfglbl">tipos de ticket</div>
+              <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:8px;">
+                <span class="cfgtxt">categorias disponíveis <small style="color:#444">— uma por linha: nome | role_id (opcional) | descrição</small></span>
+                <textarea class="inp" id="ticket-types-text" style="min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:11px;" placeholder="Suporte | | Ajuda com produtos&#10;Resgate | 123456789 | Resgate produtos pagos"></textarea>
               </div>
             </div>
           </div>

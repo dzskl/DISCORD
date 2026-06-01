@@ -179,7 +179,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const p = db.prepare('SELECT * FROM products WHERE id=?').get(item.id);
         if (!p) continue;
         if (p.stock != null) {
-          db.prepare('UPDATE products SET stock=MAX(0, stock-?) WHERE id=?').run(item.q, p.id);
+          const newQty = Math.max(0, p.stock - item.q);
+          db.prepare('UPDATE products SET stock=? WHERE id=?').run(newQty, p.id);
+          db.prepare('INSERT INTO stock_log (product_id,delta,before_qty,after_qty,reason,actor) VALUES (?,?,?,?,?,?)')
+            .run(p.id, -item.q, p.stock, newQty, `venda #${sale.id}`, sale.discord_tag || sale.discord_id);
         }
         if (p.role_id) {
           try {
@@ -206,6 +209,23 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         }).join('\n');
         const expiryStr = expiresAt ? `\n⏰ Expira em: ${new Date(expiresAt * 1000).toLocaleDateString('pt-BR')}` : '\n♾️ Acesso permanente';
         await bot.dmUser(sale.discord_id, `✅ Compra confirmada — ${valueStr}\n\n${list}${expiryStr}\n\nObrigado pela compra! 🎉`);
+      }
+
+      if (cfg.dm_admin_on_sale === '1') {
+        const list = cartItems.map(it => {
+          const p = db.prepare('SELECT name,cost_cents FROM products WHERE id=?').get(it.id);
+          return `• ${p?.name || '?'} x${it.q}`;
+        }).join('\n');
+        const profitNote = (() => {
+          const totalCost = cartItems.reduce((s, it) => {
+            const p = db.prepare('SELECT cost_cents FROM products WHERE id=?').get(it.id);
+            return s + ((p?.cost_cents || 0) * it.q);
+          }, 0);
+          if (!totalCost) return '';
+          const profit = sale.amount_cents - totalCost;
+          return `\n💰 Lucro estimado: R$ ${(profit / 100).toFixed(2).replace('.', ',')}`;
+        })();
+        await bot.dmAdmins(`💸 **Nova venda!** ${valueStr}\n\n${list}\n\n👤 ${sale.discord_tag || sale.discord_id}${profitNote}`);
       }
     }
   }

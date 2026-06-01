@@ -26,6 +26,12 @@ router.get('/summary', requireAuth, (req, res) => {
   const monthStart = now - 86400 * 30;
 
   const monthRevenue = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  const monthCost = db.prepare(`
+    SELECT COALESCE(SUM(p.cost_cents),0) AS v FROM sales s
+    JOIN products p ON p.id=s.product_id
+    WHERE s.status='paid' AND s.paid_at >= ?
+  `).get(monthStart).v;
+  const monthProfit = monthRevenue - monthCost;
   const todayCount = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND paid_at >= ?`).get(dayStart).c;
   const allPaid = db.prepare(`SELECT amount_cents FROM sales WHERE status='paid'`).all();
   const avgTicket = allPaid.length ? Math.round(allPaid.reduce((a, b) => a + b.amount_cents, 0) / allPaid.length) : 0;
@@ -48,14 +54,25 @@ router.get('/summary', requireAuth, (req, res) => {
     WHERE s.status='paid' GROUP BY p.id ORDER BY c DESC LIMIT 4
   `).all();
 
+  const byProductWithRevenue = db.prepare(`
+    SELECT p.id, p.name, p.cost_cents,
+      COUNT(*) AS sales,
+      COALESCE(SUM(s.amount_cents),0) AS revenue_cents
+    FROM sales s JOIN products p ON p.id=s.product_id
+    WHERE s.status='paid' GROUP BY p.id ORDER BY revenue_cents DESC LIMIT 20
+  `).all();
+
   res.json({
     month_revenue_cents: monthRevenue,
+    month_cost_cents: monthCost,
+    month_profit_cents: monthProfit,
     today_count: todayCount,
     avg_ticket_cents: avgTicket,
     refunds,
     top_product: topProduct?.name || '—',
     monthly_revenue: monthly,
-    by_product: byProduct
+    by_product: byProduct,
+    products_breakdown: byProductWithRevenue
   });
 });
 

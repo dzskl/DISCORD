@@ -132,6 +132,7 @@ function ensureColumn(table, column, type) {
 ensureColumn('products', 'image_url', 'TEXT');
 ensureColumn('products', 'stock', 'INTEGER');
 ensureColumn('products', 'accent_color', 'TEXT');
+ensureColumn('products', 'cost_cents', 'INTEGER');
 ensureColumn('coupons', 'min_amount_cents', 'INTEGER');
 ensureColumn('sales', 'expiry_warned', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('sales', 'cart_items', 'TEXT');
@@ -153,11 +154,24 @@ CREATE TABLE IF NOT EXISTS tickets (
   discord_tag TEXT,
   channel_id TEXT,
   subject TEXT,
+  ticket_type TEXT,
   status TEXT NOT NULL DEFAULT 'open',
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   closed_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+
+CREATE TABLE IF NOT EXISTS stock_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  delta INTEGER NOT NULL,
+  before_qty INTEGER,
+  after_qty INTEGER,
+  reason TEXT,
+  actor TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_stock_log_product ON stock_log(product_id, created_at DESC);
 `);
 
 const defaultConfig = {
@@ -188,7 +202,10 @@ const defaultConfig = {
   fee_percent: '4',
   fee_fixed_cents: '39',
   ticket_category: 'tickets',
-  ticket_welcome_message: 'Olá {user}! Como podemos te ajudar?\n\nDescreva sua dúvida ou problema e um membro da equipe vai responder em breve.\n\nClique no botão abaixo para fechar quando resolver.'
+  ticket_welcome_message: 'Olá {user}! Como podemos te ajudar?\n\nDescreva sua dúvida ou problema e um membro da equipe vai responder em breve.\n\nClique no botão abaixo para fechar quando resolver.',
+  ticket_types: '[{"name":"Suporte","role_id":null,"description":"Ajuda com produtos, instalação, erros ou problemas"},{"name":"Resgate","role_id":null,"description":"Resgate seu produto após a compra"}]',
+  dm_admin_on_sale: '1',
+  restock_announce: '1'
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);

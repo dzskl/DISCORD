@@ -42,6 +42,22 @@ async function checkIntents() {
   }
 }
 
+function buildTicketCommand() {
+  const cmd = new SlashCommandBuilder().setName('ticket').setDescription('Abre um ticket de suporte');
+  cmd.addStringOption(o => o.setName('assunto').setDescription('Sobre o que e seu ticket').setRequired(true));
+  try {
+    const types = JSON.parse(getConfig().ticket_types || '[]');
+    if (Array.isArray(types) && types.length) {
+      cmd.addStringOption(o => {
+        o.setName('tipo').setDescription('Categoria do ticket').setRequired(false);
+        types.slice(0, 25).forEach(t => o.addChoices({ name: t.name, value: t.name }));
+        return o;
+      });
+    }
+  } catch {}
+  return cmd;
+}
+
 async function registerCommands() {
   if (!process.env.DISCORD_CLIENT_ID || !GUILD_ID) return;
   const commands = [
@@ -62,8 +78,7 @@ async function registerCommands() {
     new SlashCommandBuilder().setName('ban').setDescription('Bane um usuario').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
       .addUserOption(o => o.setName('usuario').setDescription('Usuario').setRequired(true))
       .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false)),
-    new SlashCommandBuilder().setName('ticket').setDescription('Abre um ticket de suporte')
-      .addStringOption(o => o.setName('assunto').setDescription('Sobre o que e seu ticket').setRequired(true))
+    buildTicketCommand()
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -404,12 +419,24 @@ client.on('interactionCreate', async (i) => {
       }
       case 'ticket': {
         const assunto = i.options.getString('assunto');
+        const tipo = i.options.getString('tipo');
+
+        if (tipo) {
+          try {
+            const types = JSON.parse(cfg.ticket_types || '[]');
+            const t = types.find(x => x.name === tipo);
+            if (t?.role_id && !i.member.roles.cache.has(t.role_id)) {
+              return i.reply({ content: `❌ Voce precisa do cargo <@&${t.role_id}> para abrir ticket de "${tipo}".`, ephemeral: true });
+            }
+          } catch {}
+        }
+
         const existing = db.prepare(`SELECT * FROM tickets WHERE discord_id=? AND status='open'`).get(i.user.id);
         if (existing) return i.reply({ content: `❌ Voce ja tem um ticket aberto: <#${existing.channel_id}>`, ephemeral: true });
         try {
-          const channel = await openTicketChannel(i.guild, i.user, assunto);
-          db.prepare('INSERT INTO tickets (discord_id,discord_tag,channel_id,subject) VALUES (?,?,?,?)')
-            .run(i.user.id, i.user.tag, channel.id, assunto);
+          const channel = await openTicketChannel(i.guild, i.user, assunto, tipo);
+          db.prepare('INSERT INTO tickets (discord_id,discord_tag,channel_id,subject,ticket_type) VALUES (?,?,?,?,?)')
+            .run(i.user.id, i.user.tag, channel.id, assunto, tipo || null);
           await i.reply({ content: `✅ Ticket aberto: <#${channel.id}>`, ephemeral: true });
         } catch (e) {
           logger.error({ err: e }, 'erro ao abrir ticket');
@@ -525,10 +552,10 @@ async function revokeRole(userId, roleId) {
   await member.roles.remove(roleId).catch(() => {});
 }
 
-async function openTicketChannel(guild, user, subject) {
+async function openTicketChannel(guild, user, subject, type) {
   const { ChannelType, PermissionFlagsBits: P } = require('discord.js');
   const cfg = getConfig();
-  const categoryName = cfg.ticket_category || 'tickets';
+  const categoryName = type ? `tickets-${type.toLowerCase()}` : (cfg.ticket_category || 'tickets');
 
   let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName.toLowerCase());
   if (!category) {
@@ -564,6 +591,26 @@ async function notifySaleChannel(text) {
   const cfg = getConfig();
   if (cfg.alert_sales !== '1') return;
   await forwardToChannel(cfg.sales_channel, text);
+}
+
+async function announceRestock(product, stock) {
+  const cfg = getConfig();
+  const eb = new EmbedBuilder()
+    .setTitle('📦 Produto reabastecido!')
+    .setColor(product.accent_color ? parseInt(product.accent_color.slice(1), 16) : 0x5fff5f)
+    .setDescription(`**${product.name}** voltou ao estoque!`)
+    .addFields(
+      { name: 'Estoque', value: stock != null ? `${stock} unidade(s)` : 'ilimitado', inline: true },
+      { name: 'Preço', value: 'R$ ' + (product.price_cents / 100).toFixed(2).replace('.', ','), inline: true }
+    )
+    .setFooter({ text: 'Compre em ' + publicUrl() + '/loja.html' });
+  if (product.image_url) eb.setThumbnail(product.image_url);
+  await forwardToChannel(cfg.sales_channel, { embeds: [eb] });
+}
+
+async function dmAdmins(content) {
+  const admins = (process.env.ADMIN_DISCORD_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  for (const id of admins) await dmUser(id, content);
 }
 
 async function dmUser(userId, content) {
@@ -614,5 +661,6 @@ function start() {
 module.exports = {
   client, start, fetchGuild, getStats, listChannels, listRoles, listMembers,
   sendAnnouncement, banMember, kickMember, timeoutMember, grantRole, revokeRole,
-  notifySaleChannel, dmUser, sendDailyReport, broadcast, openTicketChannel, closeTicketChannel
+  notifySaleChannel, dmUser, dmAdmins, sendDailyReport, broadcast,
+  openTicketChannel, closeTicketChannel, announceRestock
 };
