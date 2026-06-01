@@ -5,16 +5,18 @@ const bot = require('../bot');
 const router = express.Router();
 
 function stripe() {
-  if (!process.env.STRIPE_SECRET_KEY) return null;
-  return require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const { getCredential } = require('../db');
+  const key = getCredential('STRIPE_SECRET_KEY');
+  if (!key) return null;
+  return require('stripe')(key);
 }
 
 router.get('/gateway', (req, res) => {
-  const { getConfig } = require('../db');
+  const { getConfig, getCredential } = require('../db');
   const cfg = getConfig();
   const mp = require('../services/misticpay');
   const choice = cfg.payment_gateway || 'stripe';
-  const stripeOk = !!process.env.STRIPE_SECRET_KEY;
+  const stripeOk = !!getCredential('STRIPE_SECRET_KEY');
   const mpOk = mp.isConfigured();
   // Se o gateway configurado nao esta disponivel, faz fallback
   let active = choice;
@@ -161,7 +163,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const s = stripe();
   if (!s) return res.status(503).send('Stripe nao configurado');
 
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const { getCredential } = require('../db');
+  const secret = getCredential('STRIPE_WEBHOOK_SECRET');
   if (!secret && process.env.NODE_ENV === 'production') {
     return res.status(503).send('STRIPE_WEBHOOK_SECRET obrigatorio em producao');
   }

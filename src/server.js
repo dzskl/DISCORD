@@ -62,6 +62,7 @@ function buildApp() {
   app.use(passport.session());
 
   app.use('/api/setup', require('./routes/setup'));
+  app.use('/api/credentials', require('./routes/credentials'));
   app.use('/auth', require('./routes/auth'));
   app.use('/api/stats', require('./routes/stats'));
   app.use('/api/members', require('./routes/members'));

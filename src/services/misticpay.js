@@ -1,15 +1,17 @@
 const BASE = 'https://api.misticpay.com';
 
 function headers() {
+  const { getCredential } = require('../db');
   return {
     'Content-Type': 'application/json',
-    'ci': process.env.MISTICPAY_CLIENT_ID || '',
-    'cs': process.env.MISTICPAY_CLIENT_SECRET || ''
+    'ci': getCredential('MISTICPAY_CLIENT_ID') || '',
+    'cs': getCredential('MISTICPAY_CLIENT_SECRET') || ''
   };
 }
 
 function isConfigured() {
-  return !!(process.env.MISTICPAY_CLIENT_ID && process.env.MISTICPAY_CLIENT_SECRET);
+  const { getCredential } = require('../db');
+  return !!(getCredential('MISTICPAY_CLIENT_ID') && getCredential('MISTICPAY_CLIENT_SECRET'));
 }
 
 async function createPixTransaction({ amount_cents, payerName, payerDocument, transactionId, description }) {

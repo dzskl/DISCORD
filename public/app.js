@@ -668,6 +668,7 @@ const PAGE_META = {
   sorteios: ['Sorteios', 'crie giveaways no Discord'],
   invites: ['Invite Tracker', 'quem trouxe quem para o servidor'],
   auditoria: ['Auditoria', 'log de todas ações administrativas'],
+  credenciais: ['Credenciais', 'tokens e chaves API — encriptadas no banco'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -697,6 +698,7 @@ function sp(id, el) {
   if (id === 'sorteios') loadSorteios();
   if (id === 'invites') loadInvites();
   if (id === 'auditoria') loadAuditoria();
+  if (id === 'credenciais') loadCredenciais();
   if (id === 'config') loadConfig();
 }
 
@@ -1249,6 +1251,82 @@ async function loadInvites() {
       </tr>
     `).join('') : emptyRow(5, '🔗', 'Ainda sem registros de entradas.');
   } catch (e) { console.warn('invites', e.message); }
+}
+
+// ---------- CREDENCIAIS ----------
+async function loadCredenciais() {
+  try {
+    const creds = await api('/api/credentials');
+    const byGroup = { discord: [], stripe: [], misticpay: [] };
+    creds.forEach(c => { if (byGroup[c.group]) byGroup[c.group].push(c); });
+
+    document.getElementById('cred-discord').innerHTML = byGroup.discord.map(credRow).join('');
+    document.getElementById('cred-stripe').innerHTML = byGroup.stripe.map(credRow).join('');
+    document.getElementById('cred-misticpay').innerHTML = byGroup.misticpay.map(credRow).join('');
+
+    const statusBadge = (list) => {
+      const all = list.length;
+      const done = list.filter(c => c.configured).length;
+      if (done === all) return `<span style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">✓ completo (${done}/${all})</span>`;
+      if (done === 0) return `<span style="background:#1f0a0a;color:#ff5f5f;border:1px solid #3a1010">pendente (0/${all})</span>`;
+      return `<span style="background:#1a1900;color:#ffdf5f;border:1px solid #3a3000">parcial (${done}/${all})</span>`;
+    };
+    document.getElementById('cred-discord-status').outerHTML = `<span class="cbadge" id="cred-discord-status">${statusBadge(byGroup.discord)}</span>`;
+    document.getElementById('cred-stripe-status').outerHTML = `<span class="cbadge" id="cred-stripe-status">${statusBadge(byGroup.stripe)}</span>`;
+    document.getElementById('cred-misticpay-status').outerHTML = `<span class="cbadge" id="cred-misticpay-status">${statusBadge(byGroup.misticpay)}</span>`;
+  } catch (e) { console.warn('credenciais', e.message); }
+}
+
+function credRow(c) {
+  const sourceTag = c.source === 'env'
+    ? '<span style="background:#1a1900;color:#ffdf5f;border:1px solid #3a3000;font-size:9px;padding:1px 6px;border-radius:3px;font-family:IBM Plex Mono,monospace;">via .env</span>'
+    : c.source === 'db'
+    ? '<span style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a;font-size:9px;padding:1px 6px;border-radius:3px;font-family:IBM Plex Mono,monospace;">salvo</span>'
+    : '<span style="background:#1f0a0a;color:#ff5f5f;border:1px solid #3a1010;font-size:9px;padding:1px 6px;border-radius:3px;font-family:IBM Plex Mono,monospace;">vazio</span>';
+  const preview = c.preview ? `<code style="background:#161616;color:#aaa;font-size:11px;padding:3px 8px;border-radius:3px;font-family:IBM Plex Mono,monospace;">${escapeHtml(c.preview)}</code>` : '<span style="color:#444;font-size:11px;font-family:IBM Plex Mono,monospace;">não configurado</span>';
+  const placeholder = c.secret ? 'cole o valor aqui (mantém vazio pra não alterar)' : 'cole o valor aqui';
+  return `<div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px 0;border-bottom:1px solid #161616;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div>
+        <div style="color:#fff;font-size:13px;font-weight:600;">${escapeHtml(c.label)} ${sourceTag}</div>
+        <div style="font-size:10px;color:#555;font-family:IBM Plex Mono,monospace;letter-spacing:.06em;margin-top:2px;">${escapeHtml(c.key)}</div>
+      </div>
+      <div>${preview}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input class="inp" id="cv-${c.key}" type="${c.secret ? 'password' : 'text'}" placeholder="${placeholder}" style="flex:1;font-family:IBM Plex Mono,monospace;">
+      <button class="btn-sm pub" onclick="saveCredential('${c.key}')">salvar</button>
+      ${c.configured && c.source === 'db' ? `<button class="btn-sm del" onclick="clearCredential('${c.key}')">limpar</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function saveCredential(key) {
+  const value = document.getElementById('cv-' + key).value;
+  if (!value.trim()) return toast('Digite um valor.', 'warn');
+  try {
+    await api('/api/credentials/' + encodeURIComponent(key), { method: 'PUT', body: JSON.stringify({ value }) });
+    toast('Credencial salva.', 'ok');
+    document.getElementById('cv-' + key).value = '';
+    loadCredenciais();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function clearCredential(key) {
+  if (!await confirmAsync(`Limpar a credencial ${key}?`)) return;
+  try {
+    await api('/api/credentials/' + encodeURIComponent(key), { method: 'DELETE' });
+    toast('Credencial removida.', 'ok');
+    loadCredenciais();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function restartBot() {
+  if (!await confirmAsync('Reiniciar o bot agora? Ele vai desconectar do Discord por alguns segundos.')) return;
+  try {
+    await api('/api/credentials/bot/restart', { method: 'POST' });
+    toast('Bot reiniciando...', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- AUDITORIA ----------

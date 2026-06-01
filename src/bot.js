@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, AuditLogEvent, REST, Routes, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { db, getConfig, logEvent } = require('./db');
+const { db, getConfig, logEvent, getCredential } = require('./db');
 const logger = require('./logger');
 
 const client = new Client({
@@ -15,7 +15,8 @@ const client = new Client({
   allowedMentions: { parse: ['users'], repliedUser: false }
 });
 
-const GUILD_ID = process.env.DISCORD_GUILD_ID;
+function guildId() { return getCredential('DISCORD_GUILD_ID'); }
+let GUILD_ID = guildId();
 
 const recordMember = db.prepare('INSERT INTO member_events (discord_id,discord_tag,event) VALUES (?,?,?)');
 const recordMod = db.prepare('INSERT INTO mod_actions (action,target_id,target_tag,moderator_id,moderator_tag,reason) VALUES (?,?,?,?,?,?)');
@@ -81,7 +82,8 @@ function buildTicketCommand() {
 }
 
 async function registerCommands() {
-  if (!process.env.DISCORD_CLIENT_ID || !GUILD_ID) return;
+  const clientId = getCredential('DISCORD_CLIENT_ID');
+  if (!clientId || !GUILD_ID) return;
   const commands = [
     new SlashCommandBuilder().setName('produtos').setDescription('Lista os produtos a venda'),
     new SlashCommandBuilder().setName('comprar').setDescription('Mostra o link da loja'),
@@ -103,8 +105,8 @@ async function registerCommands() {
     buildTicketCommand()
   ].map(c => c.toJSON());
 
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  await rest.put(Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, GUILD_ID), { body: commands });
+  const rest = new REST({ version: '10' }).setToken(getCredential('DISCORD_TOKEN'));
+  await rest.put(Routes.applicationGuildCommands(clientId, GUILD_ID), { body: commands });
   logger.info({ count: commands.length }, 'slash commands registrados');
 }
 
@@ -834,7 +836,7 @@ async function announceRestock(product, stock) {
 }
 
 async function dmAdmins(content) {
-  const admins = (process.env.ADMIN_DISCORD_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const admins = (getCredential('ADMIN_DISCORD_IDS') || '').split(',').map(s => s.trim()).filter(Boolean);
   for (const id of admins) await dmUser(id, content);
 }
 
@@ -876,15 +878,25 @@ async function sendDailyReport() {
 }
 
 function start() {
-  if (!process.env.DISCORD_TOKEN) {
-    logger.warn('DISCORD_TOKEN nao definido — bot nao iniciado');
+  const token = getCredential('DISCORD_TOKEN');
+  if (!token) {
+    logger.warn('DISCORD_TOKEN nao definido (DB nem env) — bot nao iniciado');
     return Promise.resolve();
   }
-  return client.login(process.env.DISCORD_TOKEN);
+  GUILD_ID = guildId();
+  return client.login(token).catch(e => {
+    logger.error({ err: e.message }, 'falha no login do bot');
+  });
+}
+
+async function restart() {
+  logger.info('reiniciando bot com novas credenciais...');
+  try { await client.destroy(); } catch {}
+  return start();
 }
 
 module.exports = {
-  client, start, fetchGuild, getStats, listChannels, listRoles, listMembers,
+  client, start, restart, fetchGuild, getStats, listChannels, listRoles, listMembers,
   sendAnnouncement, banMember, kickMember, timeoutMember, grantRole, revokeRole,
   notifySaleChannel, dmUser, dmAdmins, sendDailyReport, broadcast,
   openTicketChannel, closeTicketChannel, announceRestock,

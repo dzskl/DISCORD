@@ -1,5 +1,6 @@
 function getAdmins() {
-  return (process.env.ADMIN_DISCORD_IDS || '')
+  const { getCredential } = require('../db');
+  return (getCredential('ADMIN_DISCORD_IDS') || '')
     .split(',').map(s => s.trim()).filter(Boolean);
 }
 

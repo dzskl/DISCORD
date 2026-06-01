@@ -15,6 +15,7 @@
   --hero-dim: #9a9bc8;
   --hero-border: rgba(255,255,255,0.08);
   --body-bg: #fafafa;
+  --body-surface: #ffffff;
   --body-ink: #0e0e2e;
   --body-dim: #5a5b6e;
   --body-faint: #9a9ab0;
@@ -24,6 +25,35 @@
   --primary-soft: #b9a8ff;
   --primary-bg: #f0ebff;
   --accent-glow: rgba(139,111,255,0.15);
+  --mockup-bg: #0e0e2e;
+  --mockup-inner: #191947;
+  --shadow-card: 0 16px 40px rgba(14,14,46,0.08);
+  --shadow-mockup: 0 20px 60px rgba(14,14,46,0.18);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --hero-bg: #07071a;
+  --hero-bg-2: #0e0e2e;
+  --hero-ink: #f5f5fa;
+  --hero-dim: #8888b8;
+  --hero-border: rgba(255,255,255,0.06);
+  --body-bg: #0a0a1e;
+  --body-surface: #12122e;
+  --body-ink: #f5f5fa;
+  --body-dim: #a0a0c0;
+  --body-faint: #6a6a90;
+  --body-line: #1f1f3a;
+  --primary: #9d83ff;
+  --primary-hov: #b09cff;
+  --primary-soft: #b9a8ff;
+  --primary-bg: rgba(139,111,255,0.12);
+  --accent-glow: rgba(139,111,255,0.3);
+  --mockup-bg: #07071a;
+  --mockup-inner: #14143a;
+  --shadow-card: 0 16px 40px rgba(0,0,0,0.4);
+  --shadow-mockup: 0 20px 60px rgba(0,0,0,0.5);
+  color-scheme: dark;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -58,8 +88,10 @@ nav.top{position:relative;z-index:10;}
 .btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;border-radius:10px;padding:11px 20px;transition:all .15s;}
 .btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 20px var(--accent-glow);}
 .btn-primary:hover{background:var(--primary-hov);transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-glow);}
-.btn-light{background:rgba(255,255,255,0.92);color:var(--body-ink);}
+.btn-light{background:rgba(255,255,255,0.92);color:#0e0e2e;}
 .btn-light:hover{background:#fff;}
+[data-theme="dark"] .btn-light{background:rgba(255,255,255,0.12);color:#fff;}
+[data-theme="dark"] .btn-light:hover{background:rgba(255,255,255,0.18);}
 .btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--hero-ink);}
 .btn-outline:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);}
 .btn-lg{padding:14px 28px;font-size:15px;border-radius:12px;}

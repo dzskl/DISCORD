@@ -253,6 +253,13 @@ CREATE TABLE IF NOT EXISTS invites_log (
 );
 CREATE INDEX IF NOT EXISTS idx_invites_inviter ON invites_log(inviter_id);
 CREATE INDEX IF NOT EXISTS idx_invites_joined ON invites_log(joined_at DESC);
+
+CREATE TABLE IF NOT EXISTS credentials (
+  key TEXT PRIMARY KEY,
+  encrypted_value TEXT,
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  updated_by TEXT
+);
 `);
 
 const defaultConfig = {
@@ -319,7 +326,52 @@ function logEvent({ type, message, discord_id = null, discord_tag = null, channe
     .run(type, message, discord_id, discord_tag, channel);
 }
 
-module.exports = { db, getConfig, setConfig, logEvent };
+// ============ CREDENCIAIS ============
+// Cada chave (DISCORD_TOKEN, STRIPE_SECRET_KEY etc.) pode vir da DB (encriptada)
+// ou do .env. DB tem prioridade. Permite configurar tudo pelo painel sem mexer
+// em arquivo.
+
+let _credCache = new Map();
+let _credCacheAt = 0;
+const CRED_TTL_MS = 5000;
+
+function getCredential(key) {
+  if (Date.now() - _credCacheAt > CRED_TTL_MS) {
+    _credCache.clear();
+    _credCacheAt = Date.now();
+  }
+  if (_credCache.has(key)) return _credCache.get(key);
+
+  const row = db.prepare('SELECT encrypted_value FROM credentials WHERE key=?').get(key);
+  let value = null;
+  if (row && row.encrypted_value) {
+    const { decrypt } = require('./secrets');
+    value = decrypt(row.encrypted_value);
+  }
+  if (!value && process.env[key]) value = process.env[key];
+  _credCache.set(key, value);
+  return value;
+}
+
+function setCredential(key, plaintext, actor = null) {
+  const { encrypt } = require('./secrets');
+  const enc = plaintext ? encrypt(plaintext) : null;
+  db.prepare(`
+    INSERT INTO credentials (key,encrypted_value,updated_at,updated_by)
+    VALUES (?,?,strftime('%s','now'),?)
+    ON CONFLICT(key) DO UPDATE SET encrypted_value=excluded.encrypted_value, updated_at=excluded.updated_at, updated_by=excluded.updated_by
+  `).run(key, enc, actor);
+  _credCache.clear();
+}
+
+function listCredentialMeta() {
+  const rows = db.prepare('SELECT key, encrypted_value, updated_at, updated_by FROM credentials').all();
+  const map = {};
+  for (const r of rows) map[r.key] = { in_db: !!r.encrypted_value, updated_at: r.updated_at, updated_by: r.updated_by };
+  return map;
+}
+
+module.exports = { db, getConfig, setConfig, logEvent, getCredential, setCredential, listCredentialMeta };
 
 if (require.main === module) {
   console.log('Banco inicializado em', DB_FILE);
