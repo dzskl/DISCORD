@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loja — punky demo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Anybody:wght@400;700;900&display=swap');
+:root {
+  --bg: #0a0a0a; --ink: #f5f5f0;
+  --surface: #131312; --punk: #ff2d8a; --acid: #c0ff00; --cyber: #00d4ff; --warn: #ffeb3b;
+  --line: #2a2a28; --text-2: #999; --text-3: #555;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:30px 24px 60px;}
+.bg-dots{position:fixed;inset:0;z-index:-1;background-image:radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);background-size:18px 18px;}
+.wrap{max-width:1100px;margin:0 auto;}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:36px;padding-bottom:24px;border-bottom:3px solid var(--ink);}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand-logo{width:48px;height:48px;background:var(--punk);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Anybody',sans-serif;font-weight:900;color:var(--ink);font-size:24px;transform:rotate(-3deg);box-shadow:4px 4px 0 var(--ink);}
+.brand-name{font-family:'Anybody',sans-serif;font-weight:900;font-size:30px;text-transform:uppercase;letter-spacing:-.02em;}
+.brand-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.cart-btn{background:var(--acid);color:#000;border:3px solid var(--ink);padding:12px 22px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:4px 4px 0 var(--ink);display:flex;align-items:center;gap:8px;text-decoration:none;text-transform:lowercase;}
+.cart-btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
+.cart-count{background:#000;color:var(--acid);padding:1px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;border:2px solid #000;}
+
+.id-box{background:var(--surface);border:3px solid var(--ink);padding:22px 24px;margin-bottom:18px;box-shadow:6px 6px 0 var(--ink);}
+.id-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:700;}
+.id-input{background:var(--bg);border:3px solid var(--ink);padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);width:100%;outline:none;}
+.id-input:focus{background:var(--punk);}
+.id-help{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-top:8px;line-height:1.5;}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:24px;margin-top:30px;}
+.card{background:var(--surface);border:3px solid var(--ink);padding:0;position:relative;transition:transform .12s;}
+.card:hover{transform:translate(-3px,-3px);box-shadow:6px 6px 0 var(--ink);}
+.card.featured{background:var(--punk);}
+.thumb{height:140px;background:#000 center/cover no-repeat;border-bottom:3px solid var(--ink);position:relative;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;}
+.thumb.t1{background:linear-gradient(135deg,var(--punk),var(--cyber));}
+.thumb.t2{background:linear-gradient(135deg,var(--acid),var(--warn));}
+.thumb.t3{background:linear-gradient(135deg,var(--cyber),var(--punk));}
+.sticker{position:absolute;top:10px;right:10px;background:var(--warn);color:#000;border:2px solid #000;padding:4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;transform:rotate(-6deg);box-shadow:3px 3px 0 #000;}
+.body{padding:20px 22px;}
+.name{font-family:'Anybody',sans-serif;font-weight:900;font-size:22px;text-transform:uppercase;letter-spacing:-.01em;margin-bottom:6px;}
+.desc{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2);line-height:1.55;margin-bottom:16px;min-height:55px;}
+.row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.price{font-family:'Anybody',sans-serif;font-weight:900;font-size:32px;letter-spacing:-.02em;}
+.dur{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;}
+.stock{font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:14px;font-weight:700;}
+.stock.ok{color:var(--acid);}
+.stock.low{color:var(--warn);}
+.btn{width:100%;background:var(--ink);color:#000;border:3px solid #000;padding:13px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-transform:lowercase;letter-spacing:.01em;box-shadow:3px 3px 0 #000;transition:all .12s;}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 #000;}
+.card.featured .btn{background:#000;color:var(--ink);border-color:#000;box-shadow:3px 3px 0 var(--ink);}
+.card.featured .btn:hover{box-shadow:5px 5px 0 var(--ink);}
+.card.featured .desc{color:rgba(255,255,255,0.85);}
+.card.featured .dur{color:rgba(255,255,255,0.7);}
+</style>
+</head>
+<body>
+<div class="bg-dots"></div>
+<div class="wrap">
+  <div class="head">
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div>
+        <div class="brand-name">loja</div>
+        <div class="brand-sub">cargos, vips, beneficios</div>
+      </div>
+    </div>
+    <button class="cart-btn">🛒 carrinho <span class="cart-count">0</span></button>
+  </div>
+
+  <div class="id-box">
+    <div class="id-label">★ seu id do discord</div>
+    <input class="id-input" placeholder="123456789012345678">
+    <div class="id-help">como pegar: modo dev → botão direito no seu nome → copiar id do usuário</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="thumb t1">★ vip pack ★</div>
+      <div class="sticker">hot</div>
+      <div class="body">
+        <div class="name">vip mensal</div>
+        <div class="desc">acesso ao canal VIP, prioridade no suporte, cargo exclusivo, comandos especiais.</div>
+        <div class="stock ok">● 8 em estoque</div>
+        <div class="row">
+          <div class="price">R$49,90</div>
+          <div class="dur">30 dias</div>
+        </div>
+        <button class="btn">+ adicionar ao carrinho</button>
+      </div>
+    </div>
+
+    <div class="card featured">
+      <div class="thumb t2"></div>
+      <div class="sticker" style="background:var(--cyber);">★ -25%</div>
+      <div class="body">
+        <div class="name">vip anual</div>
+        <div class="desc">todos os benefícios VIP por 12 meses com desconto especial. cargo permanente.</div>
+        <div class="stock ok" style="color:var(--acid);">● 12 em estoque</div>
+        <div class="row">
+          <div class="price">R$149,90</div>
+          <div class="dur">1 ano</div>
+        </div>
+        <button class="btn">+ adicionar ao carrinho</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb t3"></div>
+      <div class="body">
+        <div class="name">cargo especial</div>
+        <div class="desc">cargo personalizado com nome e cor exclusivos no servidor. customizável.</div>
+        <div class="stock low">● só 2 restantes</div>
+        <div class="row">
+          <div class="price">R$19,90</div>
+          <div class="dur">permanente</div>
+        </div>
+        <button class="btn">+ adicionar ao carrinho</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
