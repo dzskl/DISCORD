@@ -295,9 +295,23 @@ async function loadProdutos() {
     produtos = await api('/api/products');
     document.getElementById('prod-count').textContent = produtos.filter(p => p.active).length;
     const list = document.getElementById('prod-list');
-    list.innerHTML = produtos.map(p => productCard(p)).join('');
+    list.innerHTML = produtos.length
+      ? produtos.map(p => productCard(p)).join('')
+      : `<div style="grid-column:1/-1;">${emptyBlock('🛍️', 'Nenhum produto cadastrado. Crie seu primeiro produto para começar a vender.', '+ novo produto', "toggleForm('prod-form')")}</div>`;
     populateProdSelect();
+    populateCategorySelect();
   } catch (e) { console.warn('produtos', e.message); }
+}
+
+async function populateCategorySelect() {
+  try {
+    const cats = await api('/api/categories');
+    const sel = document.getElementById('pcategory');
+    if (sel) {
+      sel.innerHTML = '<option value="">sem categoria</option>' +
+        cats.map(c => `<option value="${c.id}">${escapeHtml((c.icon ? c.icon + ' ' : '') + c.name)}</option>`).join('');
+    }
+  } catch {}
 }
 
 function productCard(p) {
@@ -318,7 +332,8 @@ function productCard(p) {
     <div class="prod-footer"><span class="prod-sales">${p.sales_count || 0} vendas</span></div>
     <div class="prod-actions">
       <button class="btn-sm" onclick="editProduto(${p.id})">editar</button>
-      <button class="btn-sm pub" onclick="anunciarProd(${p.id})">anunciar</button>
+      <button class="btn-sm pub" onclick="postarNoDiscord(${p.id})">publicar</button>
+      <button class="btn-sm" onclick="anunciarProd(${p.id})">anunciar</button>
       <button class="btn-sm del" onclick="removerProd(${p.id})">${p.active ? 'desativar' : 'reativar'}</button>
     </div>
   </div>`;
@@ -334,14 +349,28 @@ async function addProduto() {
   const stock = document.getElementById('pstock').value;
   const cost = document.getElementById('pcost').value;
   const accent_color = document.getElementById('pcolor').value;
+  const category_id = document.getElementById('pcategory').value || null;
+  const delivery_type = document.getElementById('pdelivery').value;
+  const hook_url = document.getElementById('phook').value.trim() || null;
   if (!name || !price) return toast('Preencha nome e preco.', 'warn');
   try {
-    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, cost, description, duration, role_id, image_url, stock, accent_color }) });
-    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg', 'pstock', 'pcost'].forEach(id => document.getElementById(id).value = '');
+    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, cost, description, duration, role_id, image_url, stock, accent_color, category_id, delivery_type, hook_url }) });
+    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg', 'pstock', 'pcost', 'phook'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pcolor').value = '#5865f2';
+    document.getElementById('pcategory').value = '';
+    document.getElementById('pdelivery').value = 'automatic';
     toggleForm('prod-form');
     loadProdutos();
     toast('Produto criado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function postarNoDiscord(productId) {
+  const channel = prompt('Em qual canal publicar o produto? (sem #)', 'loja');
+  if (!channel) return;
+  try {
+    const r = await api('/api/products/' + productId + '/post-discord', { method: 'POST', body: JSON.stringify({ channel_name: channel }) });
+    toast(r.edited ? 'Embed atualizado no Discord!' : 'Embed publicado no Discord!', 'ok');
   } catch (e) { toast(e.message, 'err'); }
 }
 
@@ -631,8 +660,11 @@ const PAGE_META = {
   produtos: ['Produtos', 'gerencie seu catálogo'],
   clientes: ['Clientes', 'compradores agregados e LTV'],
   cupons: ['Cupons', 'descontos para a loja'],
+  categorias: ['Categorias', 'organize seu catálogo por seção'],
   anuncios: ['Anúncios', 'envie e agende mensagens'],
   autoreply: ['Auto-respostas', 'gatilhos automáticos do bot'],
+  sorteios: ['Sorteios', 'crie giveaways no Discord'],
+  auditoria: ['Auditoria', 'log de todas ações administrativas'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -657,6 +689,9 @@ function sp(id, el) {
   if (id === 'cupons') loadCupons();
   if (id === 'autoreply') loadAutoReplies();
   if (id === 'anuncios') { populateProdSelect(); loadAnuncios(); }
+  if (id === 'categorias') loadCategorias();
+  if (id === 'sorteios') loadSorteios();
+  if (id === 'auditoria') loadAuditoria();
   if (id === 'config') loadConfig();
 }
 
@@ -1045,6 +1080,114 @@ document.addEventListener('click', (e) => {
   const panel = document.getElementById('notif-panel');
   if (panel && !e.target.closest('.notif-wrap')) panel.classList.remove('show');
 });
+
+// ---------- CATEGORIAS ----------
+async function loadCategorias() {
+  try {
+    const list = await api('/api/categories');
+    setText('cat-count', list.length);
+    const tbody = document.getElementById('cat-tbody');
+    tbody.innerHTML = list.length ? list.map(c => `
+      <tr>
+        <td style="font-size:18px;">${escapeHtml(c.icon || '📦')}</td>
+        <td class="hi">${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.description || '—')}</td>
+        <td>${c.product_count || 0}</td>
+        <td>${c.display_order}</td>
+        <td><button class="btn-sm del" onclick="removerCategoria(${c.id})">remover</button></td>
+      </tr>
+    `).join('') : emptyRow(6, '📂', 'Crie categorias para organizar seu catálogo (ex: VIPs, Skins, Suporte).', '+ nova categoria', "toggleForm('cat-form')");
+  } catch (e) { console.warn('cat', e.message); }
+}
+
+async function addCategoria() {
+  const name = document.getElementById('cat-name').value.trim();
+  const description = document.getElementById('cat-desc').value.trim();
+  const icon = document.getElementById('cat-icon').value.trim();
+  if (!name) return toast('Preencha o nome.', 'warn');
+  try {
+    await api('/api/categories', { method: 'POST', body: JSON.stringify({ name, description, icon }) });
+    ['cat-name', 'cat-desc', 'cat-icon'].forEach(id => document.getElementById(id).value = '');
+    toggleForm('cat-form');
+    loadCategorias();
+    toast('Categoria criada.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function removerCategoria(id) {
+  if (!await confirmAsync('Remover esta categoria? Produtos vinculados ficam sem categoria.')) return;
+  try { await api('/api/categories/' + id, { method: 'DELETE' }); loadCategorias(); toast('Categoria removida.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- SORTEIOS ----------
+async function loadSorteios() {
+  try {
+    const list = await api('/api/giveaways');
+    setText('gv-count', list.length);
+    const tbody = document.getElementById('gv-tbody');
+    tbody.innerHTML = list.length ? list.map(g => {
+      const status = g.ended
+        ? '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">encerrado</span>'
+        : (g.ends_at < Math.floor(Date.now() / 1000) ? '<span class="badge kick">pendente</span>' : '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>');
+      const actions = g.ended ? '' : `<button class="btn-sm" onclick="encerrarSorteio(${g.id})">encerrar agora</button>`;
+      return `<tr>
+        <td class="hi">${escapeHtml(g.prize)}</td>
+        <td>${g.winners_count}</td>
+        <td>${g.entries_count}</td>
+        <td>${formatDate(g.ends_at)}</td>
+        <td>${status}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('') : emptyRow(6, '🎁', 'Nenhum sorteio ainda. Crie um sorteio com prêmio, canal e duração — o bot publica embed com botão de participar.', '+ novo sorteio', "toggleForm('gv-form')");
+  } catch (e) { console.warn('gv', e.message); }
+}
+
+async function addSorteio() {
+  const prize = document.getElementById('gv-prize').value.trim();
+  const channel_name = document.getElementById('gv-channel').value.trim();
+  const winners_count = document.getElementById('gv-winners').value;
+  const duration_minutes = document.getElementById('gv-duration').value;
+  const required_role_id = document.getElementById('gv-role').value.trim() || null;
+  if (!prize || !channel_name || !duration_minutes) return toast('Preencha prêmio, canal e duração.', 'warn');
+  try {
+    await api('/api/giveaways', { method: 'POST', body: JSON.stringify({ prize, channel_name, winners_count, duration_minutes, required_role_id }) });
+    ['gv-prize', 'gv-channel', 'gv-role'].forEach(id => document.getElementById(id).value = '');
+    toggleForm('gv-form');
+    loadSorteios();
+    toast('Sorteio publicado no Discord!', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function encerrarSorteio(id) {
+  if (!await confirmAsync('Encerrar este sorteio agora e sortear os vencedores?')) return;
+  try { await api('/api/giveaways/' + id + '/end', { method: 'POST' }); loadSorteios(); toast('Sorteio encerrado.', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- AUDITORIA ----------
+async function loadAuditoria() {
+  try {
+    const [sum, list] = await Promise.all([
+      api('/api/audit/summary'),
+      api('/api/audit?limit=200')
+    ]);
+    setText('au-today', sum.today);
+    setText('au-top', sum.by_action[0]?.action || '—');
+    const tbody = document.getElementById('au-tbody');
+    tbody.innerHTML = list.length ? list.map(a => {
+      let det = '';
+      try { const o = JSON.parse(a.details || '{}'); det = Object.keys(o).slice(0, 3).map(k => `${k}=${typeof o[k] === 'string' ? o[k].slice(0, 30) : o[k]}`).join(', '); } catch {}
+      return `<tr>
+        <td>${formatTime(a.created_at)}</td>
+        <td class="hi">${escapeHtml(a.actor_name || '?')}</td>
+        <td><span class="badge" style="background:#1a1a1a;color:#aaa;border:1px solid #2a2a2a">${escapeHtml(a.action)}</span></td>
+        <td>${escapeHtml(a.target_type ? a.target_type + '#' + a.target_id : '—')}</td>
+        <td style="font-size:10px;color:#666;">${escapeHtml(det)}</td>
+      </tr>`;
+    }).join('') : emptyRow(5, '📜', 'Nenhuma ação registrada ainda.');
+  } catch (e) { console.warn('audit', e.message); }
+}
 
 bootstrap();
 setInterval(() => { if (document.getElementById('page-geral').classList.contains('show')) loadOverview(); }, 30000);

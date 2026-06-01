@@ -333,6 +333,10 @@ footer.appfoot a:hover{color:var(--text);}
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7"/><path d="M3 7l9 6 9-6"/><circle cx="12" cy="13" r="1.5" fill="currentColor"/></svg>
         cupons
       </div>
+      <div class="ni" data-page="categorias" onclick="sp('categorias',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        categorias
+      </div>
 
       <div class="nav-group">comunicação</div>
       <div class="ni" data-page="anuncios" onclick="sp('anuncios',this)">
@@ -343,8 +347,16 @@ footer.appfoot a:hover{color:var(--text);}
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         auto-respostas
       </div>
+      <div class="ni" data-page="sorteios" onclick="sp('sorteios',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        sorteios
+      </div>
 
       <div class="nav-group">sistema</div>
+      <div class="ni" data-page="auditoria" onclick="sp('auditoria',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+        auditoria
+      </div>
       <div class="ni" data-page="config" onclick="sp('config',this)">
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         configurações
@@ -609,6 +621,18 @@ footer.appfoot a:hover{color:var(--text);}
                 <div class="fgroup"><div class="flabel">cor de destaque</div><input class="inp" id="pcolor" type="color" value="#5865f2" style="height:38px;padding:4px;cursor:pointer;"></div>
               </div>
               <div class="fgroup"><div class="flabel">custo do produto (R$) <small style="color:#444">— para calcular lucro</small></div><input class="inp" id="pcost" type="number" step="0.01" min="0" placeholder="ex: 20.00"></div>
+              <div class="frow">
+                <div class="fgroup"><div class="flabel">categoria</div>
+                  <select class="inp" id="pcategory"><option value="">sem categoria</option></select>
+                </div>
+                <div class="fgroup"><div class="flabel">tipo de entrega</div>
+                  <select class="inp" id="pdelivery">
+                    <option value="automatic">Automática (cargo no compra)</option>
+                    <option value="manual">Manual (abre ticket)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup"><div class="flabel">webhook por produto (opcional)</div><input class="inp" id="phook" placeholder="https://... — chamado a cada venda"></div>
             </div>
           </div>
           <div style="display:flex;gap:10px;margin-top:4px;">
@@ -719,6 +743,86 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <!-- ANÚNCIOS -->
+      <!-- CATEGORIAS -->
+      <div id="page-categorias" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">
+            <span id="cat-count" style="color:#fff">0</span> categorias
+          </div>
+          <button class="btn-w" onclick="toggleForm('cat-form')">+ nova categoria</button>
+        </div>
+        <div id="cat-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">nova categoria</div>
+          <div class="frow">
+            <div class="fgroup"><div class="flabel">nome</div><input class="inp" id="cat-name" placeholder="ex: VIPs"></div>
+            <div class="fgroup"><div class="flabel">ícone (emoji)</div><input class="inp" id="cat-icon" placeholder="💎"></div>
+          </div>
+          <div class="fgroup"><div class="flabel">descrição</div><textarea class="inp" id="cat-desc" placeholder="Sobre essa categoria..."></textarea></div>
+          <div style="display:flex;gap:10px;margin-top:4px;">
+            <button class="btn-w" onclick="addCategoria()">criar</button>
+            <button class="btn-g" onclick="toggleForm('cat-form')">cancelar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ctitle">categorias cadastradas <span class="cbadge">organize seu catálogo</span></div>
+          <table class="vtable">
+            <thead><tr><th>ícone</th><th>nome</th><th>descrição</th><th>produtos</th><th>ordem</th><th></th></tr></thead>
+            <tbody id="cat-tbody"><tr><td colspan="6" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SORTEIOS -->
+      <div id="page-sorteios" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">
+            <span id="gv-count" style="color:#fff">0</span> sorteios criados
+          </div>
+          <button class="btn-w" onclick="toggleForm('gv-form')">+ novo sorteio</button>
+        </div>
+        <div id="gv-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">novo sorteio</div>
+          <div class="frow">
+            <div>
+              <div class="fgroup"><div class="flabel">prêmio</div><input class="inp" id="gv-prize" placeholder="ex: Nitro Mensal"></div>
+              <div class="fgroup"><div class="flabel">canal (sem #)</div><input class="inp" id="gv-channel" placeholder="ex: sorteios"></div>
+            </div>
+            <div>
+              <div class="fgroup"><div class="flabel">quantos vencedores</div><input class="inp" id="gv-winners" type="number" min="1" value="1"></div>
+              <div class="fgroup"><div class="flabel">duração (minutos)</div><input class="inp" id="gv-duration" type="number" min="1" value="60" placeholder="ex: 60"></div>
+            </div>
+          </div>
+          <div class="fgroup"><div class="flabel">cargo obrigatório (opcional)</div><input class="inp" id="gv-role" placeholder="role_id"></div>
+          <div style="display:flex;gap:10px;margin-top:4px;">
+            <button class="btn-w" onclick="addSorteio()">criar e publicar</button>
+            <button class="btn-g" onclick="toggleForm('gv-form')">cancelar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ctitle">sorteios <span class="cbadge">ativos e encerrados</span></div>
+          <table class="vtable">
+            <thead><tr><th>prêmio</th><th>vencedores</th><th>participantes</th><th>termina</th><th>status</th><th></th></tr></thead>
+            <tbody id="gv-tbody"><tr><td colspan="6" style="color:#444">nenhum sorteio.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AUDITORIA -->
+      <div id="page-auditoria" class="page">
+        <div class="mgrid4">
+          <div class="mc"><div class="mlabel">ações 24h</div><div class="mval" id="au-today">—</div></div>
+          <div class="mc dim"><div class="mlabel">ação mais comum</div><div class="mval" id="au-top" style="font-size:13px">—</div></div>
+        </div>
+        <div class="card">
+          <div class="ctitle">log de ações <span class="cbadge">o que cada admin fez</span></div>
+          <div class="search-bar"><input class="search-inp" placeholder="filtrar..." oninput="filterTable('au-tbody', this.value)"></div>
+          <table class="vtable">
+            <thead><tr><th>quando</th><th>quem</th><th>ação</th><th>alvo</th><th>detalhes</th></tr></thead>
+            <tbody id="au-tbody"><tr><td colspan="5" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="page-anuncios" class="page">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
           <div>

@@ -15,20 +15,24 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', requireAuth, (req, res) => {
-  const { name, description, price, cost, role_id, duration, image_url, stock, accent_color } = req.body || {};
+  const { name, description, price, cost, role_id, duration, image_url, stock, accent_color, category_id, delivery_type, hook_url } = req.body || {};
   if (!name || price == null) return res.status(400).json({ error: 'nome e preco obrigatorios' });
   const price_cents = Math.round(parseFloat(price) * 100);
   const cost_cents = cost != null && cost !== '' ? Math.round(parseFloat(cost) * 100) : null;
   if (!(price_cents > 0)) return res.status(400).json({ error: 'preco invalido' });
   if (image_url && !/^https?:\/\//.test(image_url)) return res.status(400).json({ error: 'image_url deve ser uma URL http(s)' });
   if (accent_color && !/^#[0-9a-fA-F]{6}$/.test(accent_color)) return res.status(400).json({ error: 'accent_color deve ser #RRGGBB' });
+  const deliveryT = ['automatic', 'manual'].includes(delivery_type) ? delivery_type : 'automatic';
 
   const initialStock = stock != null && stock !== '' ? parseInt(stock) : null;
   const info = db.prepare(`
-    INSERT INTO products (name,description,price_cents,cost_cents,role_id,duration,image_url,stock,accent_color,active)
-    VALUES (?,?,?,?,?,?,?,?,?,1)
+    INSERT INTO products (name,description,price_cents,cost_cents,role_id,duration,image_url,stock,accent_color,category_id,delivery_type,hook_url,active)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1)
   `).run(name.trim(), (description || '').trim(), price_cents, cost_cents, role_id || null, duration || 'permanent', image_url || null,
-         initialStock, accent_color || null);
+         initialStock, accent_color || null,
+         category_id ? parseInt(category_id) : null, deliveryT, hook_url || null);
+
+  require('../audit').log({ req, action: 'product.create', target_type: 'product', target_id: info.lastInsertRowid, details: { name } });
 
   if (initialStock != null && initialStock > 0) {
     db.prepare('INSERT INTO stock_log (product_id,delta,before_qty,after_qty,reason,actor) VALUES (?,?,?,?,?,?)')
@@ -39,7 +43,7 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
-  const { name, description, price, cost, role_id, duration, image_url, stock, accent_color, active, stock_reason } = req.body || {};
+  const { name, description, price, cost, role_id, duration, image_url, stock, accent_color, active, stock_reason, category_id, delivery_type, hook_url } = req.body || {};
   const existing = db.prepare('SELECT * FROM products WHERE id=?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'nao encontrado' });
   if (image_url && !/^https?:\/\//.test(image_url)) return res.status(400).json({ error: 'image_url deve ser uma URL http(s)' });
@@ -61,6 +65,9 @@ router.put('/:id', requireAuth, async (req, res) => {
       image_url = COALESCE(?, image_url),
       stock = COALESCE(?, stock),
       accent_color = COALESCE(?, accent_color),
+      category_id = COALESCE(?, category_id),
+      delivery_type = COALESCE(?, delivery_type),
+      hook_url = COALESCE(?, hook_url),
       active = COALESCE(?, active)
     WHERE id=?
   `).run(
@@ -73,9 +80,14 @@ router.put('/:id', requireAuth, async (req, res) => {
     image_url ?? null,
     stock !== undefined ? newStock : null,
     accent_color ?? null,
+    category_id !== undefined ? (category_id ? parseInt(category_id) : null) : null,
+    delivery_type ?? null,
+    hook_url ?? null,
     active != null ? (active ? 1 : 0) : null,
     req.params.id
   );
+
+  require('../audit').log({ req, action: 'product.update', target_type: 'product', target_id: req.params.id, details: req.body });
 
   if (stockChanged) {
     const delta = (newStock ?? 0) - (existing.stock ?? 0);
@@ -89,6 +101,22 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 
   res.json(db.prepare('SELECT * FROM products WHERE id=?').get(req.params.id));
+});
+
+router.post('/:id/post-discord', requireAuth, async (req, res) => {
+  const { channel_name } = req.body || {};
+  if (!channel_name) return res.status(400).json({ error: 'channel_name obrigatorio' });
+  const product = db.prepare('SELECT * FROM products WHERE id=?').get(req.params.id);
+  if (!product) return res.status(404).json({ error: 'nao encontrado' });
+  try {
+    const bot = require('../bot');
+    const { messageId, edited } = await bot.postProductToChannel(product, channel_name);
+    db.prepare('UPDATE products SET discord_channel=?, discord_message_id=? WHERE id=?')
+      .run(channel_name.replace(/^#/, ''), messageId, req.params.id);
+    res.json({ ok: true, message_id: messageId, edited });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.get('/:id/stock-log', requireAuth, (req, res) => {

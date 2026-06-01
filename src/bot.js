@@ -142,6 +142,11 @@ client.on('guildMemberAdd', async (m) => {
     }
   }
 
+  // Auto-role de membro
+  if (cfg.auto_role_on_join) {
+    await m.roles.add(cfg.auto_role_on_join).catch(() => {});
+  }
+
   // Re-grant active paid roles (caso o cara tenha comprado, saiu e voltou)
   try {
     const activeSales = db.prepare(`
@@ -320,6 +325,25 @@ client.on('messageCreate', async (msg) => {
 
 // ---------- SLASH COMMANDS ----------
 client.on('interactionCreate', async (i) => {
+  // Botoes de sorteio
+  if (i.isButton() && i.customId.startsWith('giveaway_')) {
+    const giveawayId = parseInt(i.customId.split('_')[1]);
+    const g = db.prepare('SELECT * FROM giveaways WHERE id=?').get(giveawayId);
+    if (!g) return i.reply({ content: 'Sorteio nao encontrado.', ephemeral: true });
+    if (g.ended) return i.reply({ content: '❌ Sorteio ja foi encerrado.', ephemeral: true });
+    if (g.required_role_id && !i.member.roles.cache.has(g.required_role_id)) {
+      return i.reply({ content: `❌ Voce precisa do cargo <@&${g.required_role_id}> para participar.`, ephemeral: true });
+    }
+    try {
+      db.prepare('INSERT INTO giveaway_entries (giveaway_id,discord_id,discord_tag) VALUES (?,?,?)')
+        .run(giveawayId, i.user.id, i.user.tag);
+      return i.reply({ content: '✅ Voce esta participando!', ephemeral: true });
+    } catch (e) {
+      if (e.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') return i.reply({ content: '❌ Voce ja esta participando.', ephemeral: true });
+      throw e;
+    }
+  }
+
   if (!i.isChatInputCommand()) return;
 
   const cfg = getConfig();
@@ -587,10 +611,135 @@ async function closeTicketChannel(channelId) {
   if (ch) await ch.delete().catch(() => {});
 }
 
+async function openDeliveryTicket(discordId, discordTag, summary, saleId) {
+  const { ChannelType, PermissionFlagsBits: P } = require('discord.js');
+  const guild = await fetchGuild();
+  const cfg = getConfig();
+  const categoryName = cfg.manual_delivery_category || 'entregas';
+
+  let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName.toLowerCase());
+  if (!category) category = await guild.channels.create({ name: categoryName, type: ChannelType.GuildCategory });
+
+  const username = (discordTag || discordId).split('#')[0].toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 80);
+  const channel = await guild.channels.create({
+    name: `entrega-${username}-${saleId}`.slice(0, 90),
+    type: ChannelType.GuildText,
+    parent: category.id,
+    permissionOverwrites: [
+      { id: guild.id, deny: [P.ViewChannel] },
+      { id: discordId, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.AttachFiles] },
+      { id: guild.members.me.id, allow: [P.ViewChannel, P.SendMessages, P.ManageChannels] }
+    ],
+    topic: `Entrega da venda #${saleId} — ${summary}`
+  });
+
+  await channel.send({
+    content: `📦 <@${discordId}>, obrigado pela compra!\n\nUm membro da equipe vai te entregar **${summary}** aqui em breve. Por favor aguarde.`,
+    allowedMentions: { users: [discordId] }
+  });
+  db.prepare('INSERT INTO tickets (discord_id,discord_tag,channel_id,subject,ticket_type) VALUES (?,?,?,?,?)')
+    .run(discordId, discordTag, channel.id, `Entrega venda #${saleId}: ${summary}`, 'Entrega');
+  return channel.id;
+}
+
 async function notifySaleChannel(text) {
   const cfg = getConfig();
   if (cfg.alert_sales !== '1') return;
   await forwardToChannel(cfg.sales_channel, text);
+}
+
+async function findChannelIdByName(name) {
+  const guild = await fetchGuild();
+  const ch = guild.channels.cache.find(c => c.name === name && c.isTextBased && c.isTextBased());
+  return ch?.id || null;
+}
+
+async function postProductToChannel(product, channelName) {
+  const guild = await fetchGuild();
+  const clean = channelName.replace(/^#/, '');
+  const ch = guild.channels.cache.find(c => c.name === clean && c.isTextBased && c.isTextBased());
+  if (!ch) throw new Error('canal nao encontrado');
+
+  const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+  const color = product.accent_color ? parseInt(product.accent_color.slice(1), 16) : 0x5865f2;
+  const eb = new EmbedBuilder()
+    .setTitle(product.name)
+    .setDescription(product.description || '​')
+    .setColor(color)
+    .addFields(
+      { name: '💰 Preco', value: 'R$ ' + (product.price_cents / 100).toFixed(2).replace('.', ','), inline: true },
+      { name: '📦 Estoque', value: product.stock != null ? `${product.stock}` : 'ilimitado', inline: true }
+    );
+  if (product.image_url) eb.setImage(product.image_url);
+
+  const url = `${publicUrl()}/loja.html`;
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setLabel('🛒 Comprar').setStyle(ButtonStyle.Link).setURL(url)
+  );
+
+  if (product.discord_message_id && product.discord_channel === clean) {
+    try {
+      const oldMsg = await ch.messages.fetch(product.discord_message_id);
+      await oldMsg.edit({ embeds: [eb], components: [row] });
+      return { messageId: oldMsg.id, edited: true };
+    } catch {}
+  }
+  const msg = await ch.send({ embeds: [eb], components: [row] });
+  return { messageId: msg.id, edited: false };
+}
+
+async function postGiveaway(giveawayId) {
+  const g = db.prepare('SELECT * FROM giveaways WHERE id=?').get(giveawayId);
+  if (!g) throw new Error('sorteio nao encontrado');
+  const guild = await fetchGuild();
+  const ch = await guild.channels.fetch(g.channel_id);
+  if (!ch) throw new Error('canal nao encontrado');
+
+  const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+  const eb = new EmbedBuilder()
+    .setTitle('🎉 SORTEIO')
+    .setDescription(`**${g.prize}**\n\nClica no botao abaixo para participar!`)
+    .setColor(0xff5fc1)
+    .addFields(
+      { name: 'Vencedores', value: String(g.winners_count), inline: true },
+      { name: 'Termina', value: `<t:${g.ends_at}:R>`, inline: true }
+    )
+    .setFooter({ text: 'Boa sorte!' });
+  if (g.required_role_id) eb.addFields({ name: 'Requisito', value: `<@&${g.required_role_id}>` });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`giveaway_${giveawayId}`).setLabel('🎉 Participar').setStyle(ButtonStyle.Primary)
+  );
+  const msg = await ch.send({ embeds: [eb], components: [row] });
+  return msg.id;
+}
+
+async function endGiveaway(giveawayId, manual = false) {
+  const g = db.prepare('SELECT * FROM giveaways WHERE id=? AND ended=0').get(giveawayId);
+  if (!g) return;
+  const entries = db.prepare('SELECT * FROM giveaway_entries WHERE giveaway_id=?').all(giveawayId);
+  const winners = [];
+  const pool = [...entries];
+  for (let i = 0; i < Math.min(g.winners_count, pool.length); i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    winners.push(pool.splice(idx, 1)[0]);
+  }
+  db.prepare('UPDATE giveaways SET ended=1, winners=? WHERE id=?')
+    .run(JSON.stringify(winners.map(w => w.discord_id)), giveawayId);
+
+  const guild = await fetchGuild();
+  const ch = await guild.channels.fetch(g.channel_id).catch(() => null);
+  if (ch) {
+    const txt = winners.length
+      ? `🎉 Parabens ${winners.map(w => `<@${w.discord_id}>`).join(', ')}! Voces ganharam **${g.prize}**!${manual ? ' _(encerrado manualmente)_' : ''}`
+      : `❌ Sorteio de **${g.prize}** terminou sem participantes.`;
+    await ch.send({ content: txt, allowedMentions: { users: winners.map(w => w.discord_id) } });
+    if (g.message_id) {
+      const msg = await ch.messages.fetch(g.message_id).catch(() => null);
+      if (msg) await msg.edit({ components: [] }).catch(() => {});
+    }
+  }
+  logEvent({ type: 'anuncio', message: `Sorteio "${g.prize}" terminou — ${winners.length} vencedor(es)` });
 }
 
 async function announceRestock(product, stock) {
@@ -662,5 +811,7 @@ module.exports = {
   client, start, fetchGuild, getStats, listChannels, listRoles, listMembers,
   sendAnnouncement, banMember, kickMember, timeoutMember, grantRole, revokeRole,
   notifySaleChannel, dmUser, dmAdmins, sendDailyReport, broadcast,
-  openTicketChannel, closeTicketChannel, announceRestock
+  openTicketChannel, closeTicketChannel, announceRestock,
+  findChannelIdByName, postProductToChannel,
+  postGiveaway, endGiveaway, openDeliveryTicket
 };

@@ -72,6 +72,9 @@ function buildApp() {
   app.use('/api/auto-replies', require('./routes/auto_replies'));
   app.use('/api/wishlist', require('./routes/wishlist'));
   app.use('/api/tickets', require('./routes/tickets'));
+  app.use('/api/categories', require('./routes/categories'));
+  app.use('/api/giveaways', require('./routes/giveaways'));
+  app.use('/api/audit', require('./routes/audit'));
   app.use('/api/checkout', checkoutRouter);
 
   app.use(express.static(path.join(__dirname, '..', 'public')));

@@ -174,7 +174,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const valueStr = `R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')}`;
       const tagsBought = [];
 
-      // Decrementar estoque + dar cargos por item do carrinho
+      // Decrementar estoque + dar cargos / abrir ticket de entrega manual
+      let hasManualDelivery = false;
       for (const item of cartItems) {
         const p = db.prepare('SELECT * FROM products WHERE id=?').get(item.id);
         if (!p) continue;
@@ -184,6 +185,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           db.prepare('INSERT INTO stock_log (product_id,delta,before_qty,after_qty,reason,actor) VALUES (?,?,?,?,?,?)')
             .run(p.id, -item.q, p.stock, newQty, `venda #${sale.id}`, sale.discord_tag || sale.discord_id);
         }
+        if (p.delivery_type === 'manual') hasManualDelivery = true;
         if (p.role_id) {
           try {
             const tag = await bot.grantRole(meta.discord_id || sale.discord_id, p.role_id);
@@ -195,6 +197,21 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             logEvent({ type: 'erro', message: `Falha ao dar cargo de ${p.name}: ${e.message}`, discord_id: sale.discord_id });
           }
         }
+        // Hook por produto
+        if (p.hook_url) {
+          fetch(p.hook_url, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'purchase', sale_id: sale.id, product: p, buyer: { discord_id: sale.discord_id, tag: sale.discord_tag }, quantity: item.q })
+          }).catch(() => {});
+        }
+      }
+
+      if (hasManualDelivery) {
+        try {
+          const summary = cartItems.length === 1 ? firstProduct.name : `${cartItems.length} itens`;
+          const channelId = await bot.openDeliveryTicket?.(sale.discord_id, sale.discord_tag, summary, sale.id);
+          if (channelId) db.prepare(`UPDATE sales SET delivery_status='pending' WHERE id=?`).run(sale.id);
+        } catch (e) { require('../logger').warn({ err: e }, 'falha ao abrir ticket de entrega'); }
       }
 
       const summary = cartItems.length > 1 ? `${cartItems.length} itens` : (firstProduct?.name || 'produto');

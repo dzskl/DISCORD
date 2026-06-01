@@ -133,9 +133,15 @@ ensureColumn('products', 'image_url', 'TEXT');
 ensureColumn('products', 'stock', 'INTEGER');
 ensureColumn('products', 'accent_color', 'TEXT');
 ensureColumn('products', 'cost_cents', 'INTEGER');
+ensureColumn('products', 'category_id', 'INTEGER');
+ensureColumn('products', 'delivery_type', "TEXT DEFAULT 'automatic'");
+ensureColumn('products', 'hook_url', 'TEXT');
+ensureColumn('products', 'discord_channel', 'TEXT');
+ensureColumn('products', 'discord_message_id', 'TEXT');
 ensureColumn('coupons', 'min_amount_cents', 'INTEGER');
 ensureColumn('sales', 'expiry_warned', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('sales', 'cart_items', 'TEXT');
+ensureColumn('sales', 'delivery_status', 'TEXT');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS wishlist (
@@ -172,6 +178,51 @@ CREATE TABLE IF NOT EXISTS stock_log (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_stock_log_product ON stock_log(product_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS giveaways (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id TEXT NOT NULL,
+  message_id TEXT,
+  prize TEXT NOT NULL,
+  winners_count INTEGER NOT NULL DEFAULT 1,
+  required_role_id TEXT,
+  ends_at INTEGER NOT NULL,
+  ended INTEGER NOT NULL DEFAULT 0,
+  winners TEXT,
+  created_by TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_giveaways_active ON giveaways(ended, ends_at);
+
+CREATE TABLE IF NOT EXISTS giveaway_entries (
+  giveaway_id INTEGER NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
+  discord_id TEXT NOT NULL,
+  discord_tag TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  PRIMARY KEY (giveaway_id, discord_id)
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id TEXT,
+  actor_name TEXT,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  details TEXT,
+  ip TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
 `);
 
 const defaultConfig = {
@@ -205,7 +256,12 @@ const defaultConfig = {
   ticket_welcome_message: 'Olá {user}! Como podemos te ajudar?\n\nDescreva sua dúvida ou problema e um membro da equipe vai responder em breve.\n\nClique no botão abaixo para fechar quando resolver.',
   ticket_types: '[{"name":"Suporte","role_id":null,"description":"Ajuda com produtos, instalação, erros ou problemas"},{"name":"Resgate","role_id":null,"description":"Resgate seu produto após a compra"}]',
   dm_admin_on_sale: '1',
-  restock_announce: '1'
+  restock_announce: '1',
+  manual_delivery_category: 'entregas',
+  role_verified: '',
+  role_customer: '',
+  role_member: '',
+  auto_role_on_join: ''
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);

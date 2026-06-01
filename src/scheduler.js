@@ -5,10 +5,20 @@ const logger = require('./logger');
 
 function start() {
   cron.schedule('* * * * *', runScheduledAnnouncements);
+  cron.schedule('* * * * *', endDueGiveaways);
   cron.schedule('*/5 * * * *', expireRoles);
   cron.schedule('0 * * * *', sendExpiryWarnings);
   cron.schedule('0 * * * *', maybeSendDailyReport);
   logger.info('scheduler iniciado');
+}
+
+async function endDueGiveaways() {
+  const now = Math.floor(Date.now() / 1000);
+  const due = db.prepare(`SELECT id FROM giveaways WHERE ended=0 AND ends_at <= ?`).all(now);
+  for (const g of due) {
+    try { await bot.endGiveaway(g.id); }
+    catch (e) { logger.warn({ err: e, gid: g.id }, 'falha ao encerrar sorteio'); }
+  }
 }
 
 async function runScheduledAnnouncements() {
