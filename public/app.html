@@ -361,6 +361,10 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <div class="nav-group">sistema</div>
+      <div class="ni" data-page="equipe" onclick="sp('equipe',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        equipe
+      </div>
       <div class="ni" data-page="credenciais" onclick="sp('credenciais',this)">
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         credenciais
@@ -884,6 +888,48 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <!-- AUDITORIA -->
+      <!-- EQUIPE -->
+      <div id="page-equipe" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;">
+            <span id="team-count" style="color:#fff">0</span> usuários no painel
+          </div>
+          <button class="btn-w" onclick="toggleForm('team-form')" id="team-add-btn" style="display:none;">+ convidar usuário</button>
+        </div>
+
+        <div id="team-form" style="display:none;background:#111;border:1px solid #fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">convidar usuário</div>
+          <div class="frow">
+            <div class="fgroup"><div class="flabel">email</div><input class="inp" id="inv-email" type="email" placeholder="usuario@exemplo.com"></div>
+            <div class="fgroup"><div class="flabel">papel</div>
+              <select class="inp" id="inv-role"><option value="admin">admin</option><option value="member">member (read-only)</option></select>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Vai gerar uma senha temporária — copie e mande pro usuário com segurança (DM, password manager etc).</div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-w" onclick="convidarUsuario()">criar acesso</button>
+            <button class="btn-g" onclick="toggleForm('team-form')">cancelar</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">usuários do painel <span class="cbadge">acesso ao dashboard</span></div>
+          <table class="vtable">
+            <thead><tr><th>nome</th><th>email</th><th>papel</th><th>última atividade</th><th></th></tr></thead>
+            <tbody id="team-tbody"><tr><td colspan="5" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="ctitle">trocar minha senha</div>
+          <div class="frow">
+            <div class="fgroup"><div class="flabel">senha atual</div><input class="inp" id="pwd-current" type="password" placeholder="senha atual"></div>
+            <div class="fgroup"><div class="flabel">nova senha</div><input class="inp" id="pwd-new" type="password" placeholder="mínimo 8 caracteres"></div>
+          </div>
+          <button class="btn-w" onclick="trocarSenha()">salvar nova senha</button>
+        </div>
+      </div>
+
       <!-- CREDENCIAIS -->
       <div id="page-credenciais" class="page">
         <div style="background:#0e1a2e;border:1px solid #1a3a5e;border-radius:8px;padding:14px 16px;margin-bottom:18px;color:#a0bfff;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;">

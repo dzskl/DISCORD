@@ -10,6 +10,7 @@
   },
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.5.0",
     "connect-sqlite3": "^0.9.15",
     "cors": "^2.8.5",

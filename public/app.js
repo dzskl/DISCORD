@@ -91,15 +91,26 @@ async function bootstrap() {
   try { me = await fetch('/auth/me', { credentials: 'include' }).then(r => r.json()); }
   catch { location.href = '/login.html'; return; }
 
-  if (!me.authenticated || !me.admin) { location.href = '/login.html?login=denied'; return; }
+  if (!me.authenticated) { location.href = '/login.html'; return; }
+  if (!me.admin) { location.href = '/login.html?login=denied'; return; }
 
-  document.getElementById('me-tag').textContent = me.user.username;
-  if (me.user.avatar) {
+  window.__me = me.user;
+  const u = me.user;
+  const name = u.display_name || u.username || u.email?.split('@')[0] || 'usuário';
+  document.getElementById('me-tag').textContent = name;
+  const avatar = u.discord_avatar || u.avatar;
+  if (avatar) {
     const av = document.getElementById('bot-avatar');
     av.textContent = '';
-    av.style.backgroundImage = `url(${me.user.avatar})`;
+    av.style.backgroundImage = `url(${avatar})`;
     av.style.backgroundSize = 'cover';
+  } else {
+    const av = document.getElementById('bot-avatar');
+    av.textContent = (name[0] || 'U').toUpperCase();
   }
+  // Mostra papel (owner/admin) embaixo do nome
+  const meta = document.querySelector('.sidebar-foot .foot-meta');
+  if (meta) meta.textContent = (u.role || 'admin') + ' · ' + (u.email ? u.email.split('@')[0] : '');
 
   loadOverview();
   loadProdutos();
@@ -669,6 +680,7 @@ const PAGE_META = {
   invites: ['Invite Tracker', 'quem trouxe quem para o servidor'],
   auditoria: ['Auditoria', 'log de todas ações administrativas'],
   credenciais: ['Credenciais', 'tokens e chaves API — encriptadas no banco'],
+  equipe: ['Equipe', 'usuários com acesso ao painel'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -699,6 +711,7 @@ function sp(id, el) {
   if (id === 'invites') loadInvites();
   if (id === 'auditoria') loadAuditoria();
   if (id === 'credenciais') loadCredenciais();
+  if (id === 'equipe') loadEquipe();
   if (id === 'config') loadConfig();
 }
 
@@ -1251,6 +1264,81 @@ async function loadInvites() {
       </tr>
     `).join('') : emptyRow(5, '🔗', 'Ainda sem registros de entradas.');
   } catch (e) { console.warn('invites', e.message); }
+}
+
+// ---------- EQUIPE ----------
+async function loadEquipe() {
+  try {
+    const users = await api('/auth/users');
+    setText('team-count', users.length);
+    const me = window.__me;
+    const isOwner = me?.role === 'owner';
+    const btn = document.getElementById('team-add-btn');
+    if (btn) btn.style.display = isOwner ? '' : 'none';
+
+    const tbody = document.getElementById('team-tbody');
+    tbody.innerHTML = users.length ? users.map(u => `
+      <tr>
+        <td class="hi">${escapeHtml(u.display_name || u.email.split('@')[0])}${me?.id === u.id ? ' <span style="color:#666;font-size:10px;">(você)</span>' : ''}</td>
+        <td>${escapeHtml(u.email)}</td>
+        <td>${roleBadge(u.role)}</td>
+        <td>${u.last_login_at ? formatDate(u.last_login_at) : '<span style="color:#444">nunca</span>'}</td>
+        <td>${isOwner && me?.id !== u.id && u.active ? `<button class="btn-sm del" onclick="desativarUsuario(${u.id})">remover</button>` : (!u.active ? '<span style="color:#ff5f5f;font-size:10px;">inativo</span>' : '')}</td>
+      </tr>
+    `).join('') : emptyRow(5, '👥', 'Nenhum usuário ainda.');
+  } catch (e) { console.warn('equipe', e.message); }
+}
+
+function roleBadge(role) {
+  const map = {
+    owner: '<span class="badge" style="background:#1f1900;color:#ffdf5f;border:1px solid #3a3000">👑 owner</span>',
+    admin: '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">admin</span>',
+    member: '<span class="badge" style="background:#1a1a1a;color:#888;border:1px solid #2a2a2a">member</span>'
+  };
+  return map[role] || role;
+}
+
+async function convidarUsuario() {
+  const email = document.getElementById('inv-email').value.trim();
+  const role = document.getElementById('inv-role').value;
+  if (!email) return toast('Preencha o email.', 'warn');
+  try {
+    const r = await api('/auth/invite', { method: 'POST', body: JSON.stringify({ email, role }) });
+    document.getElementById('inv-email').value = '';
+    toggleForm('team-form');
+    loadEquipe();
+    openModal(`
+      <div class="modal-title">acesso criado<button class="modal-close" onclick="closeModal()">×</button></div>
+      <div style="font-size:13px;color:#aaa;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">Email: <b style="color:#fff">${escapeHtml(r.email)}</b></div>
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;">senha temporária — copie e envie pelo canal seguro</div>
+      <input class="inp" value="${escapeAttr(r.temporary_password)}" readonly onclick="this.select()" style="font-family:'IBM Plex Mono',monospace;">
+      <div style="font-size:11px;color:#ffdf5f;background:#1f1900;border:1px solid #3a3000;padding:10px;border-radius:6px;margin-top:14px;font-family:'IBM Plex Mono',monospace;">⚠️ peça pro usuário trocar a senha no primeiro login na aba "Equipe".</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button class="btn-w" onclick="closeModal()">ok, copiei</button>
+      </div>
+    `);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function desativarUsuario(id) {
+  if (!await confirmAsync('Desativar este usuário? Ele perde acesso ao painel.')) return;
+  try {
+    await api('/auth/users/' + id, { method: 'DELETE' });
+    toast('Usuário desativado.', 'ok');
+    loadEquipe();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function trocarSenha() {
+  const current_password = document.getElementById('pwd-current').value;
+  const new_password = document.getElementById('pwd-new').value;
+  if (!new_password || new_password.length < 8) return toast('Senha mínima de 8 caracteres.', 'warn');
+  try {
+    await api('/auth/password', { method: 'PUT', body: JSON.stringify({ current_password, new_password }) });
+    document.getElementById('pwd-current').value = '';
+    document.getElementById('pwd-new').value = '';
+    toast('Senha alterada.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- CREDENCIAIS ----------

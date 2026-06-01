@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar conta — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Syne',sans-serif;background:#0a0a0a;color:#e8e8e8;overflow-x:hidden;}
+.bg{position:fixed;inset:0;background:
+  radial-gradient(circle at 20% 20%, rgba(88,101,242,0.12), transparent 50%),
+  radial-gradient(circle at 80% 80%, rgba(95,255,95,0.05), transparent 50%),
+  #0a0a0a;}
+.grid-bg{position:fixed;inset:0;background-image:
+  linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+background-size:40px 40px;}
+.wrap{position:relative;z-index:1;min-height:100%;display:flex;align-items:center;justify-content:center;padding:30px 20px;}
+.card{width:100%;max-width:460px;background:#0e0e0e;border:1px solid #1f1f1f;border-radius:14px;padding:38px 36px;box-shadow:0 30px 80px rgba(0,0,0,0.6),0 0 60px rgba(88,101,242,0.05);}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+.logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#5865f2,#404eed);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;letter-spacing:.04em;}
+.brand-name{font-size:18px;font-weight:700;color:#fff;letter-spacing:.04em;}
+h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3;}
+.sub{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#666;margin-bottom:24px;line-height:1.5;}
+.field{margin-bottom:14px;}
+.flabel{font-size:10px;font-family:'IBM Plex Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600;}
+.inp{width:100%;background:#0a0a0a;border:1px solid #222;border-radius:7px;padding:11px 14px;font-size:13px;font-family:'IBM Plex Mono',monospace;color:#fff;outline:none;transition:border-color .12s;}
+.inp:focus{border-color:#5865f2;}
+.hint{font-size:10px;color:#444;margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+.btn{width:100%;background:#5865f2;color:#fff;border:none;padding:13px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:background .15s;}
+.btn:hover{background:#4752c4;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.alert{padding:10px 12px;border-radius:6px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:16px;display:none;line-height:1.5;}
+.alert.err{background:#1f0a0a;color:#ff5f5f;border:1px solid #3a1010;display:block;}
+.alert.info{background:#0a1525;color:#a0bfff;border:1px solid #1a3a5e;display:block;}
+.foot-link{font-size:12.5px;color:#666;text-align:center;margin-top:18px;font-family:'IBM Plex Mono',monospace;}
+.foot-link a{color:#5865f2;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid-bg"></div>
+<div class="wrap">
+  <div class="card">
+    <div class="brand">
+      <div class="logo">B</div>
+      <div class="brand-name">BotDash</div>
+    </div>
+
+    <h1 id="title">Criar conta</h1>
+    <div class="sub" id="subtitle">cria sua conta pra acessar o painel.</div>
+
+    <div id="alert" class="alert"></div>
+
+    <form onsubmit="doRegister(event)">
+      <div class="field">
+        <div class="flabel">nome</div>
+        <input class="inp" id="display_name" type="text" required placeholder="seu nome ou apelido" autocomplete="name">
+      </div>
+      <div class="field">
+        <div class="flabel">email</div>
+        <input class="inp" id="email" type="email" required placeholder="voce@exemplo.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <div class="flabel">senha</div>
+        <input class="inp" id="password" type="password" required minlength="8" placeholder="••••••••" autocomplete="new-password">
+        <div class="hint">mínimo 8 caracteres</div>
+      </div>
+      <button class="btn" type="submit" id="btn">criar conta →</button>
+    </form>
+
+    <div class="foot-link">
+      já tem conta? <a href="/login.html">entrar →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const a = document.getElementById('alert');
+
+// Detecta se eh primeiro usuario
+fetch('/auth/me').then(r => r.json()).then(d => {
+  if (d.has_users === false) {
+    document.getElementById('title').textContent = 'Crie a conta de owner';
+    document.getElementById('subtitle').textContent = 'nenhum usuário cadastrado — você vai ser o dono do painel.';
+    a.className = 'alert info';
+    a.textContent = '👑 essa será a conta principal (owner) com permissão total.';
+  } else if (d.authenticated && d.admin) {
+    location.href = '/app.html';
+  }
+}).catch(() => {});
+
+async function doRegister(e) {
+  e.preventDefault();
+  const display_name = document.getElementById('display_name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = 'criando...';
+  try {
+    const r = await fetch('/auth/register', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, display_name })
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      a.className = 'alert err'; a.textContent = '✗ ' + (d.error || 'erro ao registrar');
+      btn.disabled = false; btn.textContent = 'criar conta →';
+      return;
+    }
+    location.href = '/app.html';
+  } catch {
+    a.className = 'alert err'; a.textContent = 'erro de conexão';
+    btn.disabled = false; btn.textContent = 'criar conta →';
+  }
+}
+</script>
+</body>
+</html>

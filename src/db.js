@@ -260,6 +260,22 @@ CREATE TABLE IF NOT EXISTS credentials (
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   updated_by TEXT
 );
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT,
+  role TEXT NOT NULL DEFAULT 'admin',
+  discord_id TEXT UNIQUE,
+  discord_tag TEXT,
+  discord_avatar TEXT,
+  display_name TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  last_login_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id);
 `);
 
 const defaultConfig = {

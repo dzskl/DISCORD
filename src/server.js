@@ -61,6 +61,9 @@ function buildApp() {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Carrega req.appUser (email/senha OU Discord OAuth) antes das rotas
+  app.use(require('./middleware/auth').loadUser);
+
   app.use('/api/setup', require('./routes/setup'));
   app.use('/api/credentials', require('./routes/credentials'));
   app.use('/auth', require('./routes/auth'));
