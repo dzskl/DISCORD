@@ -70,6 +70,8 @@ function buildApp() {
   app.use('/api/coupons', require('./routes/coupons'));
   app.use('/api/customers', require('./routes/customers'));
   app.use('/api/auto-replies', require('./routes/auto_replies'));
+  app.use('/api/wishlist', require('./routes/wishlist'));
+  app.use('/api/tickets', require('./routes/tickets'));
   app.use('/api/checkout', checkoutRouter);
 
   app.use(express.static(path.join(__dirname, '..', 'public')));

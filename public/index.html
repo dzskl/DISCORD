@@ -604,6 +604,10 @@ footer.appfoot a:hover{color:var(--text);}
                 </select>
               </div>
               <div class="fgroup"><div class="flabel">URL da imagem (opcional)</div><input class="inp" id="pimg" placeholder="https://..."></div>
+              <div class="frow">
+                <div class="fgroup"><div class="flabel">estoque (vazio = ilimitado)</div><input class="inp" id="pstock" type="number" min="0" placeholder="ex: 10"></div>
+                <div class="fgroup"><div class="flabel">cor de destaque</div><input class="inp" id="pcolor" type="color" value="#5865f2" style="height:38px;padding:4px;cursor:pointer;"></div>
+              </div>
             </div>
           </div>
           <div style="display:flex;gap:10px;margin-top:4px;">
@@ -694,6 +698,7 @@ footer.appfoot a:hover{color:var(--text);}
             </div>
             <div>
               <div class="fgroup"><div class="flabel">limite de usos (opcional)</div><input class="inp" id="cup-max" type="number" min="1" placeholder="ilimitado se vazio"></div>
+              <div class="fgroup"><div class="flabel">valor minimo R$ (opcional)</div><input class="inp" id="cup-min" type="number" step="0.01" min="0" placeholder="ex: 50.00"></div>
               <div class="fgroup"><div class="flabel">expira em (opcional)</div><input class="inp" id="cup-exp" type="datetime-local"></div>
             </div>
           </div>
@@ -706,7 +711,7 @@ footer.appfoot a:hover{color:var(--text);}
         <div class="card">
           <div class="ctitle">cupons cadastrados</div>
           <table class="vtable">
-            <thead><tr><th>código</th><th>desconto</th><th>usos</th><th>limite</th><th>expira</th><th>status</th><th></th></tr></thead>
+            <thead><tr><th>código</th><th>desconto</th><th>usos</th><th>limite</th><th>mínimo</th><th>expira</th><th>status</th><th></th></tr></thead>
             <tbody id="cup-tbody"><tr><td colspan="7" style="color:#444">nenhum cupom ainda.</td></tr></tbody>
           </table>
         </div>
@@ -902,6 +907,16 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfgitem"><span class="cfgtxt">alertas de ban</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">alertas de venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">DM ao comprador</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">repassar taxa do Stripe ao cliente</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem" style="display:flex;align-items:center;gap:10px;">
+                <span class="cfgtxt">taxa estimada</span>
+                <input class="inp" id="fee-percent" type="number" step="0.1" placeholder="4.0" style="width:60px;text-align:center;">
+                <span style="color:#444;font-size:11px;">%</span>
+                <span style="color:#444;font-size:11px;">+</span>
+                <span style="color:#444;font-size:11px;">R$</span>
+                <input class="inp" id="fee-fixed" type="number" step="1" placeholder="39" style="width:60px;text-align:center;">
+                <span style="color:#444;font-size:11px;">cents fixos</span>
+              </div>
               <div class="cfgitem"><span class="cfgtxt">relatório diário</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">hora do relatório</span><input class="inp" id="daily-hour" type="number" min="0" max="23" placeholder="9" style="width:60px;text-align:center;"></div>
               <div class="cfgitem" style="flex-direction:column;align-items:stretch;gap:6px;">

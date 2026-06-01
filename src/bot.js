@@ -61,7 +61,9 @@ async function registerCommands() {
       .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false)),
     new SlashCommandBuilder().setName('ban').setDescription('Bane um usuario').setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
       .addUserOption(o => o.setName('usuario').setDescription('Usuario').setRequired(true))
-      .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
+      .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false)),
+    new SlashCommandBuilder().setName('ticket').setDescription('Abre um ticket de suporte')
+      .addStringOption(o => o.setName('assunto').setDescription('Sobre o que e seu ticket').setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -400,6 +402,21 @@ client.on('interactionCreate', async (i) => {
         await i.reply({ content: `✅ ${user.tag} banido.`, ephemeral: true });
         break;
       }
+      case 'ticket': {
+        const assunto = i.options.getString('assunto');
+        const existing = db.prepare(`SELECT * FROM tickets WHERE discord_id=? AND status='open'`).get(i.user.id);
+        if (existing) return i.reply({ content: `❌ Voce ja tem um ticket aberto: <#${existing.channel_id}>`, ephemeral: true });
+        try {
+          const channel = await openTicketChannel(i.guild, i.user, assunto);
+          db.prepare('INSERT INTO tickets (discord_id,discord_tag,channel_id,subject) VALUES (?,?,?,?)')
+            .run(i.user.id, i.user.tag, channel.id, assunto);
+          await i.reply({ content: `✅ Ticket aberto: <#${channel.id}>`, ephemeral: true });
+        } catch (e) {
+          logger.error({ err: e }, 'erro ao abrir ticket');
+          await i.reply({ content: '❌ Nao consegui criar o canal. Verifique se o bot tem permissao "Manage Channels".', ephemeral: true });
+        }
+        break;
+      }
     }
   } catch (e) {
     logger.error({ err: e, cmd: i.commandName }, 'erro em slash command');
@@ -508,6 +525,41 @@ async function revokeRole(userId, roleId) {
   await member.roles.remove(roleId).catch(() => {});
 }
 
+async function openTicketChannel(guild, user, subject) {
+  const { ChannelType, PermissionFlagsBits: P } = require('discord.js');
+  const cfg = getConfig();
+  const categoryName = cfg.ticket_category || 'tickets';
+
+  let category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName.toLowerCase());
+  if (!category) {
+    category = await guild.channels.create({ name: categoryName, type: ChannelType.GuildCategory });
+  }
+
+  const channelName = `ticket-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90) || 'ticket';
+  const channel = await guild.channels.create({
+    name: channelName,
+    type: ChannelType.GuildText,
+    parent: category.id,
+    permissionOverwrites: [
+      { id: guild.id, deny: [P.ViewChannel] },
+      { id: user.id, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.AttachFiles] },
+      { id: guild.members.me.id, allow: [P.ViewChannel, P.SendMessages, P.ManageChannels, P.ManageMessages] }
+    ],
+    topic: subject
+  });
+
+  const welcome = (cfg.ticket_welcome_message || 'Ola {user}!').replace(/\{user\}/g, `<@${user.id}>`).replace(/\{subject\}/g, subject);
+  await channel.send({ content: welcome, allowedMentions: { users: [user.id] } });
+  await channel.send(`**Assunto:** ${subject}\n\nUse \`/closeticket\` ou peça pra um admin fechar quando resolver.`);
+  return channel;
+}
+
+async function closeTicketChannel(channelId) {
+  const guild = await fetchGuild();
+  const ch = await guild.channels.fetch(channelId).catch(() => null);
+  if (ch) await ch.delete().catch(() => {});
+}
+
 async function notifySaleChannel(text) {
   const cfg = getConfig();
   if (cfg.alert_sales !== '1') return;
@@ -562,5 +614,5 @@ function start() {
 module.exports = {
   client, start, fetchGuild, getStats, listChannels, listRoles, listMembers,
   sendAnnouncement, banMember, kickMember, timeoutMember, grantRole, revokeRole,
-  notifySaleChannel, dmUser, sendDailyReport, broadcast
+  notifySaleChannel, dmUser, sendDailyReport, broadcast, openTicketChannel, closeTicketChannel
 };

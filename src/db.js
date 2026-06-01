@@ -130,7 +130,35 @@ function ensureColumn(table, column, type) {
   }
 }
 ensureColumn('products', 'image_url', 'TEXT');
+ensureColumn('products', 'stock', 'INTEGER');
+ensureColumn('products', 'accent_color', 'TEXT');
+ensureColumn('coupons', 'min_amount_cents', 'INTEGER');
 ensureColumn('sales', 'expiry_warned', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('sales', 'cart_items', 'TEXT');
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS wishlist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  discord_id TEXT NOT NULL,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  notified INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  UNIQUE(discord_id, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_wishlist_product ON wishlist(product_id);
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  discord_id TEXT NOT NULL,
+  discord_tag TEXT,
+  channel_id TEXT,
+  subject TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  closed_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+`);
 
 const defaultConfig = {
   bot_name: 'BotDash',
@@ -155,7 +183,12 @@ const defaultConfig = {
   link_allowlist: 'discord.com,discord.gg,tenor.com,giphy.com',
   dm_purchase: '1',
   rules_text: '1. Respeite todos os membros.\n2. Nada de spam ou flood.\n3. Nada de NSFW fora dos canais apropriados.\n4. Sem links suspeitos.',
-  daily_report_hour: '9'
+  daily_report_hour: '9',
+  pass_fees_to_customer: '0',
+  fee_percent: '4',
+  fee_fixed_cents: '39',
+  ticket_category: 'tickets',
+  ticket_welcome_message: 'Olá {user}! Como podemos te ajudar?\n\nDescreva sua dúvida ou problema e um membro da equipe vai responder em breve.\n\nClique no botão abaixo para fechar quando resolver.'
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);

@@ -273,13 +273,15 @@ async function loadVendas() {
         : t.status === 'pending'
         ? `<span class="badge kick">pendente</span>`
         : `<span class="badge ban">${t.status}</span>`;
-      const action = t.status === 'paid' ? `<button class="btn-sm del" onclick="refundSale(${t.id})">reembolsar</button>` : '';
+      const actions = [];
+      if (t.status === 'paid') actions.push(`<button class="btn-sm del" onclick="refundSale(${t.id})">reembolsar</button>`);
+      if (t.product_id) actions.push(`<button class="btn-sm pub" onclick="quickAddStock(${t.product_id})">+ estoque</button>`);
       return `<tr><td>${formatTime(t.created_at)}</td>
         <td class="hi">${escapeHtml(t.discord_tag || t.discord_id)}</td>
         <td>${escapeHtml(t.product_name || '—')}</td>
         <td class="${cls}">R$${(t.amount_cents / 100).toFixed(2).replace('.', ',')}</td>
         <td>${badge}</td>
-        <td>${action}</td></tr>`;
+        <td>${actions.join(' ')}</td></tr>`;
     }).join('') : emptyRow(6, '💸', 'Nenhuma venda ainda. Crie um produto e divulgue sua loja para começar.', 'ver produtos', "sp('produtos',document.querySelector('[data-page=produtos]'))");
   } catch (e) { console.warn('vendas', e.message); }
 }
@@ -326,10 +328,13 @@ async function addProduto() {
   const duration = document.getElementById('pdur').value;
   const role_id = document.getElementById('pcargo').value.trim();
   const image_url = document.getElementById('pimg').value.trim();
+  const stock = document.getElementById('pstock').value;
+  const accent_color = document.getElementById('pcolor').value;
   if (!name || !price) return toast('Preencha nome e preco.', 'warn');
   try {
-    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, description, duration, role_id, image_url }) });
-    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg'].forEach(id => document.getElementById(id).value = '');
+    await api('/api/products', { method: 'POST', body: JSON.stringify({ name, price, description, duration, role_id, image_url, stock, accent_color }) });
+    ['pnome', 'ppreco', 'pdesc', 'pcargo', 'pimg', 'pstock'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('pcolor').value = '#5865f2';
     toggleForm('prod-form');
     loadProdutos();
     toast('Produto criado.', 'ok');
@@ -344,19 +349,25 @@ function editProduto(id) {
     <div class="fgroup"><div class="flabel">nome</div><input class="inp" id="ep-name" value="${escapeAttr(p.name)}"></div>
     <div class="fgroup"><div class="flabel">preço (R$)</div><input class="inp" id="ep-price" type="number" step="0.01" value="${(p.price_cents / 100).toFixed(2)}"></div>
     <div class="fgroup"><div class="flabel">descrição</div><textarea class="inp" id="ep-desc">${escapeHtml(p.description || '')}</textarea></div>
-    <div class="fgroup"><div class="flabel">cargo</div><input class="inp" id="ep-role" value="${escapeAttr(p.role_id || '')}"></div>
-    <div class="fgroup"><div class="flabel">duração</div>
-      <select class="inp" id="ep-dur">
-        ${['permanent', '1d', '7d', '30d', '1y'].map(d => `<option value="${d}" ${p.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
-      </select>
+    <div class="fgroup"><div class="flabel">cargo (role_id)</div><input class="inp" id="ep-role" value="${escapeAttr(p.role_id || '')}"></div>
+    <div class="frow">
+      <div class="fgroup"><div class="flabel">duração</div>
+        <select class="inp" id="ep-dur">
+          ${['permanent', '1d', '7d', '30d', '1y'].map(d => `<option value="${d}" ${p.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fgroup"><div class="flabel">status</div>
+        <select class="inp" id="ep-active">
+          <option value="1" ${p.active ? 'selected' : ''}>ativo</option>
+          <option value="0" ${!p.active ? 'selected' : ''}>inativo</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fgroup"><div class="flabel">estoque (vazio = ilimitado)</div><input class="inp" id="ep-stock" type="number" min="0" value="${p.stock ?? ''}"></div>
+      <div class="fgroup"><div class="flabel">cor de destaque</div><input class="inp" id="ep-color" type="color" value="${p.accent_color || '#5865f2'}" style="height:38px;padding:4px;cursor:pointer;"></div>
     </div>
     <div class="fgroup"><div class="flabel">URL da imagem</div><input class="inp" id="ep-img" value="${escapeAttr(p.image_url || '')}"></div>
-    <div class="fgroup"><div class="flabel">status</div>
-      <select class="inp" id="ep-active">
-        <option value="1" ${p.active ? 'selected' : ''}>ativo</option>
-        <option value="0" ${!p.active ? 'selected' : ''}>inativo</option>
-      </select>
-    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
       <button class="btn-g" onclick="closeModal()">cancelar</button>
       <button class="btn-w" onclick="saveProduto(${id})">salvar</button>
@@ -365,6 +376,7 @@ function editProduto(id) {
 }
 
 async function saveProduto(id) {
+  const stockVal = document.getElementById('ep-stock').value;
   const payload = {
     name: document.getElementById('ep-name').value.trim(),
     price: document.getElementById('ep-price').value,
@@ -372,6 +384,8 @@ async function saveProduto(id) {
     role_id: document.getElementById('ep-role').value.trim() || null,
     duration: document.getElementById('ep-dur').value,
     image_url: document.getElementById('ep-img').value.trim() || null,
+    stock: stockVal === '' ? null : parseInt(stockVal),
+    accent_color: document.getElementById('ep-color').value,
     active: document.getElementById('ep-active').value === '1'
   };
   try {
@@ -379,6 +393,22 @@ async function saveProduto(id) {
     closeModal();
     loadProdutos();
     toast('Produto atualizado.', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function quickAddStock(productId) {
+  const p = produtos.find(x => x.id === productId);
+  if (!p) return;
+  const qty = prompt('Quantas unidades adicionar ao estoque de ' + p.name + '?', '10');
+  if (!qty) return;
+  const n = parseInt(qty);
+  if (!(n > 0)) return toast('Quantidade invalida.', 'err');
+  const newStock = (p.stock || 0) + n;
+  try {
+    await api('/api/products/' + productId, { method: 'PUT', body: JSON.stringify({ stock: newStock }) });
+    toast(`+${n} ao estoque de ${p.name}.`, 'ok');
+    loadProdutos();
+    if (document.getElementById('page-vendas').classList.contains('show')) loadVendas();
   } catch (e) { toast(e.message, 'err'); }
 }
 
@@ -512,7 +542,7 @@ async function loadConfig() {
     });
     const wm = document.getElementById('welcome-msg');
     if (wm && cfg.welcome_message != null) wm.value = cfg.welcome_message;
-    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour' };
+    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents' };
     for (const [id, k] of Object.entries(extras)) {
       const el = document.getElementById(id);
       if (el && cfg[k] != null) el.value = cfg[k];
@@ -532,7 +562,7 @@ async function saveConfig() {
   });
   const wm = document.getElementById('welcome-msg');
   if (wm) payload.welcome_message = wm.value;
-  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour' };
+  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents' };
   for (const [id, k] of Object.entries(extras)) {
     const el = document.getElementById(id);
     if (el) payload[k] = el.value;
@@ -559,7 +589,8 @@ function configKeyFromLabel(label) {
     'alertas de ban': 'alert_bans',
     'alertas de venda': 'alert_sales',
     'relatório diário': 'daily_report',
-    'DM ao comprador': 'dm_purchase'
+    'DM ao comprador': 'dm_purchase',
+    'repassar taxa do Stripe ao cliente': 'pass_fees_to_customer'
   };
   return m[label.trim()] || null;
 }
@@ -815,11 +846,12 @@ async function loadCupons() {
         <td class="gr">-${c.discount_percent}%</td>
         <td>${c.uses}</td>
         <td>${c.max_uses ?? '∞'}</td>
+        <td>${c.min_amount_cents ? 'R$ ' + (c.min_amount_cents / 100).toFixed(2).replace('.', ',') : '—'}</td>
         <td>${c.expires_at ? formatDate(c.expires_at) : 'sem expiração'}</td>
         <td>${c.active ? '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>' : '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">inativo</span>'}</td>
         <td>${c.active ? `<button class="btn-sm del" onclick="removerCupom(${c.id})">desativar</button>` : ''}</td>
       </tr>
-    `).join('') : emptyRow(7, '🎟️', 'Nenhum cupom cadastrado. Crie códigos de desconto para promover sua loja.', '+ novo cupom', "toggleForm('cup-form')");
+    `).join('') : emptyRow(8, '🎟️', 'Nenhum cupom cadastrado. Crie códigos de desconto para promover sua loja.', '+ novo cupom', "toggleForm('cup-form')");
   } catch (e) { console.warn('cupons', e.message); }
 }
 
@@ -827,17 +859,16 @@ async function addCupom() {
   const code = document.getElementById('cup-code').value.trim();
   const discount_percent = document.getElementById('cup-pct').value.trim();
   const max_uses = document.getElementById('cup-max').value.trim() || null;
+  const min_amount = document.getElementById('cup-min').value.trim() || null;
   const expVal = document.getElementById('cup-exp').value;
   const expires_at = expVal ? Math.floor(new Date(expVal).getTime() / 1000) : null;
   if (!code || !discount_percent) return toast('Preencha código e desconto.', 'warn');
   try {
-    await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, expires_at }) });
-    document.getElementById('cup-code').value = '';
-    document.getElementById('cup-pct').value = '';
-    document.getElementById('cup-max').value = '';
-    document.getElementById('cup-exp').value = '';
+    await api('/api/coupons', { method: 'POST', body: JSON.stringify({ code, discount_percent, max_uses, min_amount, expires_at }) });
+    ['cup-code', 'cup-pct', 'cup-max', 'cup-min', 'cup-exp'].forEach(id => document.getElementById(id).value = '');
     toggleForm('cup-form');
     loadCupons();
+    toast('Cupom criado.', 'ok');
   } catch (e) { toast(e.message, 'err'); }
 }
 
