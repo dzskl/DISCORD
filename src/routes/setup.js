@@ -71,6 +71,20 @@ function buildChecks() {
       ok: !!env.STRIPE_WEBHOOK_SECRET && env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_'),
       required: false,
       description: 'Pra confirmar pagamentos. Cria webhook em dashboard.stripe.com/webhooks apontando para PUBLIC_URL/api/checkout/webhook.'
+    },
+    misticpay_client_id: {
+      key: 'MISTICPAY_CLIENT_ID',
+      label: 'MisticPay Client ID',
+      ok: !!env.MISTICPAY_CLIENT_ID,
+      required: false,
+      description: 'Gateway PIX nacional (taxa menor que Stripe). Pega em misticpay.com → API → Credenciais.'
+    },
+    misticpay_client_secret: {
+      key: 'MISTICPAY_CLIENT_SECRET',
+      label: 'MisticPay Client Secret',
+      ok: !!env.MISTICPAY_CLIENT_SECRET,
+      required: false,
+      description: 'Par do Client ID. Configure também o webhook em MisticPay apontando para PUBLIC_URL/api/checkout/pix/webhook.'
     }
   };
 }
@@ -116,6 +130,16 @@ router.post('/test/discord', async (req, res) => {
     res.json({ ok: true, bot: { username: bot.username, id: bot.id, avatar: bot.avatar }, guild: guild ? { name: guild.name, id: guild.id, members: guild.approximate_member_count } : null });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/test/misticpay', async (req, res) => {
+  try {
+    const mp = require('../services/misticpay');
+    await mp.testConnection();
+    res.json({ ok: true, gateway: 'MisticPay', message: 'credenciais validadas' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

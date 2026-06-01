@@ -9,6 +9,20 @@ function stripe() {
   return require('stripe')(process.env.STRIPE_SECRET_KEY);
 }
 
+router.get('/gateway', (req, res) => {
+  const { getConfig } = require('../db');
+  const cfg = getConfig();
+  const mp = require('../services/misticpay');
+  const choice = cfg.payment_gateway || 'stripe';
+  const stripeOk = !!process.env.STRIPE_SECRET_KEY;
+  const mpOk = mp.isConfigured();
+  // Se o gateway configurado nao esta disponivel, faz fallback
+  let active = choice;
+  if (choice === 'misticpay' && !mpOk && stripeOk) active = 'stripe';
+  if (choice === 'stripe' && !stripeOk && mpOk) active = 'misticpay';
+  res.json({ gateway: active, stripe_available: stripeOk, misticpay_available: mpOk });
+});
+
 router.get('/products', (req, res) => {
   const rows = db.prepare(`
     SELECT id,name,description,price_cents,duration,image_url,stock,accent_color

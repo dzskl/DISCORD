@@ -1083,6 +1083,12 @@ footer.appfoot a:hover{color:var(--text);}
               <div class="cfglbl">notificações</div>
               <div class="cfgitem"><span class="cfgtxt">alertas de ban</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">alertas de venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="cfgitem"><span class="cfgtxt">gateway de pagamento</span>
+                <select class="inp" id="payment-gateway" style="width:180px;">
+                  <option value="stripe">Stripe (cartão + PIX)</option>
+                  <option value="misticpay">MisticPay (PIX BR)</option>
+                </select>
+              </div>
               <div class="cfgitem"><span class="cfgtxt">DM ao comprador</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">DM ao admin a cada venda</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
               <div class="cfgitem"><span class="cfgtxt">anúncio automático de reposição</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>

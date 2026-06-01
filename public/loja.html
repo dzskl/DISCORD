@@ -308,20 +308,39 @@ async function checkout() {
   if (!cart.length) return;
   const btn = document.getElementById('checkout-btn');
   btn.disabled = true; btn.textContent = 'redirecionando...';
+
+  const gateway = window.__gateway || 'stripe';
+  const endpoint = gateway === 'misticpay' ? '/api/checkout/pix/create' : '/api/checkout/create-session';
+  const payload = {
+    items: cart.map(it => ({ product_id: it.id, quantity: it.q })),
+    discord_id,
+    coupon_code: appliedCoupon?.code || null,
+    affiliate_code: affiliateCode
+  };
+
   try {
-    const r = await fetch('/api/checkout/create-session', {
+    const r = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: cart.map(it => ({ product_id: it.id, quantity: it.q })),
-        discord_id,
-        coupon_code: appliedCoupon?.code || null,
-        affiliate_code: affiliateCode
-      })
+      body: JSON.stringify(payload)
     }).then(r => r.json());
-    if (r.url) location.href = r.url;
-    else { flash(r.error || 'Erro ao iniciar pagamento.', 'err'); btn.disabled = false; btn.textContent = 'finalizar compra'; }
+
+    if (gateway === 'misticpay') {
+      if (r.transaction_id) {
+        sessionStorage.setItem('pix_qr_' + r.transaction_id, r.qr_code_base64 || '');
+        sessionStorage.setItem('pix_code_' + r.transaction_id, r.copy_paste || '');
+        location.href = `/checkout-pix.html?tx=${encodeURIComponent(r.transaction_id)}&amount=${r.amount_cents}`;
+        return;
+      }
+    } else {
+      if (r.url) { location.href = r.url; return; }
+    }
+    flash(r.error || 'Erro ao iniciar pagamento.', 'err');
+    btn.disabled = false; btn.textContent = 'finalizar compra';
   } catch { flash('Erro de conexao.', 'err'); btn.disabled = false; btn.textContent = 'finalizar compra'; }
 }
+
+// Detecta gateway disponivel
+fetch('/api/checkout/gateway').then(r => r.json()).then(d => { window.__gateway = d.gateway || 'stripe'; }).catch(() => {});
 
 function flash(msg, type) {
   alertEl.className = 'alert ' + type;

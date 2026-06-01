@@ -579,7 +579,7 @@ async function loadConfig() {
     });
     const wm = document.getElementById('welcome-msg');
     if (wm && cfg.welcome_message != null) wm.value = cfg.welcome_message;
-    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale' };
+    const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale', 'payment-gateway': 'payment_gateway' };
     for (const [id, k] of Object.entries(extras)) {
       const el = document.getElementById(id);
       if (el && cfg[k] != null) el.value = cfg[k];
@@ -607,7 +607,7 @@ async function saveConfig() {
   });
   const wm = document.getElementById('welcome-msg');
   if (wm) payload.welcome_message = wm.value;
-  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale' };
+  const extras = { 'forbidden-words': 'forbidden_words', 'link-allowlist': 'link_allowlist', 'rules-text': 'rules_text', 'webhook-url': 'webhook_url', 'daily-hour': 'daily_report_hour', 'fee-percent': 'fee_percent', 'fee-fixed': 'fee_fixed_cents', 'invite-channel': 'invite_join_channel', 'invite-join-msg': 'invite_join_message', 'invite-leave-msg': 'invite_leave_message', 'currency-code': 'currency_code', 'locale': 'locale', 'payment-gateway': 'payment_gateway' };
   for (const [id, k] of Object.entries(extras)) {
     const el = document.getElementById(id);
     if (el) payload[k] = el.value;

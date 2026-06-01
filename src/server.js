@@ -29,6 +29,9 @@ function buildApp() {
   // Webhook do Stripe precisa do raw body — registra ANTES do express.json
   app.use('/api/checkout/webhook', checkoutRouter);
 
+  // MisticPay aceita JSON normal, sem signature
+  app.use('/api/checkout/pix', require('./routes/checkout_misticpay'));
+
   app.use(express.json({ limit: '128kb' }));
   app.use(express.urlencoded({ extended: true, limit: '128kb' }));
 

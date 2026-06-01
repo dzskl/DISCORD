@@ -197,12 +197,26 @@ const HOWTO = {
     <li>Eventos: <code>checkout.session.completed</code> e <code>charge.refunded</code></li>
     <li>Após criar, clica nele → <b>Signing secret</b> → Reveal → copia (começa com <code>whsec_</code>)</li>
     <li>Cola em <code>STRIPE_WEBHOOK_SECRET</code></li>
+  </ol></div>`,
+  misticpay_client_id: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Cria conta em <a href="https://misticpay.com" target="_blank">misticpay.com</a></li>
+    <li>Vai em <b>API</b> ou <b>Credenciais</b> no painel</li>
+    <li>Copia o <b>Client ID</b> (header <code>ci</code> nas requisições)</li>
+    <li>Cola em <code>MISTICPAY_CLIENT_ID</code></li>
+    <li>💡 MisticPay tem PIX nativo brasileiro, taxa menor que Stripe</li>
+  </ol></div>`,
+  misticpay_client_secret: `<div class="howto"><div class="howto-title">como obter</div><ol>
+    <li>Mesma página da MisticPay → copia o <b>Client Secret</b> (header <code>cs</code>)</li>
+    <li>Cola em <code>MISTICPAY_CLIENT_SECRET</code></li>
+    <li>Configura o webhook lá: URL <code>{PUBLIC_URL}/api/checkout/pix/webhook</code></li>
+    <li>⚠️ Nunca exponha o Client Secret no frontend</li>
   </ol></div>`
 };
 
 const TESTS = {
   discord_token: { endpoint: '/api/setup/test/discord', label: 'testar conexão com Discord' },
   stripe_secret: { endpoint: '/api/setup/test/stripe', label: 'testar conexão com Stripe' },
+  misticpay_client_secret: { endpoint: '/api/setup/test/misticpay', label: 'testar conexão com MisticPay' },
   public_url: { endpoint: '/api/setup/test/oauth', label: 'gerar URL de redirect' }
 };
 
@@ -223,7 +237,7 @@ async function loadStatus(animate) {
     }
 
     const req = ['session', 'public_url', 'discord_token', 'discord_client_id', 'discord_client_secret', 'discord_guild_id', 'admin_ids'];
-    const opt = ['stripe_secret', 'stripe_webhook'];
+    const opt = ['stripe_secret', 'stripe_webhook', 'misticpay_client_id', 'misticpay_client_secret'];
     document.getElementById('required-steps').innerHTML = req.map(k => renderStep(k, data.checks[k])).join('');
     document.getElementById('optional-steps').innerHTML = opt.map(k => renderStep(k, data.checks[k])).join('');
 
