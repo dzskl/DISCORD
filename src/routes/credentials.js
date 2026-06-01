@@ -15,7 +15,9 @@ const CREDENTIAL_KEYS = [
   { key: 'STRIPE_SECRET_KEY', label: 'Stripe Secret Key', group: 'stripe', secret: true, validate: v => v.startsWith('sk_') || 'deve comecar com sk_' },
   { key: 'STRIPE_WEBHOOK_SECRET', label: 'Stripe Webhook Secret', group: 'stripe', secret: true, validate: v => v.startsWith('whsec_') || 'deve comecar com whsec_' },
   { key: 'MISTICPAY_CLIENT_ID', label: 'MisticPay Client ID', group: 'misticpay', secret: false },
-  { key: 'MISTICPAY_CLIENT_SECRET', label: 'MisticPay Client Secret', group: 'misticpay', secret: true }
+  { key: 'MISTICPAY_CLIENT_SECRET', label: 'MisticPay Client Secret', group: 'misticpay', secret: true },
+  { key: 'STRIPE_PRICE_PRO_MONTHLY', label: 'Stripe Price ID — Plano Pro Mensal', group: 'billing', secret: false, validate: v => v.startsWith('price_') || 'deve começar com price_' },
+  { key: 'STRIPE_BILLING_WEBHOOK_SECRET', label: 'Stripe Billing Webhook Secret', group: 'billing', secret: true, validate: v => v.startsWith('whsec_') || 'deve começar com whsec_' }
 ];
 
 router.get('/', requireAuth, (req, res) => {

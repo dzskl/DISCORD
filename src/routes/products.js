@@ -15,6 +15,11 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', requireAuth, (req, res) => {
+  const { withinLimit } = require('../plans');
+  const count = db.prepare('SELECT COUNT(*) AS c FROM products WHERE active=1').get().c;
+  if (!withinLimit('max_products', count)) {
+    return res.status(402).json({ error: 'limite do plano atingido — faça upgrade pra Pro', upgrade_required: true, feature: 'max_products' });
+  }
   const { name, description, price, cost, role_id, duration, image_url, stock, accent_color, category_id, delivery_type, hook_url } = req.body || {};
   if (!name || price == null) return res.status(400).json({ error: 'nome e preco obrigatorios' });
   const price_cents = Math.round(parseFloat(price) * 100);

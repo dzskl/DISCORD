@@ -32,6 +32,10 @@ function buildApp() {
   // MisticPay aceita JSON normal, sem signature
   app.use('/api/checkout/pix', require('./routes/checkout_misticpay'));
 
+  // Webhook do Stripe billing tambem precisa do raw body
+  const billingRouter = require('./routes/billing');
+  app.use('/api/billing/webhook', billingRouter);
+
   app.use(express.json({ limit: '128kb' }));
   app.use(express.urlencoded({ extended: true, limit: '128kb' }));
 
@@ -66,6 +70,7 @@ function buildApp() {
 
   app.use('/api/setup', require('./routes/setup'));
   app.use('/api/credentials', require('./routes/credentials'));
+  app.use('/api/billing', billingRouter);
   app.use('/auth', require('./routes/auth'));
   app.use('/api/stats', require('./routes/stats'));
   app.use('/api/members', require('./routes/members'));

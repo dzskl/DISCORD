@@ -1,14 +1,16 @@
 const express = require('express');
 const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { requireFeature, requireLimit, hasFeature } = require('../plans');
 
 const router = express.Router();
+router.use(requireAuth);
 
 router.get('/', requireAuth, (req, res) => {
   res.json(db.prepare('SELECT * FROM auto_replies ORDER BY active DESC, created_at DESC').all());
 });
 
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireFeature('autoreply'), (req, res) => {
   const { trigger, match_type, response } = req.body || {};
   if (!trigger || !response) return res.status(400).json({ error: 'trigger e response obrigatorios' });
   const mt = ['contains', 'equals', 'starts_with'].includes(match_type) ? match_type : 'contains';

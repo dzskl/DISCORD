@@ -15,6 +15,11 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 router.post('/', requireAuth, (req, res) => {
+  const { withinLimit } = require('../plans');
+  const count = db.prepare('SELECT COUNT(*) AS c FROM affiliates WHERE active=1').get().c;
+  if (!withinLimit('max_affiliates', count)) {
+    return res.status(402).json({ error: 'sistema de afiliados é do plano Pro', upgrade_required: true, feature: 'max_affiliates' });
+  }
   const { discord_id, discord_tag, code, commission_percent } = req.body || {};
   if (!discord_id || !code) return res.status(400).json({ error: 'discord_id e code obrigatorios' });
   if (!/^\d{16,20}$/.test(String(discord_id))) return res.status(400).json({ error: 'discord_id invalido' });

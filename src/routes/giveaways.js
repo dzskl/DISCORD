@@ -14,6 +14,11 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 router.post('/', requireAuth, async (req, res) => {
+  const { withinLimit } = require('../plans');
+  const count = db.prepare('SELECT COUNT(*) AS c FROM giveaways WHERE ended=0').get().c;
+  if (!withinLimit('max_giveaways_active', count)) {
+    return res.status(402).json({ error: 'sorteios são do plano Pro', upgrade_required: true, feature: 'max_giveaways_active' });
+  }
   const { channel_name, prize, winners_count, duration_minutes, required_role_id } = req.body || {};
   if (!channel_name || !prize || !duration_minutes) return res.status(400).json({ error: 'channel_name, prize e duration_minutes obrigatorios' });
 

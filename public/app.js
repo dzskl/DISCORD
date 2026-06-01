@@ -3,9 +3,31 @@ const api = (path, opts = {}) =>
   fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts })
     .then(async r => {
       if (r.status === 401) { location.href = '/login.html'; throw new Error('auth'); }
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        if (d.upgrade_required) {
+          showUpgradePrompt(d.error || 'feature do plano Pro');
+          throw new Error(d.error || 'plano Pro necessário');
+        }
+        throw new Error(d.error || r.statusText);
+      }
       return r.json();
     });
+
+function showUpgradePrompt(msg) {
+  openModal(`
+    <div class="modal-title">★ feature do plano Pro<button class="modal-close" onclick="closeModal()">×</button></div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:18px;font-family:'IBM Plex Mono',monospace;line-height:1.6;">${escapeHtml(msg)}</div>
+    <div style="background:linear-gradient(135deg,#1a1530,#0e0e2e);border:1px solid #4a3a8e;border-radius:10px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Pro · R$47/mês</div>
+      <div style="font-size:12px;color:#aaa;font-family:'IBM Plex Mono',monospace;line-height:1.6;">produtos ilimitados, afiliados, sorteios, auto-respostas, MisticPay, white-label e mais</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn-g" onclick="closeModal()">agora não</button>
+      <button class="btn-w" style="background:#8b6fff;" onclick="closeModal();sp('plano',document.querySelector('[data-page=plano]'))">ver planos</button>
+    </div>
+  `);
+}
 
 function toast(msg, type = 'ok', ms = 3500) {
   const w = document.getElementById('toast-wrap');
@@ -115,6 +137,42 @@ async function bootstrap() {
   loadOverview();
   loadProdutos();
   loadCanais();
+  loadPlanBadge();
+
+  // Detecta retorno do checkout Stripe
+  const params = new URLSearchParams(location.search);
+  if (params.get('billing') === 'success') {
+    toast('✓ Assinatura ativada — bem-vindo ao Pro!', 'ok', 5000);
+    setTimeout(() => location.href = '/app.html', 2000);
+  } else if (params.get('billing') === 'cancel') {
+    toast('Checkout cancelado. Você ainda está no plano Free.', 'warn', 4000);
+  }
+}
+
+async function loadPlanBadge() {
+  try {
+    const info = await api('/api/billing/me');
+    window.__plan_id = info.plan_id;
+    const brand = document.querySelector('.brand');
+    if (brand && !document.getElementById('plan-badge-side')) {
+      const tag = brand.querySelector('.brand-tag');
+      const b = document.createElement('span');
+      b.id = 'plan-badge-side';
+      b.style.cssText = 'font-size:9px;font-family:\"IBM Plex Mono\",monospace;padding:2px 7px;border-radius:20px;margin-left:6px;letter-spacing:.06em;font-weight:700;';
+      if (info.plan_id === 'pro') {
+        b.style.background = '#1a1530';
+        b.style.color = '#b9a8ff';
+        b.style.border = '1px solid #4a3a8e';
+        b.textContent = '★ PRO';
+      } else {
+        b.style.background = '#1a1a1a';
+        b.style.color = '#888';
+        b.style.border = '1px solid #2a2a2a';
+        b.textContent = 'FREE';
+      }
+      if (tag) tag.parentNode.insertBefore(b, tag); else brand.appendChild(b);
+    }
+  } catch {}
 }
 
 // ---------- VISAO GERAL ----------
@@ -681,6 +739,7 @@ const PAGE_META = {
   auditoria: ['Auditoria', 'log de todas ações administrativas'],
   credenciais: ['Credenciais', 'tokens e chaves API — encriptadas no banco'],
   equipe: ['Equipe', 'usuários com acesso ao painel'],
+  plano: ['Plano', 'sua assinatura e limites de uso'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -712,6 +771,7 @@ function sp(id, el) {
   if (id === 'auditoria') loadAuditoria();
   if (id === 'credenciais') loadCredenciais();
   if (id === 'equipe') loadEquipe();
+  if (id === 'plano') loadPlano();
   if (id === 'config') loadConfig();
 }
 
@@ -1264,6 +1324,138 @@ async function loadInvites() {
       </tr>
     `).join('') : emptyRow(5, '🔗', 'Ainda sem registros de entradas.');
   } catch (e) { console.warn('invites', e.message); }
+}
+
+// ---------- PLANO ----------
+async function loadPlano() {
+  try {
+    const info = await api('/api/billing/me');
+    window.__plan = info;
+    renderPlanBanner(info);
+    renderPlanCurrent(info);
+    renderPlanCompare(info);
+  } catch (e) { console.warn('plano', e.message); }
+}
+
+function renderPlanBanner(info) {
+  const banner = document.getElementById('plan-banner');
+  const sub = info.my_subscription;
+  if (info.plan_id === 'free') {
+    banner.style.display = 'block';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:18px;justify-content:space-between;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#8888c8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">você está no plano free</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">Desbloqueie tudo no Pro por R$47/mês</div>
+          <div style="font-size:13px;color:#aaa;font-family:'IBM Plex Mono',monospace;">produtos ilimitados, afiliados, sorteios, auto-respostas, white-label</div>
+        </div>
+        ${info.is_owner ? `<button class="btn-w" style="background:#8b6fff;padding:13px 24px;" onclick="upgradePro()">★ fazer upgrade</button>` : `<div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">peça pro owner (${escapeHtml(info.owner_email || '')}) assinar</div>`}
+      </div>`;
+  } else if (sub?.status === 'past_due') {
+    banner.style.display = 'block';
+    banner.style.background = 'linear-gradient(135deg,#1f1900,#0e0e2e)';
+    banner.style.borderColor = '#3a3000';
+    banner.innerHTML = `<div style="color:#ffdf5f;font-family:'IBM Plex Mono',monospace;font-size:13px;"><b>⚠️ Pagamento atrasado</b> — atualize o cartão pelo portal antes que sua assinatura seja cancelada.</div>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function renderPlanCurrent(info) {
+  const sub = info.my_subscription;
+  const plan = info.plan;
+  const planBadge = info.plan_id === 'pro'
+    ? '<span class="badge" style="background:#1a1530;color:#b9a8ff;border:1px solid #4a3a8e;padding:4px 10px;font-size:11px;">★ PRO</span>'
+    : '<span class="badge" style="background:#1a1a1a;color:#888;border:1px solid #2a2a2a;padding:4px 10px;font-size:11px;">FREE</span>';
+
+  const status = sub?.status
+    ? (sub.status === 'active' ? `<span style="color:#5fff5f;">● ativa</span>`
+       : sub.status === 'trialing' ? `<span style="color:#5fff5f;">● em trial</span>`
+       : sub.status === 'past_due' ? `<span style="color:#ffdf5f;">● atrasada</span>`
+       : `<span style="color:#ff5f5f;">● ${escapeHtml(sub.status)}</span>`)
+    : '<span style="color:#666;">sem assinatura</span>';
+
+  const portalBtn = info.is_owner && sub?.has_stripe_customer
+    ? `<button class="btn-g" onclick="abrirPortal()">gerenciar assinatura ↗</button>`
+    : '';
+
+  document.getElementById('plan-current').innerHTML = `
+    <div class="ctitle">seu plano atual</div>
+    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:space-between;">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          ${planBadge}
+          <div style="font-size:22px;font-weight:700;color:#fff;">${escapeHtml(plan.name)}</div>
+          ${status ? `<div style="font-size:12px;font-family:'IBM Plex Mono',monospace;">${status}</div>` : ''}
+        </div>
+        <div style="font-size:13px;color:#888;font-family:'IBM Plex Mono',monospace;">${escapeHtml(plan.description)}</div>
+        ${sub?.ends_at ? `<div style="font-size:11px;color:#666;font-family:'IBM Plex Mono',monospace;margin-top:6px;">próxima renovação em ${formatDate(sub.ends_at)}</div>` : ''}
+      </div>
+      ${portalBtn}
+    </div>
+  `;
+}
+
+function renderPlanCompare(info) {
+  const featureLabels = {
+    max_products: 'produtos ativos',
+    max_coupons: 'cupons',
+    max_affiliates: 'afiliados',
+    max_giveaways_active: 'sorteios simultâneos',
+    autoreply: 'auto-respostas',
+    tickets: 'tickets',
+    manual_delivery: 'entrega manual',
+    misticpay_checkout: 'MisticPay (PIX BR)',
+    custom_branding: 'cor/logo customizada',
+    audit_log: 'log de auditoria',
+    api_webhooks: 'webhooks por produto'
+  };
+
+  document.getElementById('plan-compare').innerHTML = info.plans_available.map(p => {
+    const isCurrent = p.id === info.plan_id;
+    return `
+      <div class="card" style="${p.id === 'pro' ? 'border-color:#4a3a8e;background:linear-gradient(180deg,#111,#1a1530 200%);' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:18px;font-weight:700;color:#fff;">${escapeHtml(p.name)}</div>
+          ${isCurrent ? '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a;">atual</span>' : ''}
+        </div>
+        <div style="font-size:32px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:4px;">${p.price_monthly_brl === 0 ? 'R$0' : 'R$' + p.price_monthly_brl}<span style="font-size:13px;color:#666;font-weight:400;font-family:'IBM Plex Mono',monospace;"> / mês</span></div>
+        <div style="font-size:12px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:18px;">${escapeHtml(p.description)}</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
+          ${Object.entries(featureLabels).map(([k, label]) => {
+            const v = p.features[k];
+            const enabled = v === -1 || (v && v !== 0);
+            const display = typeof v === 'number' ? (v === -1 ? 'ilimitado' : v) : (v ? '✓' : '✗');
+            return `<li style="display:flex;justify-content:space-between;font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:${enabled ? '#aaa' : '#555'};">
+              <span>${escapeHtml(label)}</span>
+              <span style="color:${enabled ? '#5fff5f' : '#555'};">${display}</span>
+            </li>`;
+          }).join('')}
+        </ul>
+        ${p.id !== info.plan_id && p.id === 'pro' && info.is_owner
+          ? `<button class="btn-w" style="width:100%;background:#8b6fff;justify-content:center;" onclick="upgradePro()">assinar Pro →</button>`
+          : ''}
+      </div>`;
+  }).join('');
+}
+
+async function upgradePro() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'redirecionando...'; }
+  try {
+    const r = await api('/api/billing/checkout', { method: 'POST', body: JSON.stringify({ plan: 'pro' }) });
+    if (r.url) location.href = r.url;
+  } catch (e) {
+    toast(e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '★ fazer upgrade'; }
+  }
+}
+
+async function abrirPortal() {
+  try {
+    const r = await api('/api/billing/portal', { method: 'POST' });
+    if (r.url) location.href = r.url;
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- EQUIPE ----------

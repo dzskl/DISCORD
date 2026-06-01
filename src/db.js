@@ -276,7 +276,24 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id);
+
+CREATE TABLE IF NOT EXISTS subscription_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  event TEXT NOT NULL,
+  stripe_event_id TEXT,
+  data TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sub_events_user ON subscription_events(user_id, created_at DESC);
 `);
+
+ensureColumn('users', 'plan', "TEXT NOT NULL DEFAULT 'free'");
+ensureColumn('users', 'stripe_customer_id', 'TEXT');
+ensureColumn('users', 'stripe_subscription_id', 'TEXT');
+ensureColumn('users', 'subscription_status', 'TEXT');
+ensureColumn('users', 'subscription_ends_at', 'INTEGER');
+ensureColumn('users', 'trial_ends_at', 'INTEGER');
 
 const defaultConfig = {
   bot_name: 'BotDash',

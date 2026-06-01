@@ -361,6 +361,10 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <div class="nav-group">sistema</div>
+      <div class="ni" data-page="plano" onclick="sp('plano',this)">
+        <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        plano
+      </div>
       <div class="ni" data-page="equipe" onclick="sp('equipe',this)">
         <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         equipe
@@ -888,6 +892,13 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <!-- AUDITORIA -->
+      <!-- PLANO -->
+      <div id="page-plano" class="page">
+        <div id="plan-banner" style="display:none;background:linear-gradient(135deg,#1a1530,#0e0e2e);border:1px solid #2a2a4e;border-radius:12px;padding:20px 24px;margin-bottom:18px;color:#fff;"></div>
+        <div id="plan-current" class="card" style="margin-bottom:18px;"></div>
+        <div id="plan-compare" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;"></div>
+      </div>
+
       <!-- EQUIPE -->
       <div id="page-equipe" class="page">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
