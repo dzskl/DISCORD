@@ -1,0 +1,82 @@
+# Arquitetura de producao escalavel (matching o diagrama):
+#
+#   [Users] -> [Nginx Load Balancer] -> [App x N] -> [Postgres Master + Replica]
+#                                                 -> [Redis Cache]
+#
+# Notas:
+# - Em produção real, troque SQLite por Postgres (precisa adaptar src/database/connection.js)
+# - O Redis é opcional mas reduz carga no DB pra dados cacheaveis (config, plans)
+# - HTTPS deve ser terminado no Nginx ou num proxy externo (Cloudflare)
+
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+
+  app1: &app
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - INSTANCE_ID=app1
+      - REDIS_URL=redis://cache:6379
+      - DATABASE_URL=postgres://botdash:secret@db-master:5432/botdash
+    depends_on:
+      - cache
+      - db-master
+
+  app2:
+    <<: *app
+    environment:
+      - NODE_ENV=production
+      - INSTANCE_ID=app2
+      - REDIS_URL=redis://cache:6379
+      - DATABASE_URL=postgres://botdash:secret@db-master:5432/botdash
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - cache_data:/data
+
+  db-master:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: botdash
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: botdash
+    volumes:
+      - db_master_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+
+  db-slave:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: botdash
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: botdash
+      POSTGRES_REPLICATION_MODE: slave
+      POSTGRES_MASTER_HOST: db-master
+    volumes:
+      - db_slave_data:/var/lib/postgresql/data
+    depends_on:
+      - db-master
+
+volumes:
+  cache_data:
+  db_master_data:
+  db_slave_data:

@@ -1,0 +1,38 @@
+// Roteador central — registra todas as rotas no app Express.
+// Cada controller já é um Router pronto.
+
+function register(app) {
+  // System / setup
+  app.use('/api/setup', require('../controllers/setup.controller'));
+  app.use('/api/onboarding', require('../controllers/onboarding.controller'));
+  app.use('/api/credentials', require('../controllers/credentials.controller'));
+  app.use('/api/billing', require('../controllers/billing.controller'));
+
+  // Auth
+  app.use('/auth', require('../controllers/auth.controller'));
+
+  // Dashboard
+  app.use('/api/stats', require('../controllers/stats.controller'));
+  app.use('/api/members', require('../controllers/members.controller'));
+  app.use('/api/logs', require('../controllers/logs.controller'));
+  app.use('/api/mod', require('../controllers/mod.controller'));
+  app.use('/api/products', require('../controllers/products.controller'));
+  app.use('/api/sales', require('../controllers/sales.controller'));
+  app.use('/api/announcements', require('../controllers/announcements.controller'));
+  app.use('/api/config', require('../controllers/config.controller'));
+  app.use('/api/coupons', require('../controllers/coupons.controller'));
+  app.use('/api/customers', require('../controllers/customers.controller'));
+  app.use('/api/auto-replies', require('../controllers/auto_replies.controller'));
+  app.use('/api/wishlist', require('../controllers/wishlist.controller'));
+  app.use('/api/tickets', require('../controllers/tickets.controller'));
+  app.use('/api/categories', require('../controllers/categories.controller'));
+  app.use('/api/giveaways', require('../controllers/giveaways.controller'));
+  app.use('/api/audit', require('../controllers/audit.controller'));
+  app.use('/api/affiliates', require('../controllers/affiliates.controller'));
+  app.use('/api/invites', require('../controllers/invites.controller'));
+
+  // Payment gateways
+  app.use('/api/checkout', require('../controllers/checkout.controller'));
+}
+
+module.exports = { register };

@@ -4,9 +4,11 @@
   "description": "Discord bot vendável com dashboard, pagamentos via Stripe e SQLite.",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "init-db": "node src/db.js"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/database/migrate.js",
+    "seed": "node -e \"require('./src/database/connection');const fs=require('fs');const {db}=require('./src/database/connection');db.exec(fs.readFileSync('database/seeds/demo.sql','utf8'));console.log('seed ok')\"",
+    "test": "echo \"sem testes ainda\" && exit 0"
   },
   "type": "commonjs",
   "dependencies": {

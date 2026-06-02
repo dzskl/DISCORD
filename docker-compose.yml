@@ -1,0 +1,21 @@
+# Docker compose simples (dev / 1 nó)
+# Pra produção escalável (LB + 2 servers + cache + master/slave DB), ver docker-compose.production.yml
+version: '3.9'
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_FILE=/app/data/botdash.sqlite
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/setup/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
