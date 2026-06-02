@@ -3,6 +3,7 @@
 
 function register(app) {
   // System / setup
+  app.use('/api/session', require('../controllers/session-health.controller'));
   app.use('/api/setup', require('../controllers/setup.controller'));
   app.use('/api/onboarding', require('../controllers/onboarding.controller'));
   app.use('/api/credentials', require('../controllers/credentials.controller'));
