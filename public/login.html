@@ -95,19 +95,16 @@ if (params.get('login') === 'denied') { a.className = 'alert err'; a.textContent
 if (params.get('login') === 'fail') { a.className = 'alert err'; a.textContent = 'falha no login.'; }
 if (params.get('registered')) { a.className = 'alert ok'; a.textContent = '✓ conta criada — faça login agora.'; }
 
-// Setup check + auto-redirect se ja logado
-fetch('/api/setup/status').then(r => r.json()).then(d => {
-  if (!d.complete) { location.href = '/setup.html'; return; }
-  return fetch('/auth/me', { credentials: 'include' }).then(r => r.json()).then(m => {
-    if (m.authenticated && m.admin) location.href = '/app.html';
-    if (m.has_users === false) {
-      document.getElementById('title').textContent = 'Crie a conta de owner';
-      document.getElementById('subtitle').textContent = 'nenhum usuário cadastrado ainda — o primeiro vira owner do painel.';
-      document.getElementById('login-btn').textContent = 'criar conta →';
-      document.getElementById('login-form').setAttribute('data-mode', 'register');
-      document.getElementById('bottom-text').innerHTML = 'já tem conta? <a href="/login.html?force=1">entrar →</a>';
-    }
-  });
+// Auto-redirect se ja logado, OU vira form de criar conta se for o primeiro user
+fetch('/auth/me', { credentials: 'include' }).then(r => r.json()).then(m => {
+  if (m.authenticated && m.admin) { location.href = '/app.html'; return; }
+  if (m.has_users === false) {
+    document.getElementById('title').textContent = 'Crie a conta de owner';
+    document.getElementById('subtitle').textContent = 'nenhum usuário cadastrado ainda — o primeiro vira owner do painel.';
+    document.getElementById('login-btn').textContent = 'criar conta →';
+    document.getElementById('login-form').setAttribute('data-mode', 'register');
+    document.getElementById('bottom-text').innerHTML = 'já tem conta? <a href="/login.html?force=1">entrar →</a>';
+  }
 }).catch(() => {});
 
 async function doLogin(e) {

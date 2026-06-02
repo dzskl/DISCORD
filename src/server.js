@@ -69,6 +69,7 @@ function buildApp() {
   app.use(require('./middleware/auth').loadUser);
 
   app.use('/api/setup', require('./routes/setup'));
+  app.use('/api/onboarding', require('./routes/onboarding'));
   app.use('/api/credentials', require('./routes/credentials'));
   app.use('/api/billing', billingRouter);
   app.use('/auth', require('./routes/auth'));
