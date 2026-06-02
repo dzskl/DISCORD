@@ -9,7 +9,51 @@ function start() {
   cron.schedule('*/5 * * * *', expireRoles);
   cron.schedule('0 * * * *', sendExpiryWarnings);
   cron.schedule('0 * * * *', maybeSendDailyReport);
+  cron.schedule('15 * * * *', checkTrials);
   logger.info('scheduler iniciado');
+}
+
+async function checkTrials() {
+  const email = require('./services/email');
+  const now = Math.floor(Date.now() / 1000);
+
+  // Trials expirados — volta pra free + notifica
+  const expired = db.prepare(`
+    SELECT * FROM users
+    WHERE plan='pro' AND subscription_status='trialing' AND trial_ends_at IS NOT NULL AND trial_ends_at < ?
+  `).all(now);
+  for (const u of expired) {
+    db.prepare(`UPDATE users SET plan='free', subscription_status='expired' WHERE id=?`).run(u.id);
+    if (email.isConfigured()) {
+      const tpl = email.T.trialExpired(u);
+      await email.send({ to: u.email, ...tpl }).catch(() => {});
+    }
+    logEvent({ type: 'anuncio', message: `Trial de ${u.email} expirou` });
+  }
+
+  // Trials terminando em 3 dias ou 1 dia
+  const ranges = [
+    { days: 3, kind: 'trial_3d' },
+    { days: 1, kind: 'trial_1d' },
+    { days: 0, kind: 'trial_today' }
+  ];
+  for (const r of ranges) {
+    const target = now + r.days * 86400;
+    const window = 3600;
+    const due = db.prepare(`
+      SELECT u.* FROM users u
+      WHERE u.plan='pro' AND u.subscription_status='trialing'
+        AND u.trial_ends_at BETWEEN ? AND ?
+        AND NOT EXISTS (SELECT 1 FROM trial_notifications WHERE user_id=u.id AND kind=?)
+    `).all(target - window, target + window, r.kind);
+    for (const u of due) {
+      if (email.isConfigured()) {
+        const tpl = email.T.trialReminder(u, r.days);
+        await email.send({ to: u.email, ...tpl }).catch(() => {});
+      }
+      db.prepare('INSERT OR IGNORE INTO trial_notifications (user_id,kind) VALUES (?,?)').run(u.id, r.kind);
+    }
+  }
 }
 
 async function endDueGiveaways() {

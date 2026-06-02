@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const bcrypt = require('bcryptjs');
@@ -6,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { db, getCredential } = require('../db');
 const { isAdmin, DEV_USER, bypassActive } = require('../middleware/auth');
 const audit = require('../audit');
+const mailer = require('../services/email');
 
 const router = express.Router();
 
@@ -37,15 +39,33 @@ router.post('/register', registerLimiter, async (req, res) => {
   const isFirst = countUsers() === 0;
   const role = isFirst ? 'owner' : 'admin';
   const hash = await bcrypt.hash(password, 10);
+
+  // Owner ganha 7 dias de trial Pro automatico
+  const trialFields = (isFirst && role === 'owner')
+    ? `, plan, subscription_status, trial_ends_at, subscription_ends_at`
+    : '';
+  const trialPlaceholders = (isFirst && role === 'owner')
+    ? `, 'pro', 'trialing', ?, ?`
+    : '';
+  const trialEndsAt = Math.floor(Date.now() / 1000) + 7 * 86400;
+  const trialArgs = (isFirst && role === 'owner') ? [trialEndsAt, trialEndsAt] : [];
+
   const info = db.prepare(`
-    INSERT INTO users (email, password_hash, role, display_name, last_login_at)
-    VALUES (?, ?, ?, ?, strftime('%s','now'))
-  `).run(cleanEmail, hash, role, display_name || cleanEmail.split('@')[0]);
+    INSERT INTO users (email, password_hash, role, display_name, last_login_at${trialFields})
+    VALUES (?, ?, ?, ?, strftime('%s','now')${trialPlaceholders})
+  `).run(cleanEmail, hash, role, display_name || cleanEmail.split('@')[0], ...trialArgs);
 
   const user = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
   req.session.userId = user.id;
-  audit.log({ req, action: 'user.register', target_type: 'user', target_id: user.id, details: { role } });
-  res.json({ ok: true, user: sanitizeUser(user), is_first: isFirst });
+  audit.log({ req, action: 'user.register', target_type: 'user', target_id: user.id, details: { role, trial: isFirst } });
+
+  // Email de boas-vindas (fire-and-forget)
+  if (mailer.isConfigured()) {
+    const tpl = mailer.T.welcome(user);
+    mailer.send({ to: user.email, ...tpl }).catch(() => {});
+  }
+
+  res.json({ ok: true, user: sanitizeUser(user), is_first: isFirst, trial_ends_at: isFirst ? trialEndsAt : null });
 });
 
 // ---------- LOGIN EMAIL/SENHA ----------
@@ -82,6 +102,48 @@ router.put('/password', async (req, res) => {
   const hash = await bcrypt.hash(new_password, 10);
   db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, u.id);
   audit.log({ req, action: 'user.password_changed', target_type: 'user', target_id: u.id });
+  res.json({ ok: true });
+});
+
+// ---------- ESQUECI MINHA SENHA ----------
+const forgotLimiter = rateLimit({ windowMs: 60 * 60_000, max: 10, standardHeaders: true, legacyHeaders: false });
+
+router.post('/forgot', forgotLimiter, async (req, res) => {
+  const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
+  if (!isValidEmail(cleanEmail)) return res.status(400).json({ error: 'email invalido' });
+
+  // Sempre retorna ok pra nao revelar quais emails existem
+  const user = db.prepare('SELECT * FROM users WHERE email=? AND active=1').get(cleanEmail);
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+    db.prepare('INSERT INTO password_resets (token,user_id,expires_at) VALUES (?,?,?)').run(token, user.id, expiresAt);
+
+    if (mailer.isConfigured()) {
+      const url = `${process.env.PUBLIC_URL || ''}/reset.html?token=${token}`;
+      const tpl = mailer.T.passwordReset(cleanEmail, url);
+      mailer.send({ to: cleanEmail, ...tpl }).catch(() => {});
+    }
+    audit.log({ req, action: 'user.password_reset_requested', target_type: 'user', target_id: user.id });
+  }
+
+  res.json({ ok: true, message: 'se o email existe, enviamos as instruções' });
+});
+
+router.post('/reset', async (req, res) => {
+  const { token, new_password } = req.body || {};
+  if (!token) return res.status(400).json({ error: 'token obrigatorio' });
+  if (!new_password || new_password.length < 8) return res.status(400).json({ error: 'senha deve ter pelo menos 8 caracteres' });
+
+  const reset = db.prepare('SELECT * FROM password_resets WHERE token=? AND used=0').get(token);
+  if (!reset) return res.status(400).json({ error: 'token invalido' });
+  if (reset.expires_at < Math.floor(Date.now() / 1000)) return res.status(400).json({ error: 'token expirado' });
+
+  const hash = await bcrypt.hash(new_password, 10);
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, reset.user_id);
+  db.prepare('UPDATE password_resets SET used=1 WHERE token=?').run(token);
+
+  audit.log({ req, action: 'user.password_reset', target_type: 'user', target_id: reset.user_id });
   res.json({ ok: true });
 });
 
@@ -166,7 +228,15 @@ router.post('/invite', async (req, res) => {
   `).run(cleanEmail, hash, ['admin', 'member'].includes(role) ? role : 'admin', cleanEmail.split('@')[0]);
 
   audit.log({ req, action: 'user.invited', target_type: 'user', target_id: info.lastInsertRowid, details: { email: cleanEmail, role } });
-  res.json({ ok: true, email: cleanEmail, temporary_password: tempPwd });
+
+  let emailSent = false;
+  if (mailer.isConfigured()) {
+    const tpl = mailer.T.invite(cleanEmail, tempPwd, req.appUser.display_name || req.appUser.email);
+    const r = await mailer.send({ to: cleanEmail, ...tpl });
+    emailSent = r.sent;
+  }
+
+  res.json({ ok: true, email: cleanEmail, temporary_password: tempPwd, email_sent: emailSent });
 });
 
 router.delete('/users/:id', (req, res) => {

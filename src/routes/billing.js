@@ -162,7 +162,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     }
     case 'invoice.payment_failed': {
       db.prepare(`UPDATE users SET subscription_status='past_due' WHERE id=?`).run(user.id);
-      // notificar via DM/email seria aqui
+      const email = require('../services/email');
+      if (email.isConfigured()) {
+        const tpl = email.T.paymentFailed(user);
+        email.send({ to: user.email, ...tpl }).catch(() => {});
+      }
       break;
     }
     case 'invoice.paid': {
@@ -170,6 +174,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       if (subId) {
         const sub = await s.subscriptions.retrieve(subId);
         applySubscription(user.id, sub);
+      }
+      const email = require('../services/email');
+      if (email.isConfigured()) {
+        const amount = ((obj.amount_paid || 0) / 100).toFixed(2).replace('.', ',');
+        const tpl = email.T.paymentReceived(user, amount);
+        email.send({ to: user.email, ...tpl }).catch(() => {});
       }
       break;
     }

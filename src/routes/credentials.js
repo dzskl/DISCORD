@@ -17,7 +17,15 @@ const CREDENTIAL_KEYS = [
   { key: 'MISTICPAY_CLIENT_ID', label: 'MisticPay Client ID', group: 'misticpay', secret: false },
   { key: 'MISTICPAY_CLIENT_SECRET', label: 'MisticPay Client Secret', group: 'misticpay', secret: true },
   { key: 'STRIPE_PRICE_PRO_MONTHLY', label: 'Stripe Price ID — Plano Pro Mensal', group: 'billing', secret: false, validate: v => v.startsWith('price_') || 'deve começar com price_' },
-  { key: 'STRIPE_BILLING_WEBHOOK_SECRET', label: 'Stripe Billing Webhook Secret', group: 'billing', secret: true, validate: v => v.startsWith('whsec_') || 'deve começar com whsec_' }
+  { key: 'STRIPE_BILLING_WEBHOOK_SECRET', label: 'Stripe Billing Webhook Secret', group: 'billing', secret: true, validate: v => v.startsWith('whsec_') || 'deve começar com whsec_' },
+  { key: 'RESEND_API_KEY', label: 'Resend API Key (recomendado)', group: 'email', secret: true, validate: v => v.startsWith('re_') || 'deve começar com re_' },
+  { key: 'RESEND_FROM', label: 'Resend From (Brand <email@domain>)', group: 'email', secret: false },
+  { key: 'SMTP_HOST', label: 'SMTP Host (alternativa)', group: 'email', secret: false },
+  { key: 'SMTP_PORT', label: 'SMTP Port', group: 'email', secret: false },
+  { key: 'SMTP_USER', label: 'SMTP User', group: 'email', secret: false },
+  { key: 'SMTP_PASS', label: 'SMTP Password', group: 'email', secret: true },
+  { key: 'SMTP_FROM', label: 'SMTP From email', group: 'email', secret: false },
+  { key: 'BRAND_NAME', label: 'Nome da marca (nos emails)', group: 'email', secret: false }
 ];
 
 router.get('/', requireAuth, (req, res) => {
@@ -55,6 +63,9 @@ router.put('/:key', requireAuth, async (req, res) => {
   if (['DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'DISCORD_CLIENT_ID'].includes(spec.key)) {
     setTimeout(() => require('../bot').restart().catch(e => require('../logger').error({ err: e.message }, 'erro reiniciando bot')), 100);
   }
+  if (spec.key.startsWith('SMTP_')) {
+    require('../services/email').invalidateTransport();
+  }
 
   res.json({ ok: true, key: spec.key, preview: value ? (spec.secret ? maskValue(value) : value) : null });
 });
@@ -75,6 +86,19 @@ router.post('/bot/restart', requireAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.post('/email/test', requireAuth, async (req, res) => {
+  const email = require('../services/email');
+  if (!email.isConfigured()) return res.status(503).json({ error: 'configure Resend ou SMTP primeiro' });
+  const to = (req.body?.to || req.appUser?.email || '').trim();
+  if (!to) return res.status(400).json({ error: 'email destino obrigatorio' });
+  const r = await email.send({
+    to,
+    subject: 'Teste de email — BotDash',
+    html: '<h1>Funcionou ✓</h1><p>Se você está vendo isso, seu SMTP/Resend está configurado corretamente.</p>'
+  });
+  res.json(r);
 });
 
 module.exports = router;

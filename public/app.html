@@ -962,6 +962,20 @@ footer.appfoot a:hover{color:var(--text);}
           <div id="cred-misticpay"></div>
         </div>
 
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">Billing (Stripe Subscription) <span class="cbadge" id="cred-billing-status">opcional</span></div>
+          <div id="cred-billing"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">Email transacional <span class="cbadge" id="cred-email-status">opcional</span></div>
+          <div id="cred-email"></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+            <input class="inp" id="email-test-to" placeholder="email pra teste (default: seu email)" style="flex:1;">
+            <button class="btn-sm pub" onclick="testarEmail()">enviar teste</button>
+          </div>
+        </div>
+
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
           <button class="btn-g" onclick="restartBot()">↻ reiniciar bot</button>
         </div>

@@ -1340,6 +1340,21 @@ async function loadPlano() {
 function renderPlanBanner(info) {
   const banner = document.getElementById('plan-banner');
   const sub = info.my_subscription;
+  if (sub?.status === 'trialing' && sub.trial_ends_at) {
+    const days = Math.ceil((sub.trial_ends_at - Date.now() / 1000) / 86400);
+    banner.style.display = 'block';
+    banner.style.background = 'linear-gradient(135deg,#1a1530,#0e0e2e)';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:18px;justify-content:space-between;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#b9a8ff;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">★ você está no trial Pro</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${days > 1 ? `Faltam ${days} dias` : (days === 1 ? 'Último dia' : 'Expirando')} do seu trial gratuito</div>
+          <div style="font-size:13px;color:#aaa;font-family:'IBM Plex Mono',monospace;">assine antes pra não perder acesso às features Pro</div>
+        </div>
+        ${info.is_owner ? `<button class="btn-w" style="background:#8b6fff;padding:13px 24px;" onclick="upgradePro()">★ assinar agora</button>` : ''}
+      </div>`;
+    return;
+  }
   if (info.plan_id === 'free') {
     banner.style.display = 'block';
     banner.innerHTML = `
@@ -1537,12 +1552,14 @@ async function trocarSenha() {
 async function loadCredenciais() {
   try {
     const creds = await api('/api/credentials');
-    const byGroup = { discord: [], stripe: [], misticpay: [] };
+    const byGroup = { discord: [], stripe: [], misticpay: [], billing: [], email: [] };
     creds.forEach(c => { if (byGroup[c.group]) byGroup[c.group].push(c); });
 
     document.getElementById('cred-discord').innerHTML = byGroup.discord.map(credRow).join('');
     document.getElementById('cred-stripe').innerHTML = byGroup.stripe.map(credRow).join('');
     document.getElementById('cred-misticpay').innerHTML = byGroup.misticpay.map(credRow).join('');
+    const cbe = document.getElementById('cred-billing'); if (cbe) cbe.innerHTML = byGroup.billing.map(credRow).join('');
+    const cee = document.getElementById('cred-email'); if (cee) cee.innerHTML = byGroup.email.map(credRow).join('');
 
     const statusBadge = (list) => {
       const all = list.length;
@@ -1554,6 +1571,8 @@ async function loadCredenciais() {
     document.getElementById('cred-discord-status').outerHTML = `<span class="cbadge" id="cred-discord-status">${statusBadge(byGroup.discord)}</span>`;
     document.getElementById('cred-stripe-status').outerHTML = `<span class="cbadge" id="cred-stripe-status">${statusBadge(byGroup.stripe)}</span>`;
     document.getElementById('cred-misticpay-status').outerHTML = `<span class="cbadge" id="cred-misticpay-status">${statusBadge(byGroup.misticpay)}</span>`;
+    const sb = document.getElementById('cred-billing-status'); if (sb) sb.outerHTML = `<span class="cbadge" id="cred-billing-status">${statusBadge(byGroup.billing)}</span>`;
+    const se = document.getElementById('cred-email-status'); if (se) se.outerHTML = `<span class="cbadge" id="cred-email-status">${statusBadge(byGroup.email)}</span>`;
   } catch (e) { console.warn('credenciais', e.message); }
 }
 
@@ -1598,6 +1617,15 @@ async function clearCredential(key) {
     await api('/api/credentials/' + encodeURIComponent(key), { method: 'DELETE' });
     toast('Credencial removida.', 'ok');
     loadCredenciais();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function testarEmail() {
+  const to = document.getElementById('email-test-to').value.trim() || null;
+  try {
+    const r = await api('/api/credentials/email/test', { method: 'POST', body: JSON.stringify({ to }) });
+    if (r.sent) toast(`Email enviado via ${r.via.toUpperCase()} ✓`, 'ok');
+    else toast(r.reason || 'falha', 'warn');
   } catch (e) { toast(e.message, 'err'); }
 }
 

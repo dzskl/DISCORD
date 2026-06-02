@@ -286,6 +286,22 @@ CREATE TABLE IF NOT EXISTS subscription_events (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_sub_events_user ON subscription_events(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pwd_resets_user ON password_resets(user_id);
+
+CREATE TABLE IF NOT EXISTS trial_notifications (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  sent_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  PRIMARY KEY (user_id, kind)
+);
 `);
 
 ensureColumn('users', 'plan', "TEXT NOT NULL DEFAULT 'free'");
