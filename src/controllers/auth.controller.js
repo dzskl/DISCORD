@@ -183,9 +183,62 @@ router.get('/discord', (req, res, next) => {
 router.get('/discord/callback', (req, res, next) => {
   if (!ensureDiscordStrategy()) return res.redirect('/setup.html?missing=discord');
   passport.authenticate('discord', { failureRedirect: '/login.html?login=fail' })(req, res, () => {
-    const { isAdmin: chk } = require('../middlewares/auth.middleware');
-    // O loadUser middleware vai auto-criar a conta no proximo request — aqui so redireciona.
-    res.redirect('/app.html');
+    try {
+      const profile = req.user;
+      if (!profile?.id) return res.redirect('/login.html?login=fail');
+
+      let user = db.prepare('SELECT * FROM users WHERE discord_id=?').get(profile.id);
+
+      if (!user) {
+        // Primeiro user que loga vira owner + trial Pro 7d, resto vira admin
+        const isFirst = countUsers() === 0;
+        const role = isFirst ? 'owner' : 'admin';
+        const trialEndsAt = isFirst ? Math.floor(Date.now() / 1000) + 7 * 86400 : null;
+        const placeholderEmail = `discord-${profile.id}@bot.local`;
+
+        const info = db.prepare(`
+          INSERT INTO users (email, discord_id, discord_tag, discord_avatar, display_name, role, plan, subscription_status, trial_ends_at, subscription_ends_at, last_login_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))
+        `).run(
+          placeholderEmail,
+          profile.id,
+          profile.username || null,
+          profile.avatar || null,
+          profile.username || profile.id,
+          role,
+          isFirst ? 'pro' : 'free',
+          isFirst ? 'trialing' : null,
+          trialEndsAt,
+          trialEndsAt
+        );
+        user = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
+        audit.log({ req, action: 'user.register', target_type: 'user', target_id: user.id, details: { via: 'discord', role, trial: isFirst } });
+
+        if (mailer.isConfigured() && !placeholderEmail.endsWith('@bot.local')) {
+          const tpl = mailer.T.welcome(user);
+          mailer.send({ to: user.email, ...tpl }).catch(() => {});
+        }
+      } else {
+        // Atualiza tag/avatar e last_login
+        db.prepare(`
+          UPDATE users SET
+            discord_tag = COALESCE(?, discord_tag),
+            discord_avatar = COALESCE(?, discord_avatar),
+            last_login_at = strftime('%s','now')
+          WHERE id = ?
+        `).run(profile.username || null, profile.avatar || null, user.id);
+        audit.log({ req, action: 'user.login', target_type: 'user', target_id: user.id, details: { via: 'discord' } });
+      }
+
+      if (!user.active) return res.redirect('/login.html?login=denied');
+
+      // Mantem session.userId pra proximas requests usarem email/senha session-based
+      req.session.userId = user.id;
+      req.session.save(() => res.redirect('/app.html'));
+    } catch (e) {
+      require('../utils/logger').error({ err: e.message }, 'erro no callback discord');
+      res.redirect('/login.html?login=fail');
+    }
   });
 });
 
