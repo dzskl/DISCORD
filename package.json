@@ -2,7 +2,7 @@
   "name": "botdash",
   "version": "1.0.0",
   "description": "Discord bot vendável com dashboard, pagamentos via Stripe e SQLite.",
-  "main": "src/index.js",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
