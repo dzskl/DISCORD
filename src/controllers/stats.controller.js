@@ -49,6 +49,8 @@ router.get('/overview', requireAuth, async (req, res) => {
     }
 
     res.json({
+      server_name: guildStats.name || null,
+      server_icon: guildStats.icon || null,
       members_total: guildStats.total,
       members_online: guildStats.online,
       joins_week: joinsWeek,

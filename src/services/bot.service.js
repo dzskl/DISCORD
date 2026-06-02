@@ -564,7 +564,12 @@ async function getStats() {
   await guild.members.fetch().catch(() => {});
   const members = guild.members.cache;
   const online = members.filter(m => ['online', 'idle', 'dnd'].includes(m.presence?.status)).size;
-  return { total: guild.memberCount, online };
+  return {
+    total: guild.memberCount,
+    online,
+    name: guild.name,
+    icon: guild.iconURL?.({ size: 128 }) || null
+  };
 }
 
 async function listChannels() {

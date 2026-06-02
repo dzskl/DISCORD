@@ -354,7 +354,8 @@ const defaultConfig = {
   invite_join_channel: 'geral',
   invite_join_message: '👋 {member} chegou! Convidado por **{invitername}** (total de {invites} convites).',
   invite_leave_message: '👋 {membername} saiu do servidor. Foi convidado por **{invitername}**.',
-  payment_gateway: 'stripe'
+  payment_gateway: 'stripe',
+  brand_logo_url: ''
 };
 const insertCfg = db.prepare('INSERT OR IGNORE INTO config (key,value) VALUES (?,?)');
 for (const [k, v] of Object.entries(defaultConfig)) insertCfg.run(k, v);

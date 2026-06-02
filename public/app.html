@@ -39,10 +39,19 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-s
 /* ---------- SHELL ---------- */
 .app{display:flex;min-height:100vh;}
 .sidebar{width:var(--sidebar-w);background:#0c0c0c;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0;}
-.brand{padding:20px 22px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
-.brand-logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;letter-spacing:.04em;box-shadow:0 4px 14px var(--primary-glow);}
-.brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:.04em;}
-.brand-tag{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--success);background:var(--success-bg);border:1px solid var(--success-bd);padding:2px 6px;border-radius:20px;margin-left:auto;}
+.brand{padding:18px 18px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px;}
+.brand-row{display:flex;align-items:center;gap:12px;min-width:0;}
+.brand-logo{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;letter-spacing:.04em;box-shadow:0 4px 14px var(--primary-glow);flex-shrink:0;background-size:cover;background-position:center;}
+.brand-info{flex:1;min-width:0;}
+.brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
+.brand-server{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.brand-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.brand-tag{font-size:9px;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;}
+.brand-tag.live{color:var(--success);background:var(--success-bg);border:1px solid var(--success-bd);}
+.brand-tag.live .pulse{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);animation:pulse-dot 1.6s infinite;}
+.brand-tag.plan-free{background:var(--surface-3);color:var(--text-dim);border:1px solid var(--border-strong);}
+.brand-tag.plan-pro{background:linear-gradient(90deg,rgba(139,111,255,0.18),rgba(139,111,255,0.08));color:var(--primary-soft, #b9a8ff);border:1px solid rgba(139,111,255,0.4);}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.4;}}
 
 .nav{flex:1;padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:1px;}
 .nav-group{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;padding:11px 12px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-radius:7px;user-select:none;font-weight:600;transition:background .12s, color .12s;}
@@ -297,9 +306,17 @@ footer.appfoot a:hover{color:var(--text);}
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-logo">B</div>
-      <div class="brand-name">BotDash</div>
-      <div class="brand-tag">● live</div>
+      <div class="brand-row">
+        <div class="brand-logo" id="brand-logo">B</div>
+        <div class="brand-info">
+          <div class="brand-name" id="brand-name">BotDash</div>
+          <div class="brand-server" id="brand-server">carregando...</div>
+        </div>
+      </div>
+      <div class="brand-badges">
+        <span class="brand-tag live"><span class="pulse"></span>live</span>
+        <span class="brand-tag plan-free" id="brand-plan">free</span>
+      </div>
     </div>
 
     <nav class="nav">

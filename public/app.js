@@ -163,6 +163,7 @@ async function bootstrap() {
   if (meta) meta.textContent = (u.role || 'admin') + ' · ' + (u.email ? u.email.split('@')[0] : '');
 
   restoreNavGroups();
+  loadBrand();
   loadOverview();
   loadProdutos();
   loadCanais();
@@ -182,24 +183,41 @@ async function loadPlanBadge() {
   try {
     const info = await api('/api/billing/me');
     window.__plan_id = info.plan_id;
-    const brand = document.querySelector('.brand');
-    if (brand && !document.getElementById('plan-badge-side')) {
-      const tag = brand.querySelector('.brand-tag');
-      const b = document.createElement('span');
-      b.id = 'plan-badge-side';
-      b.style.cssText = 'font-size:9px;font-family:\"IBM Plex Mono\",monospace;padding:2px 7px;border-radius:20px;margin-left:6px;letter-spacing:.06em;font-weight:700;';
+    const badge = document.getElementById('brand-plan');
+    if (badge) {
       if (info.plan_id === 'pro') {
-        b.style.background = '#1a1530';
-        b.style.color = '#b9a8ff';
-        b.style.border = '1px solid #4a3a8e';
-        b.textContent = '★ PRO';
+        badge.classList.remove('plan-free');
+        badge.classList.add('plan-pro');
+        badge.textContent = '★ pro';
       } else {
-        b.style.background = '#1a1a1a';
-        b.style.color = '#888';
-        b.style.border = '1px solid #2a2a2a';
-        b.textContent = 'FREE';
+        badge.classList.remove('plan-pro');
+        badge.classList.add('plan-free');
+        badge.textContent = 'free';
       }
-      if (tag) tag.parentNode.insertBefore(b, tag); else brand.appendChild(b);
+    }
+  } catch {}
+}
+
+async function loadBrand() {
+  try {
+    const cfg = await api('/api/config').catch(() => ({}));
+    const name = cfg.bot_name || 'BotDash';
+    document.getElementById('brand-name').textContent = name;
+    // server name vem do bot — se disponivel
+    const stats = await api('/api/stats/overview').catch(() => null);
+    const serverName = stats?.server_name;
+    const serverEl = document.getElementById('brand-server');
+    if (serverEl) {
+      serverEl.textContent = serverName ? `· ${serverName}` : '· seu servidor';
+    }
+    // se tiver image_url customizada no config, usa
+    if (cfg.brand_logo_url && /^https?:\/\//.test(cfg.brand_logo_url)) {
+      const lo = document.getElementById('brand-logo');
+      lo.textContent = '';
+      lo.style.backgroundImage = `url('${cfg.brand_logo_url}')`;
+    } else {
+      const lo = document.getElementById('brand-logo');
+      lo.textContent = (name[0] || 'B').toUpperCase();
     }
   } catch {}
 }
