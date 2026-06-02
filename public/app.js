@@ -29,6 +29,34 @@ function showUpgradePrompt(msg) {
   `);
 }
 
+function toggleGroup(headerEl) {
+  const groupName = headerEl.dataset.toggle;
+  const items = document.querySelector(`.nav-group-items[data-group="${groupName}"]`);
+  if (!items) return;
+  const collapsed = !headerEl.classList.contains('collapsed');
+  headerEl.classList.toggle('collapsed', collapsed);
+  items.classList.toggle('collapsed', collapsed);
+  // Persiste estado
+  try {
+    const state = JSON.parse(localStorage.getItem('botdash_nav_groups') || '{}');
+    state[groupName] = !collapsed; // true = aberto
+    localStorage.setItem('botdash_nav_groups', JSON.stringify(state));
+  } catch {}
+}
+
+function restoreNavGroups() {
+  try {
+    const state = JSON.parse(localStorage.getItem('botdash_nav_groups') || '{}');
+    for (const [name, open] of Object.entries(state)) {
+      const header = document.querySelector(`.nav-group[data-toggle="${name}"]`);
+      const items = document.querySelector(`.nav-group-items[data-group="${name}"]`);
+      if (!header || !items) continue;
+      header.classList.toggle('collapsed', !open);
+      items.classList.toggle('collapsed', !open);
+    }
+  } catch {}
+}
+
 function toast(msg, type = 'ok', ms = 3500) {
   const w = document.getElementById('toast-wrap');
   const el = document.createElement('div');
@@ -134,6 +162,7 @@ async function bootstrap() {
   const meta = document.querySelector('.sidebar-foot .foot-meta');
   if (meta) meta.textContent = (u.role || 'admin') + ' · ' + (u.email ? u.email.split('@')[0] : '');
 
+  restoreNavGroups();
   loadOverview();
   loadProdutos();
   loadCanais();
@@ -754,6 +783,14 @@ function sp(id, el) {
     document.getElementById('page-sub').textContent = meta[1];
   }
   document.getElementById('sidebar')?.classList.remove('open');
+
+  // Garante que o grupo do item ativo esteja aberto
+  const groupItems = el.closest('.nav-group-items');
+  if (groupItems && groupItems.classList.contains('collapsed')) {
+    const groupName = groupItems.dataset.group;
+    const header = document.querySelector(`.nav-group[data-toggle="${groupName}"]`);
+    if (header) toggleGroup(header);
+  }
   if (id === 'geral') loadOverview();
   if (id === 'membros') loadMembros();
   if (id === 'logs') loadLogs();
