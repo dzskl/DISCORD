@@ -11,7 +11,51 @@ function start() {
   cron.schedule('0 * * * *', maybeSendDailyReport);
   cron.schedule('15 * * * *', checkTrials);
   cron.schedule('20 * * * *', checkGuildTrials);
+  cron.schedule('*/15 * * * *', followUpAbandonedCarts);
   logger.info('scheduler iniciado');
+}
+
+// Follow-up de carrinhos abandonados.
+// Sales 'pending' >30min e <24h, ainda nao notificadas, recebem DM com
+// link de retomada. So roda uma vez por venda (flag cart_followup_sent).
+async function followUpAbandonedCarts() {
+  try {
+    const { getConfig } = require('../database/connection');
+    const cfg = getConfig();
+    if (cfg.cart_followup_enabled === '0') return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const min = now - 30 * 60;          // 30 min atras
+    const max = now - 24 * 3600;        // 24h atras (limite)
+
+    // Adiciona coluna se nao existir (idempotente)
+    try { db.prepare('ALTER TABLE sales ADD COLUMN cart_followup_sent INTEGER DEFAULT 0').run(); } catch {}
+
+    const abandoned = db.prepare(`
+      SELECT * FROM sales
+      WHERE status='pending'
+        AND created_at BETWEEN ? AND ?
+        AND (cart_followup_sent IS NULL OR cart_followup_sent = 0)
+      LIMIT 50
+    `).all(max, min);
+
+    if (!abandoned.length) return;
+    const publicUrl = process.env.PUBLIC_URL || '';
+    const tpl = (cfg.cart_followup_message || '👋 Ei, {tag}! Você deixou um pedido no carrinho. Finalize agora e seja bem atendido: {url}');
+
+    for (const sale of abandoned) {
+      try {
+        const msg = tpl
+          .replace('{tag}', sale.discord_tag || 'amigo(a)')
+          .replace('{url}', publicUrl + '/loja.html');
+        await bot.dmUser?.(sale.discord_id, msg).catch(() => {});
+        db.prepare('UPDATE sales SET cart_followup_sent=1 WHERE id=?').run(sale.id);
+        logEvent({ type: 'anuncio', message: `Follow-up enviado a ${sale.discord_tag || sale.discord_id}`, discord_id: sale.discord_id, guild_id: sale.guild_id });
+      } catch (e) {
+        logger.warn({ err: e.message, sale_id: sale.id }, 'falha em follow-up');
+      }
+    }
+  } catch (e) { logger.error({ err: e.message }, 'follow-up cron erro'); }
 }
 
 async function checkGuildTrials() {

@@ -339,6 +339,8 @@ const defaultConfig = {
   fraud_threshold: '60',
   fraud_blacklist: '',
   fraud_block_threshold: '80',
+  cart_followup_enabled: '1',
+  cart_followup_message: '👋 Ei, {tag}! Você deixou um pedido no carrinho da nossa loja. Finalize agora: {url}',
   fee_percent: '4',
   fee_fixed_cents: '39',
   ticket_category: 'tickets',
