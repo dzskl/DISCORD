@@ -194,6 +194,48 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // Assinatura do cliente final (kind=customer_subscription)
+  if (event.type === 'checkout.session.completed' && event.data.object.metadata?.kind === 'customer_subscription') {
+    const session = event.data.object;
+    const m = session.metadata || {};
+    try {
+      const sub = session.subscription ? await stripe().subscriptions.retrieve(session.subscription) : null;
+      db.prepare(`
+        INSERT INTO customer_subscriptions (product_id, guild_id, discord_id, discord_tag, stripe_subscription_id, stripe_customer_id, status, current_period_end, amount_cents)
+        VALUES (?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(stripe_subscription_id) DO UPDATE SET status=excluded.status, current_period_end=excluded.current_period_end
+      `).run(
+        m.product_id ? parseInt(m.product_id) : null,
+        m.guild_id || null,
+        m.discord_id || null,
+        m.discord_tag || null,
+        session.subscription || null,
+        session.customer || null,
+        sub?.status || 'active',
+        sub?.current_period_end || null,
+        sub?.items?.data?.[0]?.price?.unit_amount || 0
+      );
+      // Entrega cargo
+      const p = db.prepare('SELECT * FROM products WHERE id=?').get(parseInt(m.product_id));
+      if (p?.role_id && m.discord_id) {
+        await bot.grantRole?.(m.discord_id, p.role_id).catch(() => {});
+      }
+    } catch (e) { require('../utils/logger').warn({ err: e.message }, 'falha processando customer_subscription'); }
+    return res.json({ received: true });
+  }
+
+  // Updates de assinatura existente
+  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object;
+    try {
+      db.prepare(`
+        UPDATE customer_subscriptions
+        SET status=?, current_period_end=?, cancel_at_period_end=?
+        WHERE stripe_subscription_id=?
+      `).run(sub.status, sub.current_period_end || null, sub.cancel_at_period_end ? 1 : 0, sub.id);
+    } catch {}
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const meta = session.metadata || {};
