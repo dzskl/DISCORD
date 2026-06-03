@@ -425,6 +425,33 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
       </div>
 
+      <div class="nav-group collapsed" data-toggle="gerenciamento" onclick="toggleGroup(this)">
+        <span>gerenciamento</span>
+        <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+      </div>
+      <div class="nav-group-items collapsed" data-group="gerenciamento">
+        <div class="ni" data-page="personalizacao" onclick="sp('personalizacao',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          personalização
+        </div>
+        <div class="ni" data-page="recursos" onclick="sp('recursos',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="3.6" y1="9" x2="20.4" y2="9"/><line x1="3.6" y1="15" x2="20.4" y2="15"/><path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/></svg>
+          recursos
+        </div>
+        <div class="ni" data-page="protecao" onclick="sp('protecao',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          proteção
+        </div>
+        <div class="ni" data-page="ecloud" onclick="sp('ecloud',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          eCloud
+        </div>
+        <div class="ni" data-page="vips" onclick="sp('vips',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          VIPs
+        </div>
+      </div>
+
       <div class="nav-group collapsed" data-toggle="monetizacao" onclick="toggleGroup(this)">
         <span>monetização</span>
         <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -1036,6 +1063,91 @@ footer.appfoot a:hover{color:var(--text);}
 
       <!-- AUDITORIA -->
       <!-- PLANO -->
+      <!-- PERSONALIZAÇÃO -->
+      <div id="page-personalizacao" class="page">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">aparência do bot <span class="cbadge">visível no Discord</span></div>
+          <div class="frow" style="margin-top:10px;">
+            <div class="fgroup"><div class="flabel">nome do bot</div><input class="inp" id="brand-bot-name" placeholder="ex: MinhaLoja Bot"></div>
+            <div class="fgroup"><div class="flabel">URL do avatar (png)</div><input class="inp" id="brand-bot-avatar" placeholder="https://..."></div>
+          </div>
+          <div class="frow">
+            <div class="fgroup"><div class="flabel">cor primária da loja</div><input class="inp" id="brand-color" type="color" value="#5865f2" style="height:38px;padding:4px;"></div>
+            <div class="fgroup"><div class="flabel">subtítulo da loja</div><input class="inp" id="brand-tagline" placeholder="ex: A melhor loja do servidor!"></div>
+          </div>
+          <button class="btn-w" onclick="saveBranding()">salvar aparência</button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">mensagens automáticas <span class="cbadge">customizar</span></div>
+          <div class="fgroup" style="margin-top:10px;"><div class="flabel">mensagem de boas-vindas</div><textarea class="inp" id="brand-welcome" rows="3" placeholder="Bem-vindo {user} ao {server}!"></textarea></div>
+          <div class="fgroup"><div class="flabel">mensagem de despedida</div><textarea class="inp" id="brand-goodbye" rows="2" placeholder="{user} saiu do servidor"></textarea></div>
+          <div class="fgroup"><div class="flabel">DM de venda confirmada</div><textarea class="inp" id="brand-sale-dm" rows="2" placeholder="🎉 Obrigado pela compra de {produto}!"></textarea></div>
+          <button class="btn-w" onclick="saveBrandingMessages()">salvar mensagens</button>
+        </div>
+      </div>
+
+      <!-- RECURSOS -->
+      <div id="page-recursos" class="page">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">módulos do bot</div>
+          <div id="features-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- PROTEÇÃO -->
+      <div id="page-protecao" class="page">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">anti-raid <span class="cbadge">automod</span></div>
+          <div id="prot-cards" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
+        </div>
+        <div class="card">
+          <div class="ctitle">palavras banidas <span class="cbadge">apaga automático</span></div>
+          <div class="fgroup" style="margin-top:10px;">
+            <textarea class="inp" id="prot-banned-words" rows="4" placeholder="uma palavra por linha"></textarea>
+          </div>
+          <button class="btn-w" onclick="saveProtection()">salvar proteção</button>
+        </div>
+      </div>
+
+      <!-- eCLOUD -->
+      <div id="page-ecloud" class="page">
+        <div style="background:#0e1a2e;border:1px solid #1a3a5e;border-radius:8px;padding:14px 16px;margin-bottom:18px;color:#a0bfff;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;">
+          💡 <b style="color:#fff">eCloud</b> permite puxar membros do seu Discord pra outro servidor via OAuth2. Útil pra rotacionar ou migrar bases.
+        </div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">configuração OAuth2</div>
+          <div class="frow" style="margin-top:10px;">
+            <div class="fgroup"><div class="flabel">redirect URI</div><input class="inp" id="ecloud-redirect" readonly></div>
+            <div class="fgroup"><div class="flabel">servidor destino (guild ID)</div><input class="inp" id="ecloud-target" placeholder="ID do servidor"></div>
+          </div>
+          <button class="btn-w" onclick="saveEcloud()">salvar</button>
+        </div>
+        <div class="card">
+          <div class="ctitle">membros capturados <span class="cbadge" id="ecloud-count">0</span></div>
+          <table class="vtable">
+            <thead><tr><th>usuário</th><th>capturado em</th><th>status</th><th></th></tr></thead>
+            <tbody id="ecloud-tbody"><tr><td colspan="4" style="color:#444;text-align:center;padding:30px;">ainda nenhum membro capturado</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIPs -->
+      <div id="page-vips" class="page">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">tiers VIP <span class="cbadge">recompensas escaláveis</span></div>
+          <div id="vip-tiers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px;"></div>
+          <button class="btn-w" style="margin-top:12px;" onclick="addVipTier()">+ novo tier</button>
+        </div>
+        <div class="card">
+          <div class="ctitle">VIPs ativos <span class="cbadge" id="vip-count">0</span></div>
+          <table class="vtable">
+            <thead><tr><th>usuário</th><th>tier</th><th>compras</th><th>desde</th><th></th></tr></thead>
+            <tbody id="vips-tbody"><tr><td colspan="5" style="color:#444;text-align:center;padding:30px;">nenhum VIP ainda</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="page-plano" class="page">
         <div id="plan-banner" style="display:none;background:linear-gradient(135deg,#1a1530,#0e0e2e);border:1px solid #2a2a4e;border-radius:12px;padding:20px 24px;margin-bottom:18px;color:#fff;"></div>
         <div id="plan-current" class="card" style="margin-bottom:18px;"></div>

@@ -2515,3 +2515,172 @@ if (typeof __origSp2 === 'function' && !window.__spHookedV2) {
 }
 setTimeout(updateVerifBadge, 1500);
 setInterval(updateVerifBadge, 90000);
+
+// ============ BRANDING ============
+async function loadBranding() {
+  try {
+    const j = await fetch('/api/features/branding', { credentials: 'same-origin' }).then(r => r.json());
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('brand-bot-name', j.bot_name); set('brand-bot-avatar', j.bot_avatar_url);
+    set('brand-color', j.color || '#5865f2'); set('brand-tagline', j.tagline);
+    set('brand-welcome', j.welcome); set('brand-goodbye', j.goodbye); set('brand-sale-dm', j.sale_dm);
+  } catch {}
+}
+async function saveBranding() {
+  const body = {
+    bot_name: document.getElementById('brand-bot-name').value,
+    bot_avatar_url: document.getElementById('brand-bot-avatar').value,
+    color: document.getElementById('brand-color').value,
+    tagline: document.getElementById('brand-tagline').value,
+    welcome: document.getElementById('brand-welcome')?.value,
+    goodbye: document.getElementById('brand-goodbye')?.value,
+    sale_dm: document.getElementById('brand-sale-dm')?.value
+  };
+  try {
+    const r = await fetch('/api/features/branding', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) return toast('Falha ao salvar', 'err');
+    toast('Aparência salva');
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function saveBrandingMessages() { return saveBranding(); }
+
+// ============ RECURSOS / FEATURES ============
+async function loadFeatures() {
+  const grid = document.getElementById('features-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:#666;padding:20px;">carregando...</div>';
+  try {
+    const list = await fetch('/api/features/features', { credentials: 'same-origin' }).then(r => r.json());
+    grid.innerHTML = list.map(f => `
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <div style="font-size:22px;">${f.icon}</div>
+            <div style="min-width:0;">
+              <div style="color:#fff;font-weight:700;font-size:13px;">${escapeHtml(f.label)}</div>
+              <div style="color:#888;font-size:11px;margin-top:2px;line-height:1.4;">${escapeHtml(f.desc)}</div>
+            </div>
+          </div>
+          <label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;cursor:pointer;">
+            <input type="checkbox" ${f.enabled ? 'checked' : ''} onchange="toggleFeature('${f.key}',this.checked)" style="opacity:0;width:0;height:0;">
+            <span style="position:absolute;inset:0;background:${f.enabled ? '#3b82f6' : '#1a1a1a'};border:1px solid ${f.enabled ? '#3b82f6' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+            <span style="position:absolute;height:16px;width:16px;left:${f.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+          </label>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { grid.innerHTML = '<div style="color:#ff6b6b;padding:20px;">' + e.message + '</div>'; }
+}
+
+async function toggleFeature(key, enabled) {
+  try {
+    await fetch('/api/features/features/' + key, { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
+    toast(enabled ? 'Módulo ativado' : 'Módulo desativado');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ PROTEÇÃO ============
+async function loadProtection() {
+  const wrap = document.getElementById('prot-cards');
+  if (!wrap) return;
+  try {
+    const j = await fetch('/api/features/protection', { credentials: 'same-origin' }).then(r => r.json());
+    wrap.innerHTML = j.rules.map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;">
+        <div><div style="color:#fff;font-weight:600;font-size:12.5px;">${escapeHtml(r.label)}</div><div style="color:#888;font-size:11px;margin-top:2px;">${escapeHtml(r.desc)}</div></div>
+        <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;flex-shrink:0;">
+          <input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleProtRule('${r.key}',this.checked)" style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;inset:0;background:${r.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid ${r.enabled ? '#22c55e' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+          <span style="position:absolute;height:16px;width:16px;left:${r.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+        </label>
+      </div>
+    `).join('');
+    document.getElementById('prot-banned-words').value = (j.banned_words || []).join('\n');
+    window.__protRules = Object.fromEntries(j.rules.map(r => [r.key, r.enabled]));
+  } catch (e) { wrap.innerHTML = '<div style="color:#ff6b6b;padding:14px;">' + e.message + '</div>'; }
+}
+
+function toggleProtRule(key, on) {
+  window.__protRules = window.__protRules || {};
+  window.__protRules[key] = on;
+  saveProtection(true);
+}
+
+async function saveProtection(silent) {
+  const banned = document.getElementById('prot-banned-words').value.split('\n').map(s => s.trim()).filter(Boolean);
+  try {
+    await fetch('/api/features/protection', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules: window.__protRules || {}, banned_words: banned }) });
+    if (!silent) toast('Proteção salva');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ ECLOUD ============
+async function loadEcloud() {
+  try {
+    const j = await fetch('/api/features/ecloud', { credentials: 'same-origin' }).then(r => r.json());
+    document.getElementById('ecloud-redirect').value = j.redirect_uri || '';
+    document.getElementById('ecloud-target').value = j.target_guild || '';
+  } catch {}
+}
+async function saveEcloud() {
+  try {
+    await fetch('/api/features/ecloud', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target_guild: document.getElementById('ecloud-target').value.trim() }) });
+    toast('eCloud salvo');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ VIPs ============
+let __vipTiers = [];
+async function loadVips() {
+  try {
+    const j = await fetch('/api/features/vips', { credentials: 'same-origin' }).then(r => r.json());
+    __vipTiers = j.tiers || [];
+    renderVipTiers();
+  } catch {}
+}
+function renderVipTiers() {
+  const wrap = document.getElementById('vip-tiers');
+  if (!wrap) return;
+  wrap.innerHTML = __vipTiers.map((t, i) => `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <input value="${escapeAttr(t.name)}" oninput="__vipTiers[${i}].name=this.value" placeholder="nome do tier" style="background:transparent;border:0;color:#fff;font-size:15px;font-weight:700;width:100%;outline:none;">
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">a partir de R$</div>
+      <input type="number" value="${t.min_spend || 0}" oninput="__vipTiers[${i}].min_spend=parseInt(this.value)||0" class="inp" style="margin-top:4px;">
+      <div style="margin-top:8px;font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">benefícios</div>
+      <textarea class="inp" rows="2" oninput="__vipTiers[${i}].perks=this.value" style="margin-top:4px;">${escapeHtml(t.perks || '')}</textarea>
+      <button class="btn-g" style="margin-top:8px;width:100%;color:#ff8a8a;border-color:rgba(255,107,107,.3);font-size:11px;" onclick="removeVipTier(${i})">remover</button>
+    </div>
+  `).join('') + `
+    <div style="display:flex;align-items:flex-end;justify-content:flex-end;padding:14px;">
+      <button class="btn-w" onclick="saveVipTiers()">salvar todos</button>
+    </div>
+  `;
+}
+function addVipTier() {
+  __vipTiers.push({ name: 'Novo Tier', min_spend: 0, perks: '' });
+  renderVipTiers();
+}
+function removeVipTier(i) {
+  __vipTiers.splice(i, 1);
+  renderVipTiers();
+}
+async function saveVipTiers() {
+  try {
+    await fetch('/api/features/vips', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tiers: __vipTiers }) });
+    toast('Tiers salvos');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook do sp pra carregar as pages quando entrar
+const __origSp3 = window.sp;
+if (typeof __origSp3 === 'function' && !window.__spHookedV3) {
+  window.__spHookedV3 = true;
+  window.sp = function (page, el) {
+    __origSp3(page, el);
+    if (page === 'personalizacao') loadBranding();
+    if (page === 'recursos') loadFeatures();
+    if (page === 'protecao') loadProtection();
+    if (page === 'ecloud') loadEcloud();
+    if (page === 'vips') loadVips();
+  };
+}
