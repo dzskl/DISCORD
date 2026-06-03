@@ -160,7 +160,7 @@ function ensureDiscordStrategy() {
     clientID,
     clientSecret,
     callbackURL: (process.env.PUBLIC_URL || 'http://localhost:3000') + '/auth/discord/callback',
-    scope: ['identify']
+    scope: ['identify', 'guilds']
   }, (accessToken, refreshToken, profile, done) => {
     done(null, {
       id: profile.id,
@@ -168,7 +168,9 @@ function ensureDiscordStrategy() {
       discriminator: profile.discriminator,
       avatar: profile.avatar
         ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
-        : null
+        : null,
+      // profile.guilds vem do scope 'guilds' — usado pra auto-link com tenants
+      guilds: Array.isArray(profile.guilds) ? profile.guilds : []
     });
   }));
   _registeredKey = key;
@@ -231,6 +233,23 @@ router.get('/discord/callback', (req, res, next) => {
       }
 
       if (!user.active) return res.redirect('/login.html?login=denied');
+
+      // Auto-link: pra cada guild do user no Discord onde ele eh owner ou tem
+      // MANAGE_GUILD (0x20), se o bot ja estiver naquela guild, vincula.
+      try {
+        const guildSvc = require('../services/guild.service');
+        const MANAGE_GUILD = 0x20;
+        for (const g of (profile.guilds || [])) {
+          const perms = BigInt(g.permissions || 0);
+          const canManage = g.owner || (perms & BigInt(MANAGE_GUILD)) !== 0n;
+          if (!canManage) continue;
+          if (guildSvc.findGuild(g.id)) {
+            guildSvc.linkUserToGuild(user.id, g.id, g.owner ? 'owner' : 'admin');
+          }
+        }
+      } catch (e) {
+        require('../utils/logger').warn({ err: e.message }, 'falha auto-link guilds');
+      }
 
       // Mantem session.userId pra proximas requests usarem email/senha session-based
       req.session.userId = user.id;
