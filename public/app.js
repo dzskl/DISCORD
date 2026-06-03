@@ -452,8 +452,11 @@ async function loadVendas() {
       const actions = [];
       if (t.status === 'paid') actions.push(`<button class="btn-sm del" onclick="refundSale(${t.id})">reembolsar</button>`);
       if (t.product_id) actions.push(`<button class="btn-sm pub" onclick="quickAddStock(${t.product_id})">+ estoque</button>`);
+      const fs = t.fraud_score || 0;
+      const fraudBadge = fs >= 80 ? `<span style="color:#ef4444;font-size:10px;font-family:'IBM Plex Mono',monospace;" title="fraud score ${fs}">⚠ ${fs}</span>` :
+        fs >= 60 ? `<span style="color:#f5c542;font-size:10px;font-family:'IBM Plex Mono',monospace;" title="fraud score ${fs}">⚠ ${fs}</span>` : '';
       return `<tr><td>${formatTime(t.created_at)}</td>
-        <td class="hi">${escapeHtml(t.discord_tag || t.discord_id)}</td>
+        <td class="hi">${escapeHtml(t.discord_tag || t.discord_id)} ${fraudBadge}</td>
         <td>${escapeHtml(t.product_name || '—')}</td>
         <td class="${cls}">R$${(t.amount_cents / 100).toFixed(2).replace('.', ',')}</td>
         <td>${badge}</td>

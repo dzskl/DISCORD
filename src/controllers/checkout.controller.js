@@ -40,6 +40,19 @@ router.post('/create-session', async (req, res) => {
   let { product_id, items, discord_id, discord_tag, coupon_code, affiliate_code } = req.body || {};
   if (!discord_id) return res.status(400).json({ error: 'discord_id obrigatorio' });
 
+  // Anti-fraude: bloqueia ja na criacao da sessao se for risco alto
+  const fraud = require('../services/fraud.service');
+  const _frResult = fraud.score({
+    discordId: discord_id,
+    ip: req.ip || req.headers['x-forwarded-for'] || null,
+    amountCents: 0
+  });
+  if (_frResult.decision === 'block') {
+    require('../utils/logger').warn({ discord_id, signals: _frResult.signals }, 'checkout bloqueado por anti-fraude');
+    return res.status(403).json({ error: 'Pedido bloqueado por verificação de segurança. Entre em contato com o suporte.', fraud_blocked: true });
+  }
+  req._fraudResult = _frResult;
+
   let affiliate = null;
   if (affiliate_code) {
     affiliate = db.prepare('SELECT * FROM affiliates WHERE code=? AND active=1').get(affiliate_code.trim().toUpperCase());
@@ -140,9 +153,9 @@ router.post('/create-session', async (req, res) => {
       }
     });
 
-    db.prepare(`
-      INSERT INTO sales (product_id,discord_id,discord_tag,amount_cents,status,stripe_session_id,cart_items,affiliate_id)
-      VALUES (?,?,?,?, 'pending', ?, ?, ?)
+    const _info = db.prepare(`
+      INSERT INTO sales (product_id,discord_id,discord_tag,amount_cents,status,stripe_session_id,cart_items,affiliate_id,fraud_score,fraud_signals,last_ip)
+      VALUES (?,?,?,?, 'pending', ?, ?, ?, ?, ?, ?)
     `).run(
       cartProducts[0].product.id,
       discord_id,
@@ -150,7 +163,10 @@ router.post('/create-session', async (req, res) => {
       total,
       session.id,
       JSON.stringify(cart_meta),
-      affiliate?.id || null
+      affiliate?.id || null,
+      req._fraudResult?.score || 0,
+      req._fraudResult ? JSON.stringify(req._fraudResult.signals) : null,
+      req.ip || req.headers['x-forwarded-for'] || null
     );
 
     res.json({ url: session.url, session_id: session.id });
