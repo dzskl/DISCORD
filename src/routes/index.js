@@ -13,6 +13,7 @@ function register(app) {
   app.use('/api/verification', require('../controllers/verification.controller'));
   app.use('/api/notifications', require('../controllers/notifications.controller'));
   app.use('/api/bot', require('../controllers/bot-control.controller'));
+  app.use('/api/team', require('../controllers/team.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

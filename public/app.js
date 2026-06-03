@@ -2045,3 +2045,120 @@ async function refreshBotStatus() {
 setTimeout(() => { loadBalance(); checkKycBanner(); refreshBotStatus(); }, 800);
 setInterval(loadBalance, 60000);
 setInterval(refreshBotStatus, 30000);
+
+// ============ PERMISSÕES DA EQUIPE (per-guild) ============
+let __teamMembers = [];
+let __teamPerms = [];
+let __teamSelected = null;
+
+async function loadTeamPerms() {
+  try {
+    const [members, meta] = await Promise.all([
+      fetch('/api/team/members', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []),
+      fetch('/api/team/permissions/_meta', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+    __teamMembers = members;
+    __teamPerms = meta;
+    renderTeamMembers();
+    if (members.length && !__teamSelected) selectTeamMember(members[0].id);
+  } catch (e) { console.warn('team perms', e.message); }
+}
+
+function renderTeamMembers() {
+  const wrap = document.getElementById('team-members-list');
+  if (!wrap) return;
+  if (!__teamMembers.length) {
+    wrap.innerHTML = '<div style="color:#666;font-size:12px;padding:14px;text-align:center;">nenhum membro ainda</div>';
+    return;
+  }
+  wrap.innerHTML = __teamMembers.map(m => `
+    <div onclick="selectTeamMember(${m.id})" style="display:flex;align-items:center;gap:10px;padding:10px;background:${__teamSelected === m.id ? '#1a1a1a' : '#0a0a0a'};border:1px solid ${__teamSelected === m.id ? 'var(--primary)' : 'var(--border)'};border-radius:8px;cursor:pointer;transition:all .12s;">
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;${m.discord_avatar ? `background:url('${escapeAttr(m.discord_avatar)}') center/cover;` : ''}">${m.discord_avatar ? '' : (m.display_name || m.email || '?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12.5px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(m.display_name || m.discord_tag || m.email)}</div>
+        <div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">${escapeHtml(m.role)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectTeamMember(userId) {
+  __teamSelected = userId;
+  renderTeamMembers();
+  const m = __teamMembers.find(x => x.id === userId);
+  if (!m) return;
+  const pane = document.getElementById('team-perms-pane');
+  const isOwner = m.role === 'owner';
+  pane.innerHTML = `
+    <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">Permissões para ${escapeHtml(m.display_name || m.email)}</div>
+    <div style="font-size:11.5px;color:#888;margin-bottom:14px;">${isOwner ? 'Owner sempre tem todas as permissões.' : 'Selecione as permissões que deseja conceder a este usuário'}</div>
+    ${__teamPerms.map(p => `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+        <div style="flex:1;">
+          <div style="font-size:12.5px;color:#fff;font-weight:600;">${escapeHtml(p.label)}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">${escapeHtml(p.desc)}</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;margin-top:3px;">
+          <input type="checkbox" ${m.permissions.includes(p.key) ? 'checked' : ''} ${isOwner ? 'disabled' : ''} onchange="toggleTeamPerm(${m.id},'${p.key}',this.checked)" style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;cursor:pointer;inset:0;background:${m.permissions.includes(p.key) ? '#3b82f6' : '#1a1a1a'};border:1px solid ${m.permissions.includes(p.key) ? '#3b82f6' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+          <span style="position:absolute;height:16px;width:16px;left:${m.permissions.includes(p.key) ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+        </label>
+      </div>
+    `).join('')}
+    ${!isOwner ? `<button class="btn-g" style="margin-top:10px;color:#ff8a8a;border-color:rgba(255,107,107,.3);" onclick="removeMember(${m.id})">remover membro</button>` : ''}
+  `;
+}
+
+async function toggleTeamPerm(userId, perm, granted) {
+  try {
+    const r = await fetch(`/api/team/permissions/${userId}/${perm}`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ granted })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || 'Falha', 'err'); return loadTeamPerms(); }
+    // atualiza local sem refetch
+    const m = __teamMembers.find(x => x.id === userId);
+    if (m) {
+      if (granted) m.permissions = [...new Set([...m.permissions, perm])];
+      else m.permissions = m.permissions.filter(p => p !== perm);
+    }
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openAddMemberPrompt() {
+  const email = prompt('Email do usuário a adicionar (precisa ter conta na plataforma):');
+  if (!email) return;
+  try {
+    const r = await fetch('/api/team/members', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, role: 'admin' })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Membro adicionado');
+    loadTeamPerms();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function removeMember(userId) {
+  if (!confirm('Remover este membro da guild?')) return;
+  try {
+    const r = await fetch(`/api/team/members/${userId}`, { method: 'DELETE', credentials: 'same-origin' });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Membro removido');
+    __teamSelected = null;
+    loadTeamPerms();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook: quando navegar pra equipe, carrega perms
+const __origSp = window.sp;
+if (typeof __origSp === 'function') {
+  window.sp = function (page, el) {
+    __origSp(page, el);
+    if (page === 'equipe') loadTeamPerms();
+  };
+}
