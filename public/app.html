@@ -1071,8 +1071,12 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
 
         <div class="card" style="margin-bottom:14px;">
-          <div class="ctitle">permissões da guild ativa <span class="cbadge">por membro</span></div>
-          <div style="display:grid;grid-template-columns:280px 1fr;gap:14px;margin-top:10px;">
+          <div class="ctitle">permissões da guild ativa</div>
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin:6px 0 14px;">
+            <button class="perm-tab active" data-tab="members" onclick="switchPermTab('members')" style="background:transparent;border:0;color:#fff;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);">Membros</button>
+            <button class="perm-tab" data-tab="roles" onclick="switchPermTab('roles')" style="background:transparent;border:0;color:#666;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Cargos</button>
+          </div>
+          <div id="perm-pane-members" style="display:grid;grid-template-columns:280px 1fr;gap:14px;">
             <div>
               <div style="font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.06em;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;">Lista de membros</div>
               <div id="team-members-list" style="display:flex;flex-direction:column;gap:6px;max-height:380px;overflow-y:auto;"></div>
@@ -1080,6 +1084,15 @@ footer.appfoot a:hover{color:var(--text);}
             </div>
             <div id="team-perms-pane">
               <div style="font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Selecione um membro à esquerda</div>
+            </div>
+          </div>
+          <div id="perm-pane-roles" style="display:none;grid-template-columns:280px 1fr;gap:14px;">
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.06em;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;">Cargos do servidor</div>
+              <div id="team-roles-list" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto;"></div>
+            </div>
+            <div id="team-role-perms-pane">
+              <div style="font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Selecione um cargo à esquerda</div>
             </div>
           </div>
         </div>

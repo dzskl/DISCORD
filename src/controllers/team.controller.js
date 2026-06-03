@@ -183,4 +183,49 @@ function canManageTeam(req) {
   return !!has;
 }
 
+// ============ CARGOS (Discord roles) — permissoes por cargo ============
+router.get('/roles', async (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  try {
+    const bot = require('../services/bot.service');
+    let roles = [];
+    try { roles = await bot.listRoles(); } catch { roles = []; }
+
+    const perms = db.prepare(`SELECT role_id, role_name, permission FROM role_permissions WHERE guild_id=? AND granted=1`).all(req.guildId);
+    const permMap = {};
+    for (const p of perms) {
+      if (!permMap[p.role_id]) permMap[p.role_id] = { role_id: p.role_id, role_name: p.role_name, permissions: [] };
+      permMap[p.role_id].permissions.push(p.permission);
+    }
+
+    // junta cargos do Discord com cargos que ja tem perms (mesmo sem estar no Discord)
+    const out = roles.map(r => ({
+      role_id: r.id, role_name: r.name, color: r.color,
+      permissions: permMap[r.id]?.permissions || []
+    }));
+    for (const rid of Object.keys(permMap)) {
+      if (!out.find(x => x.role_id === rid)) out.push(permMap[rid]);
+    }
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/roles/:roleId/permissions', (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  if (!canManageTeam(req)) return res.status(403).json({ error: 'sem permissao' });
+  const { permissions, role_name } = req.body || {};
+  if (!Array.isArray(permissions)) return res.status(400).json({ error: 'permissions deve ser array' });
+  const validKeys = new Set(ALL_PERMISSIONS.map(p => p.key));
+  const wanted = permissions.filter(p => validKeys.has(p));
+
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM role_permissions WHERE guild_id=? AND role_id=?`).run(req.guildId, req.params.roleId);
+    const ins = db.prepare(`INSERT INTO role_permissions (guild_id, role_id, role_name, permission, granted) VALUES (?,?,?,?,1)`);
+    for (const p of wanted) ins.run(req.guildId, req.params.roleId, role_name || null, p);
+  });
+  tx();
+  audit.log({ req, action: 'team.role_permissions_set', target_id: req.params.roleId, details: { permissions: wanted } });
+  res.json({ ok: true });
+});
+
 module.exports = router;

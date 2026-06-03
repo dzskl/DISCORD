@@ -2265,3 +2265,155 @@ if (typeof __origSp === 'function') {
     if (page === 'equipe') loadTeamPerms();
   };
 }
+
+// ============ PERMISSÕES POR CARGO ============
+let __teamRoles = [];
+let __teamRoleSelected = null;
+let __teamRolePending = null;
+let __teamRoleOriginal = null;
+
+function switchPermTab(tab) {
+  document.querySelectorAll('.perm-tab').forEach(b => {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle('active', on);
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+  document.getElementById('perm-pane-members').style.display = tab === 'members' ? 'grid' : 'none';
+  document.getElementById('perm-pane-roles').style.display = tab === 'roles' ? 'grid' : 'none';
+  if (tab === 'roles' && !__teamRoles.length) loadRolePerms();
+}
+
+async function loadRolePerms() {
+  try {
+    const [roles, meta] = await Promise.all([
+      fetch('/api/team/roles', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []),
+      __teamPerms.length ? Promise.resolve(__teamPerms) : fetch('/api/team/permissions/_meta', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+    __teamRoles = roles;
+    __teamPerms = meta;
+    renderRolesList();
+    if (roles.length && !__teamRoleSelected) selectRole(roles[0].role_id);
+  } catch (e) { console.warn('role perms', e.message); }
+}
+
+function renderRolesList() {
+  const wrap = document.getElementById('team-roles-list');
+  if (!wrap) return;
+  if (!__teamRoles.length) {
+    wrap.innerHTML = '<div style="color:#666;font-size:12px;padding:14px;text-align:center;">nenhum cargo encontrado<br><span style="font-size:10.5px;">(bot precisa estar conectado)</span></div>';
+    return;
+  }
+  wrap.innerHTML = __teamRoles.map(r => `
+    <div onclick="selectRole('${r.role_id}')" style="display:flex;align-items:center;gap:10px;padding:10px;background:${__teamRoleSelected === r.role_id ? '#1a1a1a' : '#0a0a0a'};border:1px solid ${__teamRoleSelected === r.role_id ? 'var(--primary)' : 'var(--border)'};border-radius:8px;cursor:pointer;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${r.color || '#7289da'};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12.5px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.role_name || r.role_id)}</div>
+        <div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;">${r.permissions.length} permissões</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectRole(roleId) {
+  if (__teamRolePending && hasRoleDirty()) {
+    if (!confirm('Você tem alterações não salvas. Descartar?')) return;
+  }
+  __teamRoleSelected = roleId;
+  const r = __teamRoles.find(x => x.role_id === roleId);
+  if (!r) return;
+  __teamRoleOriginal = new Set(r.permissions);
+  __teamRolePending = new Set(r.permissions);
+  renderRolesList();
+  renderRolePermsPane();
+}
+
+function hasRoleDirty() {
+  if (!__teamRolePending || !__teamRoleOriginal) return false;
+  if (__teamRolePending.size !== __teamRoleOriginal.size) return true;
+  for (const p of __teamRolePending) if (!__teamRoleOriginal.has(p)) return true;
+  return false;
+}
+
+function renderRolePermsPane() {
+  const r = __teamRoles.find(x => x.role_id === __teamRoleSelected);
+  if (!r) return;
+  const pane = document.getElementById('team-role-perms-pane');
+  const groups = {};
+  for (const p of __teamPerms) {
+    const g = p.group || 'Outros';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  }
+  const dirty = hasRoleDirty();
+  const groupOrder = ['Principal', 'Geral', 'Moderação', 'Outros'];
+  const sortedGroups = Object.keys(groups).sort((a, b) => {
+    const ai = groupOrder.indexOf(a), bi = groupOrder.indexOf(b);
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+
+  pane.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:12px;height:12px;border-radius:50%;background:${r.color || '#7289da'};"></div>
+      <div style="font-size:13px;color:#fff;font-weight:700;">Permissões do cargo ${escapeHtml(r.role_name || r.role_id)}</div>
+    </div>
+    <div style="font-size:11.5px;color:#888;margin-bottom:14px;">Membros com este cargo herdam estas permissões automaticamente.</div>
+    <div style="max-height:520px;overflow-y:auto;padding-right:6px;">
+      ${sortedGroups.map(g => `
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666;font-family:'IBM Plex Mono',monospace;margin:14px 0 8px;">${escapeHtml(g)}</div>
+        ${groups[g].map(p => {
+          const on = __teamRolePending.has(p.key);
+          return `
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12.5px;color:#fff;font-weight:600;">${escapeHtml(p.label)}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">${escapeHtml(p.desc)}</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+                <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleRolePending('${p.key}',this.checked)" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:${on ? '#3b82f6' : '#1a1a1a'};border:1px solid ${on ? '#3b82f6' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+                <span style="position:absolute;height:16px;width:16px;left:${on ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+              </label>
+            </div>
+          `;
+        }).join('')}
+      `).join('')}
+    </div>
+    <div style="position:sticky;bottom:-22px;margin:14px -22px -22px;padding:12px 22px;background:linear-gradient(180deg,transparent,#0e0e0e 30%);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+      ${dirty ? '<span style="margin-right:auto;font-size:11.5px;color:#f5c542;font-family:\'IBM Plex Mono\',monospace;">● Alterações não salvas</span>' : ''}
+      <button class="kyc-btn secondary" ${!dirty ? 'disabled' : ''} onclick="discardRoleChanges()">Limpar</button>
+      <button class="kyc-btn primary" ${!dirty ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="saveRoleChanges()">Salvar</button>
+    </div>
+  `;
+}
+
+function toggleRolePending(perm, on) {
+  if (!__teamRolePending) return;
+  if (on) __teamRolePending.add(perm); else __teamRolePending.delete(perm);
+  renderRolePermsPane();
+}
+
+function discardRoleChanges() {
+  if (!__teamRoleOriginal) return;
+  __teamRolePending = new Set(__teamRoleOriginal);
+  renderRolePermsPane();
+}
+
+async function saveRoleChanges() {
+  if (!__teamRoleSelected || !__teamRolePending) return;
+  const r = __teamRoles.find(x => x.role_id === __teamRoleSelected);
+  try {
+    const resp = await fetch(`/api/team/roles/${__teamRoleSelected}/permissions`, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissions: [...__teamRolePending], role_name: r?.role_name })
+    });
+    const j = await resp.json();
+    if (!resp.ok) return toast(j.error || 'Falha', 'err');
+    toast('Permissões do cargo salvas');
+    if (r) r.permissions = [...__teamRolePending];
+    __teamRoleOriginal = new Set(__teamRolePending);
+    renderRolesList();
+    renderRolePermsPane();
+  } catch (e) { toast(e.message, 'err'); }
+}
