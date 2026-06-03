@@ -92,15 +92,31 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - Coluna direita: **renderização em tempo real** estilo Discord
   - Reusável em: anúncios, sugestões, boas-vindas, etc.
 
-- [ ] **Página "Proteção" com tabs**:
-  - **Anti Fake** (toggle + config) — detecta contas fake/bots novos
-  - **Anti Spam** (toggle + config) — flood, spam, links maliciosos
-  - **Canais** — quais canais cobertos
-  - **Cargos** — quais cargos isentos
-  - **Moderação** — config de ações automáticas (mute/ban/kick auto)
-  - **Segurança Avançada** — verificação 2FA forçada, lockdown
-  - **Permissões de Comandos** — restringir quem usa cada comando
-  - Warning quando desativado globalmente
+- [ ] **Página "Proteção" anti-raid completa** (7 tabs, ~3h pra tudo):
+  - **Anti Fake** (toggle global) — detecta contas fake/bots novos
+  - **Anti Spam** (toggle global + warning se off) — flood, spam, links
+  - **Canais** — defesas contra ataques de destruição:
+    - Defesa contra Deleção de Canais (toggle + editar)
+    - Defesa contra Edição de Canais (toggle + editar)
+    - Defesa contra Criação de Canais (toggle + editar)
+    - Configurações Globais (punição + cargos imunes + canal de logs)
+  - **Cargos** — espelha estrutura de Canais:
+    - Defesa contra Deleção de Cargos
+    - Defesa contra Edição de Cargos
+    - Defesa contra Criação de Cargos
+    - Configurações Globais
+  - **Moderação** — abusos de moderadores:
+    - Monitoramento de Banimentos Massivos
+    - Monitoramento de Expulsões Massivas
+  - **Segurança Avançada** — 5 toggles:
+    - Proteção de Permissões Administrativas
+    - Controle de Menções Abusivas (@everyone, @here)
+    - Gestão de Punições do Sistema (auditoria + controle)
+    - Monitoramento de Integrações (Bots maliciosos)
+    - Controle de Adição de Cargos Privados
+  - **Permissões de Comandos** — lista colapsável de comandos:
+    - /ban, /unban, /kick, /mute, /unmute, /lock, /clear, /cleardm,
+      /nuke, /say, /dm — cada um expandível pra setar cargos permitidos
 
 ### Rodada NeverMissApps #3 — Configurar Bot / Personalização / Canais / Cargos
 
