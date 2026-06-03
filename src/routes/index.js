@@ -18,6 +18,7 @@ function register(app) {
   app.use('/api/bots', require('../controllers/bot-instances.controller'));
   app.use('/api/achievements', require('../controllers/achievements.controller'));
   app.use('/api/tutorials', require('../controllers/tutorials.controller'));
+  app.use('/api/public-stats', require('../controllers/public-stats.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

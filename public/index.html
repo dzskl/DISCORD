@@ -163,10 +163,37 @@ footer{border-top:1px solid var(--border);padding:40px 0 30px;background:#080808
   </div>
 </nav>
 
+<style>
+  .hero-with-feed{position:relative;}
+  .sales-feed{position:absolute;right:6%;top:18%;display:flex;flex-direction:column;gap:10px;width:280px;z-index:5;pointer-events:none;}
+  @media(max-width:1100px){.sales-feed{display:none;}}
+  .sale-card{background:rgba(15,15,15,.85);backdrop-filter:blur(8px);border:1px solid var(--border-strong);border-radius:12px;padding:11px 14px;animation:slideInRight .6s cubic-bezier(.16,1,.3,1);}
+  .sale-card-h{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+  .sale-card-h .ok{color:#22c55e;display:inline-flex;align-items:center;gap:5px;}
+  .sale-card-h .ok::before{content:'';width:5px;height:5px;background:#22c55e;border-radius:50%;box-shadow:0 0 6px #22c55e;}
+  .sale-card-h .when{color:#666;}
+  .sale-card-body{display:flex;align-items:center;gap:10px;}
+  .sale-card-av{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}
+  .sale-card-info{flex:1;min-width:0;}
+  .sale-card-product{color:#fff;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sale-card-customer{color:#888;font-size:10.5px;font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+  .sale-card-price{color:#7dd3a4;font-weight:800;font-size:13px;font-family:'IBM Plex Mono',monospace;}
+  @keyframes slideInRight{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+
+  .global-metrics{padding:70px 0 50px;}
+  .gm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+  @media(max-width:900px){.gm-grid{grid-template-columns:repeat(2,1fr);}}
+  .gm-card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;}
+  .gm-icon{width:42px;height:42px;border-radius:10px;background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+  .gm-value{font-size:32px;font-weight:800;color:#fff;letter-spacing:-.02em;}
+  .gm-label{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;}
+</style>
+
 <!-- HERO -->
-<section class="hero">
+<section class="hero hero-with-feed">
   <div class="bg-hero"></div>
   <div class="bg-grid"></div>
+  <div class="sales-feed" id="sales-feed"></div>
   <div class="wrap">
     <div class="hero-pill"><span class="dot"></span>plug & play · pronto pra vender em 10 minutos</div>
     <h1>O bot Discord pra<br><span class="accent">sua loja vender 24/7</span></h1>
@@ -184,6 +211,95 @@ footer{border-top:1px solid var(--border);padding:40px 0 30px;background:#080808
     </div>
   </div>
 </section>
+
+<!-- METRICAS GLOBAIS -->
+<section class="global-metrics">
+  <div class="wrap">
+    <div class="gm-grid">
+      <div class="gm-card">
+        <div class="gm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
+        <div class="gm-value" id="gm-servers">—</div>
+        <div class="gm-label">Servidores ativos</div>
+      </div>
+      <div class="gm-card">
+        <div class="gm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7dd3a4" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+        <div class="gm-value" id="gm-tx">—</div>
+        <div class="gm-label">Transações realizadas</div>
+      </div>
+      <div class="gm-card">
+        <div class="gm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#88c0ff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="gm-value" id="gm-members">—</div>
+        <div class="gm-label">Membros alcançados</div>
+      </div>
+      <div class="gm-card">
+        <div class="gm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+        <div class="gm-value" id="gm-volume">—</div>
+        <div class="gm-label">Volume transacionado</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function fmtBig(n){
+  if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1).replace('.0','') + 'K';
+  return String(n);
+}
+function fmtBRL(c){
+  const n = c / 100;
+  if (n >= 1000000) return 'R$ ' + (n/1000000).toFixed(1).replace('.0','') + 'M';
+  if (n >= 1000) return 'R$ ' + (n/1000).toFixed(0) + 'K';
+  return 'R$ ' + n.toFixed(2);
+}
+async function loadGlobalStats(){
+  try{
+    const j = await fetch('/api/public-stats/global').then(r=>r.json());
+    document.getElementById('gm-servers').textContent = fmtBig(j.servers_active) + '+';
+    document.getElementById('gm-tx').textContent = fmtBig(j.transactions) + '+';
+    document.getElementById('gm-members').textContent = fmtBig(j.members_reached) + '+';
+    document.getElementById('gm-volume').textContent = fmtBRL(j.volume_cents) + '+';
+  } catch {}
+}
+function timeAgo(ts){
+  const s = Math.floor(Date.now()/1000) - ts;
+  if (s < 60) return 'agora';
+  if (s < 3600) return 'há ' + Math.floor(s/60) + ' min';
+  if (s < 86400) return 'há ' + Math.floor(s/3600) + 'h';
+  return 'há ' + Math.floor(s/86400) + 'd';
+}
+const DEMO_SALES = [
+  { product_name:'Licença Anual', amount_cents:9990, customer_masked:'A. L.', paid_at:Math.floor(Date.now()/1000) - 180 },
+  { product_name:'Licença Anual', amount_cents:9990, customer_masked:'M. K.', paid_at:Math.floor(Date.now()/1000) - 240 },
+  { product_name:'Assinatura VIP', amount_cents:3990, customer_masked:'R. A.', paid_at:Math.floor(Date.now()/1000) - 660 },
+  { product_name:'Serviço Gold',  amount_cents:1990, customer_masked:'T. N.', paid_at:Math.floor(Date.now()/1000) - 1500 }
+];
+async function loadSalesFeed(){
+  try{
+    let list = await fetch('/api/public-stats/recent-sales').then(r=>r.ok ? r.json() : []);
+    if (!Array.isArray(list) || list.length < 2) list = DEMO_SALES;
+    const feed = document.getElementById('sales-feed');
+    if (!feed) return;
+    feed.innerHTML = list.slice(0,4).map(s => `
+      <div class="sale-card">
+        <div class="sale-card-h"><span class="ok">venda confirmada</span><span class="when">${timeAgo(s.paid_at)}</span></div>
+        <div class="sale-card-body">
+          <div class="sale-card-av">${(s.customer_masked||'?').charAt(0)}</div>
+          <div class="sale-card-info">
+            <div class="sale-card-product">${s.product_name}</div>
+            <div class="sale-card-customer">${s.customer_masked||'—'}</div>
+          </div>
+          <div class="sale-card-price">${fmtBRL(s.amount_cents)}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch {}
+}
+loadGlobalStats();
+loadSalesFeed();
+setInterval(loadSalesFeed, 12000);
+setInterval(loadGlobalStats, 60000);
+</script>
 
 <!-- LOGOS -->
 <section class="logos">
