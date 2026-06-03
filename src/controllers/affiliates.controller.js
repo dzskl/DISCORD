@@ -21,7 +21,7 @@ router.post('/', requireAuth, (req, res) => {
   const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
   const gArgs = req.guildId ? [req.guildId] : [];
   const count = db.prepare(`SELECT COUNT(*) AS c FROM affiliates WHERE active=1 ${gFilter}`).get(...gArgs).c;
-  if (!withinLimit('max_affiliates', count)) {
+  if (!withinLimit('max_affiliates', count, req)) {
     return res.status(402).json({ error: 'sistema de afiliados é do plano Pro', upgrade_required: true, feature: 'max_affiliates' });
   }
   const { discord_id, discord_tag, code, commission_percent } = req.body || {};

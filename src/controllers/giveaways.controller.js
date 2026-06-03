@@ -20,7 +20,7 @@ router.post('/', requireAuth, async (req, res) => {
   const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
   const gArgs = req.guildId ? [req.guildId] : [];
   const count = db.prepare(`SELECT COUNT(*) AS c FROM giveaways WHERE ended=0 ${gFilter}`).get(...gArgs).c;
-  if (!withinLimit('max_giveaways_active', count)) {
+  if (!withinLimit('max_giveaways_active', count, req)) {
     return res.status(402).json({ error: 'sorteios são do plano Pro', upgrade_required: true, feature: 'max_giveaways_active' });
   }
   const { channel_name, prize, winners_count, duration_minutes, required_role_id } = req.body || {};

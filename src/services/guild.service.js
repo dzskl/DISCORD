@@ -3,16 +3,25 @@ const { db, getCredential } = require('../database/connection');
 const logger = require('../utils/logger');
 
 function upsertGuild({ id, name, icon_url, owner_discord_id }) {
+  const existing = db.prepare('SELECT id FROM guilds WHERE id=?').get(id);
+  // Nova guild ganha trial Pro de 7d na primeira vez
+  const trialEndsAt = existing ? null : Math.floor(Date.now() / 1000) + 7 * 86400;
   db.prepare(`
-    INSERT INTO guilds (id, name, icon_url, owner_discord_id, active)
-    VALUES (?, ?, ?, ?, 1)
+    INSERT INTO guilds (id, name, icon_url, owner_discord_id, active, plan, subscription_status, trial_ends_at, subscription_ends_at)
+    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       icon_url = excluded.icon_url,
       owner_discord_id = COALESCE(excluded.owner_discord_id, guilds.owner_discord_id),
       active = 1,
       bot_left_at = NULL
-  `).run(id, name, icon_url || null, owner_discord_id || null);
+  `).run(
+    id, name, icon_url || null, owner_discord_id || null,
+    existing ? 'free' : 'pro',
+    existing ? null : 'trialing',
+    trialEndsAt,
+    trialEndsAt
+  );
   return db.prepare('SELECT * FROM guilds WHERE id=?').get(id);
 }
 

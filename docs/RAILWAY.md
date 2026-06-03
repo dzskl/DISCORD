@@ -107,3 +107,24 @@ Aplicadas automaticamente no boot pelo `applyMigrations()` em `src/server.js`. N
 | Bot não loga no Discord | `DISCORD_TOKEN` errado | Conferir em /setup.html |
 | Webhook Stripe não chega | Domínio errado no Stripe | Atualizar endpoint do webhook |
 | `redirect_uri inválido` no OAuth | `PUBLIC_URL` ≠ Discord redirect | Conferir match exato |
+
+## Quando trocar SQLite por Postgres
+
+SQLite + Volume aguenta MVP e dezenas a baixas centenas de tenants ativos. Sinais pra migrar:
+
+- mais de uma instância (load balancing) — SQLite não suporta multi-writer
+- write contention (sessões + sales + logs concorrendo) virando gargalo
+- precisa de réplicas pra read-heavy stats
+
+**Plano de migração (estimado: 1 dia):**
+1. Subir um Postgres no Railway (`Add Service → Database → Postgres`)
+2. Trocar `better-sqlite3` por `pg` em `src/database/connection.js`. Substituir o helper síncrono por um async client — a maior parte do código usa `db.prepare().run/all/get`, então fazer um shim mínimo já cobre 90% dos call-sites.
+3. Converter o `database/migrations/*.sql` pra dialeto Postgres:
+   - `INTEGER PRIMARY KEY AUTOINCREMENT` → `BIGSERIAL PRIMARY KEY`
+   - `strftime('%s','now')` → `EXTRACT(epoch FROM now())::bigint`
+   - `INSERT ... ON CONFLICT(x) DO UPDATE SET ...` (já é compatível)
+   - `BOOLEAN` em vez de `INTEGER 0/1` (opcional)
+4. Dump do SQLite → COPY pra Postgres com `pgloader` ou script manual
+5. Sessions: trocar `connect-sqlite3` por `connect-pg-simple`
+
+A camada `services/` e `controllers/` não precisam mudar.

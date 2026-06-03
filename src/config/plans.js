@@ -74,19 +74,37 @@ function ownerPlan() {
   return getPlan(owner.plan || 'free');
 }
 
-function hasFeature(feature) {
-  return !!ownerPlan().features[feature];
+// Plano da guild ativa. Cai pra ownerPlan se sem guildId (compat).
+function guildPlan(guildId) {
+  if (!guildId) return ownerPlan();
+  const { db } = require('../database/connection');
+  const g = db.prepare('SELECT plan, subscription_status, subscription_ends_at, trial_ends_at FROM guilds WHERE id=?').get(guildId);
+  if (!g) return ownerPlan();
+  if (g.plan !== 'free' && g.subscription_ends_at && g.subscription_ends_at < Math.floor(Date.now() / 1000)) {
+    if (g.subscription_status !== 'active' && g.subscription_status !== 'trialing') {
+      return { ...getPlan('free'), expired_from: g.plan };
+    }
+  }
+  return getPlan(g.plan || 'free');
 }
 
-function withinLimit(feature, currentCount) {
-  const limit = ownerPlan().features[feature];
+function planFor(req) {
+  return req?.guildId ? guildPlan(req.guildId) : ownerPlan();
+}
+
+function hasFeature(feature, req) {
+  return !!planFor(req).features[feature];
+}
+
+function withinLimit(feature, currentCount, req) {
+  const limit = planFor(req).features[feature];
   if (limit === Infinity) return true;
   return currentCount < limit;
 }
 
 function requireFeature(feature) {
   return (req, res, next) => {
-    if (!hasFeature(feature)) {
+    if (!hasFeature(feature, req)) {
       return res.status(402).json({ error: 'feature do plano Pro', upgrade_required: true, feature });
     }
     next();
@@ -96,12 +114,12 @@ function requireFeature(feature) {
 function requireLimit(feature, getCurrentCount) {
   return (req, res, next) => {
     const count = typeof getCurrentCount === 'function' ? getCurrentCount(req) : getCurrentCount;
-    if (!withinLimit(feature, count)) {
-      const limit = ownerPlan().features[feature];
+    if (!withinLimit(feature, count, req)) {
+      const limit = planFor(req).features[feature];
       return res.status(402).json({ error: `limite do plano atingido (${limit})`, upgrade_required: true, feature });
     }
     next();
   };
 }
 
-module.exports = { PLANS, getPlan, ownerPlan, hasFeature, withinLimit, requireFeature, requireLimit, serializePlan };
+module.exports = { PLANS, getPlan, ownerPlan, guildPlan, planFor, hasFeature, withinLimit, requireFeature, requireLimit, serializePlan };

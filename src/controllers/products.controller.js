@@ -23,7 +23,7 @@ router.post('/', requireAuth, (req, res) => {
   const guildFilter = req.guildId ? 'AND guild_id = ?' : '';
   const countArgs = req.guildId ? [req.guildId] : [];
   const count = db.prepare(`SELECT COUNT(*) AS c FROM products WHERE active=1 ${guildFilter}`).get(...countArgs).c;
-  if (!withinLimit('max_products', count)) {
+  if (!withinLimit('max_products', count, req)) {
     return res.status(402).json({ error: 'limite do plano atingido — faça upgrade pra Pro', upgrade_required: true, feature: 'max_products' });
   }
   const { name, description, price, cost, role_id, duration, image_url, stock, accent_color, category_id, delivery_type, hook_url } = req.body || {};

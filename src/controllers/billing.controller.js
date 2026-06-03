@@ -1,6 +1,6 @@
 const express = require('express');
 const { db, getCredential } = require('../database/connection');
-const { PLANS, getPlan, ownerPlan, serializePlan } = require('../config/plans');
+const { PLANS, getPlan, ownerPlan, guildPlan, planFor, serializePlan } = require('../config/plans');
 const audit = require('../services/audit.service');
 
 const router = express.Router();
@@ -17,11 +17,14 @@ function planPriceIds() {
   };
 }
 
-// ---------- GET /me — plano atual ----------
+// ---------- GET /me — plano atual (da guild ativa se houver) ----------
 router.get('/me', (req, res) => {
   if (!req.appUser) return res.status(401).json({ error: 'nao autenticado' });
-  const plan = ownerPlan();
+  const plan = planFor(req);
   const myUser = db.prepare('SELECT plan, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_ends_at, trial_ends_at FROM users WHERE id=?').get(req.appUser.id);
+  const myGuild = req.guildId
+    ? db.prepare('SELECT id,name,plan,subscription_status,subscription_ends_at,trial_ends_at,stripe_customer_id FROM guilds WHERE id=?').get(req.guildId)
+    : null;
 
   const owner = db.prepare(`SELECT id,email,plan,subscription_status,subscription_ends_at FROM users WHERE role='owner' AND active=1 ORDER BY id LIMIT 1`).get();
   const isOwner = req.appUser.role === 'owner';
@@ -31,6 +34,13 @@ router.get('/me', (req, res) => {
     plan: serializePlan(plan),
     is_owner: isOwner,
     owner_email: owner?.email,
+    active_guild: myGuild,
+    guild_subscription: myGuild ? {
+      status: myGuild.subscription_status,
+      ends_at: myGuild.subscription_ends_at,
+      trial_ends_at: myGuild.trial_ends_at,
+      has_stripe_customer: !!myGuild.stripe_customer_id
+    } : null,
     my_subscription: myUser ? {
       status: myUser.subscription_status,
       ends_at: myUser.subscription_ends_at,

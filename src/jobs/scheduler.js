@@ -10,7 +10,21 @@ function start() {
   cron.schedule('0 * * * *', sendExpiryWarnings);
   cron.schedule('0 * * * *', maybeSendDailyReport);
   cron.schedule('15 * * * *', checkTrials);
+  cron.schedule('20 * * * *', checkGuildTrials);
   logger.info('scheduler iniciado');
+}
+
+async function checkGuildTrials() {
+  const now = Math.floor(Date.now() / 1000);
+  const expired = db.prepare(`
+    SELECT * FROM guilds
+    WHERE plan='pro' AND subscription_status='trialing'
+      AND trial_ends_at IS NOT NULL AND trial_ends_at < ?
+  `).all(now);
+  for (const g of expired) {
+    db.prepare(`UPDATE guilds SET plan='free', subscription_status='expired' WHERE id=?`).run(g.id);
+    logEvent({ type: 'anuncio', message: `Trial da guild ${g.name} expirou`, guild_id: g.id });
+  }
 }
 
 async function checkTrials() {
