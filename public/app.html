@@ -1438,6 +1438,24 @@ footer.appfoot a:hover{color:var(--text);}
   </div>
 </div>
 
+<div class="modal-back" id="modal-add-member">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <h3>Adicionar membro</h3>
+      <button class="modal-x" onclick="closeModal('modal-add-member')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="position:relative;margin-bottom:14px;">
+        <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#666;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="user-search-input" placeholder="Nome de usuário ou ID" oninput="onUserSearchInput(this.value)" style="width:100%;background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:10px 12px 10px 36px;font-size:13px;font-family:inherit;">
+      </div>
+      <div id="user-search-results" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+        <div style="color:#666;font-size:12.5px;text-align:center;padding:24px;">Digite para pesquisar usuários</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="/app.js"></script>

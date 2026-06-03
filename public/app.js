@@ -2050,6 +2050,8 @@ setInterval(refreshBotStatus, 30000);
 let __teamMembers = [];
 let __teamPerms = [];
 let __teamSelected = null;
+let __teamPending = null;   // Set de perms pendentes (nao salvo) — null = sincronizado
+let __teamOriginal = null;  // Set original do servidor pra comparar
 
 async function loadTeamPerms() {
   try {
@@ -2059,8 +2061,11 @@ async function loadTeamPerms() {
     ]);
     __teamMembers = members;
     __teamPerms = meta;
+    __teamPending = null;
+    __teamOriginal = null;
     renderTeamMembers();
     if (members.length && !__teamSelected) selectTeamMember(members[0].id);
+    else if (__teamSelected) selectTeamMember(__teamSelected);
   } catch (e) { console.warn('team perms', e.message); }
 }
 
@@ -2083,62 +2088,160 @@ function renderTeamMembers() {
 }
 
 function selectTeamMember(userId) {
+  // se tinha mudancas pendentes, alerta
+  if (__teamPending && hasTeamDirty()) {
+    if (!confirm('Você tem alterações não salvas. Descartar e trocar de membro?')) return;
+  }
   __teamSelected = userId;
-  renderTeamMembers();
   const m = __teamMembers.find(x => x.id === userId);
+  if (!m) return;
+  __teamOriginal = new Set(m.permissions);
+  __teamPending = new Set(m.permissions);
+  renderTeamMembers();
+  renderPermsPane();
+}
+
+function hasTeamDirty() {
+  if (!__teamPending || !__teamOriginal) return false;
+  if (__teamPending.size !== __teamOriginal.size) return true;
+  for (const p of __teamPending) if (!__teamOriginal.has(p)) return true;
+  return false;
+}
+
+function renderPermsPane() {
+  const m = __teamMembers.find(x => x.id === __teamSelected);
   if (!m) return;
   const pane = document.getElementById('team-perms-pane');
   const isOwner = m.role === 'owner';
+
+  // Agrupa por p.group
+  const groups = {};
+  for (const p of __teamPerms) {
+    const g = p.group || 'Outros';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  }
+
+  const dirty = hasTeamDirty();
+  const groupOrder = ['Principal', 'Geral', 'Moderação', 'Outros'];
+  const sortedGroups = Object.keys(groups).sort((a, b) => {
+    const ai = groupOrder.indexOf(a), bi = groupOrder.indexOf(b);
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+
   pane.innerHTML = `
-    <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">Permissões para ${escapeHtml(m.display_name || m.email)}</div>
-    <div style="font-size:11.5px;color:#888;margin-bottom:14px;">${isOwner ? 'Owner sempre tem todas as permissões.' : 'Selecione as permissões que deseja conceder a este usuário'}</div>
-    ${__teamPerms.map(p => `
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
-        <div style="flex:1;">
-          <div style="font-size:12.5px;color:#fff;font-weight:600;">${escapeHtml(p.label)}</div>
-          <div style="font-size:11px;color:#888;margin-top:2px;">${escapeHtml(p.desc)}</div>
-        </div>
-        <label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;margin-top:3px;">
-          <input type="checkbox" ${m.permissions.includes(p.key) ? 'checked' : ''} ${isOwner ? 'disabled' : ''} onchange="toggleTeamPerm(${m.id},'${p.key}',this.checked)" style="opacity:0;width:0;height:0;">
-          <span style="position:absolute;cursor:pointer;inset:0;background:${m.permissions.includes(p.key) ? '#3b82f6' : '#1a1a1a'};border:1px solid ${m.permissions.includes(p.key) ? '#3b82f6' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
-          <span style="position:absolute;height:16px;width:16px;left:${m.permissions.includes(p.key) ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
-        </label>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:13px;color:#fff;font-weight:700;">Permissões para ${escapeHtml(m.display_name || m.discord_tag || m.email)}</div>
+        <div style="font-size:11.5px;color:#888;margin-top:2px;">${isOwner ? 'Owner sempre tem todas as permissões.' : 'Selecione as permissões que deseja conceder a este usuário'}</div>
       </div>
-    `).join('')}
-    ${!isOwner ? `<button class="btn-g" style="margin-top:10px;color:#ff8a8a;border-color:rgba(255,107,107,.3);" onclick="removeMember(${m.id})">remover membro</button>` : ''}
+      ${!isOwner ? `<button class="btn-g" style="color:#ff8a8a;border-color:rgba(255,107,107,.3);font-size:11px;" onclick="removeMember(${m.id})">remover</button>` : ''}
+    </div>
+    <div style="max-height:520px;overflow-y:auto;padding-right:6px;">
+      ${sortedGroups.map(g => `
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666;font-family:'IBM Plex Mono',monospace;margin:14px 0 8px;">${escapeHtml(g)}</div>
+        ${groups[g].map(p => {
+          const on = isOwner ? true : __teamPending.has(p.key);
+          return `
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12.5px;color:#fff;font-weight:600;">${escapeHtml(p.label)}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">${escapeHtml(p.desc)}</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;margin-top:3px;cursor:${isOwner ? 'not-allowed' : 'pointer'};">
+                <input type="checkbox" ${on ? 'checked' : ''} ${isOwner ? 'disabled' : ''} onchange="togglePending('${p.key}',this.checked)" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:${on ? '#3b82f6' : '#1a1a1a'};border:1px solid ${on ? '#3b82f6' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+                <span style="position:absolute;height:16px;width:16px;left:${on ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+              </label>
+            </div>
+          `;
+        }).join('')}
+      `).join('')}
+    </div>
+    ${!isOwner ? `
+      <div style="position:sticky;bottom:-22px;margin:14px -22px -22px;padding:12px 22px;background:linear-gradient(180deg,transparent,#0e0e0e 30%);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+        ${dirty ? '<span style="margin-right:auto;font-size:11.5px;color:#f5c542;font-family:\'IBM Plex Mono\',monospace;">● Alterações não salvas</span>' : ''}
+        <button class="kyc-btn secondary" ${!dirty ? 'disabled' : ''} onclick="discardTeamChanges()">Limpar</button>
+        <button class="kyc-btn primary" ${!dirty ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="saveTeamChanges()">Salvar</button>
+      </div>
+    ` : ''}
   `;
 }
 
-async function toggleTeamPerm(userId, perm, granted) {
+function togglePending(perm, on) {
+  if (!__teamPending) return;
+  if (on) __teamPending.add(perm); else __teamPending.delete(perm);
+  renderPermsPane();
+}
+
+function discardTeamChanges() {
+  if (!__teamOriginal) return;
+  __teamPending = new Set(__teamOriginal);
+  renderPermsPane();
+}
+
+async function saveTeamChanges() {
+  if (!__teamSelected || !__teamPending) return;
   try {
-    const r = await fetch(`/api/team/permissions/${userId}/${perm}`, {
-      method: 'POST', credentials: 'same-origin',
+    const r = await fetch(`/api/team/permissions/${__teamSelected}`, {
+      method: 'PUT', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ granted })
+      body: JSON.stringify({ permissions: [...__teamPending] })
     });
     const j = await r.json();
-    if (!r.ok) { toast(j.error || 'Falha', 'err'); return loadTeamPerms(); }
-    // atualiza local sem refetch
-    const m = __teamMembers.find(x => x.id === userId);
-    if (m) {
-      if (granted) m.permissions = [...new Set([...m.permissions, perm])];
-      else m.permissions = m.permissions.filter(p => p !== perm);
-    }
+    if (!r.ok) return toast(j.error || 'Falha ao salvar', 'err');
+    toast('Permissões salvas');
+    const m = __teamMembers.find(x => x.id === __teamSelected);
+    if (m) m.permissions = [...__teamPending];
+    __teamOriginal = new Set(__teamPending);
+    renderPermsPane();
   } catch (e) { toast(e.message, 'err'); }
 }
 
-async function openAddMemberPrompt() {
-  const email = prompt('Email do usuário a adicionar (precisa ter conta na plataforma):');
-  if (!email) return;
+// ===== Modal de busca de usuario pra adicionar =====
+let __userSearchTimer = null;
+
+function openAddMemberPrompt() {
+  document.getElementById('modal-add-member')?.classList.add('open');
+  setTimeout(() => document.getElementById('user-search-input')?.focus(), 50);
+}
+
+function onUserSearchInput(v) {
+  clearTimeout(__userSearchTimer);
+  const q = v.trim();
+  const out = document.getElementById('user-search-results');
+  if (q.length < 2) { out.innerHTML = '<div style="color:#666;font-size:12.5px;text-align:center;padding:24px;">Digite para pesquisar usuários</div>'; return; }
+  __userSearchTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/team/users/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      const list = await r.json();
+      if (!Array.isArray(list) || !list.length) { out.innerHTML = '<div style="color:#666;font-size:12.5px;text-align:center;padding:24px;">Nenhum usuário encontrado</div>'; return; }
+      out.innerHTML = list.map(u => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:${u.already_member ? 'default' : 'pointer'};${u.already_member ? 'opacity:.4;' : 'background:#0a0a0a;'}" ${!u.already_member ? `onclick="addMemberById(${u.id})"` : ''}>
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;${u.discord_avatar ? `background:url('${escapeAttr(u.discord_avatar)}') center/cover;` : ''}">${u.discord_avatar ? '' : (u.display_name || u.email || '?').charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;color:#fff;font-weight:600;">${escapeHtml(u.display_name || u.discord_tag || u.email)}</div>
+            <div style="font-size:10.5px;color:#666;font-family:'IBM Plex Mono',monospace;">${escapeHtml(u.discord_id || u.email)}</div>
+          </div>
+          ${u.already_member ? '<span style="font-size:10px;color:#666;text-transform:uppercase;">membro</span>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'}
+        </div>
+      `).join('');
+    } catch (e) { out.innerHTML = '<div style="color:#ff8a8a;font-size:12px;padding:14px;">' + e.message + '</div>'; }
+  }, 250);
+}
+
+async function addMemberById(userId) {
   try {
     const r = await fetch('/api/team/members', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, role: 'admin' })
+      body: JSON.stringify({ user_id: userId, role: 'admin' })
     });
     const j = await r.json();
     if (!r.ok) return toast(j.error || 'Falha', 'err');
     toast('Membro adicionado');
+    closeModal('modal-add-member');
+    __teamSelected = userId;
     loadTeamPerms();
   } catch (e) { toast(e.message, 'err'); }
 }
