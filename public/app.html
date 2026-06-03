@@ -526,6 +526,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           plano
         </div>
+        <div class="ni" data-page="conquistas" onclick="sp('conquistas',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          conquistas
+        </div>
         <div class="ni" data-page="equipe" onclick="sp('equipe',this)">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           equipe
@@ -1156,6 +1160,23 @@ footer.appfoot a:hover{color:var(--text);}
             <thead><tr><th>usuário</th><th>tier</th><th>compras</th><th>desde</th><th></th></tr></thead>
             <tbody id="vips-tbody"><tr><td colspan="5" style="color:#444;text-align:center;padding:30px;">nenhum VIP ainda</td></tr></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- CONQUISTAS -->
+      <div id="page-conquistas" class="page">
+        <div style="text-align:center;padding:6px 0 18px;">
+          <div style="font-size:20px;font-weight:800;color:#fff;">🏆 A loja vibra a cada meta batida.</div>
+          <div style="font-size:13px;color:#888;margin-top:4px;">Celebre suas conquistas — desbloqueie placas conforme cresce.</div>
+        </div>
+        <div id="ach-totals" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;"></div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="ctitle">desbloqueadas <span class="cbadge" id="ach-unlocked-count">0</span></div>
+          <div id="ach-unlocked" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:14px;"></div>
+        </div>
+        <div class="card">
+          <div class="ctitle">próximas conquistas <span class="cbadge">em progresso</span></div>
+          <div id="ach-locked" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ function register(app) {
   app.use('/api/team', require('../controllers/team.controller'));
   app.use('/api/features', require('../controllers/features.controller'));
   app.use('/api/bots', require('../controllers/bot-instances.controller'));
+  app.use('/api/achievements', require('../controllers/achievements.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

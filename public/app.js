@@ -2776,3 +2776,86 @@ async function openNewBotPrompt() {
 }
 
 setTimeout(loadBotSwitcher, 600);
+
+// ============ CONQUISTAS ============
+async function loadAchievements() {
+  try {
+    const j = await fetch('/api/achievements', { credentials: 'same-origin' }).then(r => r.json());
+    const totals = document.getElementById('ach-totals');
+    const u = document.getElementById('ach-unlocked');
+    const l = document.getElementById('ach-locked');
+    if (!totals) return;
+
+    const volBRL = (j.totals.volume_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    totals.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(139,111,255,.10),rgba(139,111,255,.02));border:1px solid rgba(139,111,255,.3);border-radius:12px;padding:18px;">
+        <div style="font-size:11px;text-transform:uppercase;color:#a99cff;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">volume total</div>
+        <div style="font-size:26px;font-weight:800;color:#fff;margin-top:6px;">R$ ${volBRL}</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(34,197,94,.10),rgba(34,197,94,.02));border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:18px;">
+        <div style="font-size:11px;text-transform:uppercase;color:#7dd3a4;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">vendas pagas</div>
+        <div style="font-size:26px;font-weight:800;color:#fff;margin-top:6px;">${j.totals.sales_count}</div>
+      </div>
+    `;
+
+    document.getElementById('ach-unlocked-count').textContent = j.unlocked.length;
+    u.innerHTML = j.unlocked.length ? j.unlocked.map(a => achievementPlaque(a, true)).join('') :
+      '<div style="grid-column:1/-1;color:#666;text-align:center;padding:24px;font-size:12.5px;">Nenhuma conquista ainda. Faça sua primeira venda!</div>';
+    l.innerHTML = j.locked.length ? j.locked.map(a => achievementProgress(a)).join('') :
+      '<div style="color:#7dd3a4;text-align:center;padding:14px;font-size:12.5px;">🎉 Você desbloqueou todas as conquistas!</div>';
+  } catch (e) { console.warn(e); }
+}
+
+function achievementPlaque(a, unlocked) {
+  const m = a.meta || { color: '#8b6fff', label: a.tier, emoji: '🏆' };
+  const subtitle = a.kind === 'volume'
+    ? `R$ ${((a.threshold_cents || 0) / 100).toLocaleString('pt-BR')}`
+    : a.kind === 'sales_count'
+    ? `${a.threshold_count} vendas`
+    : 'Primeira venda';
+  return `
+    <div style="background:linear-gradient(135deg,${m.color}22,${m.color}05);border:1px solid ${m.color}55;border-radius:14px;padding:18px;text-align:center;${unlocked ? '' : 'opacity:.5;filter:grayscale(.5);'}">
+      <div style="font-size:36px;line-height:1;">${m.emoji}</div>
+      <div style="margin-top:8px;font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.05em;">${m.label}</div>
+      <div style="margin-top:4px;font-size:11px;color:#aaa;font-family:'IBM Plex Mono',monospace;">${subtitle}</div>
+      ${unlocked && a.unlocked_at ? `<div style="margin-top:10px;font-size:9.5px;color:#666;text-transform:uppercase;letter-spacing:.06em;">desbloqueada em<br>${new Date(a.unlocked_at * 1000).toLocaleDateString('pt-BR')}</div>` : ''}
+    </div>
+  `;
+}
+
+function achievementProgress(a) {
+  const m = a.meta || { color: '#888', label: a.tier, emoji: '🏆' };
+  const target = a.kind === 'volume'
+    ? `R$ ${((a.threshold_cents || 0) / 100).toLocaleString('pt-BR')}`
+    : `${a.threshold_count} vendas`;
+  const have = a.kind === 'volume'
+    ? `R$ ${((a.progress_value || 0) / 100).toLocaleString('pt-BR')}`
+    : `${a.progress_value || 0}`;
+  return `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;opacity:.5;">${m.emoji}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
+            <div style="color:#fff;font-weight:700;font-size:13px;">${m.label} <span style="color:#666;font-weight:400;font-size:11px;">· ${a.kind === 'volume' ? 'volume' : 'vendas'}</span></div>
+            <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">${have} / ${target}</div>
+          </div>
+          <div style="margin-top:8px;height:6px;background:#1a1a1a;border-radius:6px;overflow:hidden;">
+            <div style="height:100%;width:${a.progress_pct}%;background:linear-gradient(90deg,${m.color}88,${m.color});border-radius:6px;transition:width .3s;"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#666;font-family:'IBM Plex Mono',monospace;min-width:32px;text-align:right;">${a.progress_pct}%</div>
+      </div>
+    </div>
+  `;
+}
+
+// Hook na navegação
+const __origSp4 = window.sp;
+if (typeof __origSp4 === 'function' && !window.__spHookedV4) {
+  window.__spHookedV4 = true;
+  window.sp = function (page, el) {
+    __origSp4(page, el);
+    if (page === 'conquistas') loadAchievements();
+  };
+}

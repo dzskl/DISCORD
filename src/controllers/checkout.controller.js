@@ -192,6 +192,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         stripe_payment_intent=?, expires_at=? WHERE id=?
       `).run(session.payment_intent || null, expiresAt, sale.id);
 
+      // Conquistas (premiacoes por marcos)
+      try {
+        const updated = db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id);
+        require('../services/achievements.service').checkAfterSale(updated);
+      } catch {}
+
       // Notifica o dono do tenant da venda
       try {
         const target = sale.guild_id
