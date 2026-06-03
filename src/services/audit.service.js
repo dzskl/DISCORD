@@ -5,9 +5,9 @@ function log({ req, action, target_type, target_id, details }) {
   const actor_name = req?.user?.username || (actor_id ? null : 'system');
   const ip = req?.ip || req?.headers?.['x-forwarded-for'] || null;
   db.prepare(`
-    INSERT INTO audit_log (actor_id,actor_name,action,target_type,target_id,details,ip)
-    VALUES (?,?,?,?,?,?,?)
-  `).run(actor_id, actor_name, action, target_type || null, String(target_id ?? ''), details ? JSON.stringify(details) : null, ip);
+    INSERT INTO audit_log (actor_id,actor_name,action,target_type,target_id,details,ip,guild_id)
+    VALUES (?,?,?,?,?,?,?,?)
+  `).run(actor_id, actor_name, action, target_type || null, String(target_id ?? ''), details ? JSON.stringify(details) : null, ip, req?.guildId || null);
 }
 
 function middleware(action, target_type) {

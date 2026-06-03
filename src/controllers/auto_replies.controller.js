@@ -7,7 +7,9 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get('/', requireAuth, (req, res) => {
-  res.json(db.prepare('SELECT * FROM auto_replies ORDER BY active DESC, created_at DESC').all());
+  const where = req.guildId ? 'WHERE (guild_id = ? OR guild_id IS NULL)' : '';
+  const args = req.guildId ? [req.guildId] : [];
+  res.json(db.prepare(`SELECT * FROM auto_replies ${where} ORDER BY active DESC, created_at DESC`).all(...args));
 });
 
 router.post('/', requireFeature('autoreply'), (req, res) => {
@@ -15,8 +17,8 @@ router.post('/', requireFeature('autoreply'), (req, res) => {
   if (!trigger || !response) return res.status(400).json({ error: 'trigger e response obrigatorios' });
   const mt = ['contains', 'equals', 'starts_with'].includes(match_type) ? match_type : 'contains';
   const info = db.prepare(`
-    INSERT INTO auto_replies (trigger,match_type,response) VALUES (?,?,?)
-  `).run(trigger.trim(), mt, response.trim());
+    INSERT INTO auto_replies (trigger,match_type,response,guild_id) VALUES (?,?,?,?)
+  `).run(trigger.trim(), mt, response.trim(), req.guildId || null);
   res.json(db.prepare('SELECT * FROM auto_replies WHERE id=?').get(info.lastInsertRowid));
 });
 

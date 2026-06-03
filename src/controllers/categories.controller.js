@@ -6,11 +6,14 @@ const audit = require('../services/audit.service');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  const where = req.guildId ? 'WHERE (c.guild_id = ? OR c.guild_id IS NULL)' : '';
+  const args = req.guildId ? [req.guildId] : [];
   const rows = db.prepare(`
     SELECT c.*, COUNT(p.id) AS product_count
     FROM categories c LEFT JOIN products p ON p.category_id=c.id AND p.active=1
+    ${where}
     GROUP BY c.id ORDER BY c.display_order, c.name
-  `).all();
+  `).all(...args);
   res.json(rows);
 });
 
@@ -19,8 +22,8 @@ router.post('/', requireAuth, (req, res) => {
   if (!name) return res.status(400).json({ error: 'nome obrigatorio' });
   try {
     const info = db.prepare(`
-      INSERT INTO categories (name,description,icon,display_order) VALUES (?,?,?,?)
-    `).run(name.trim(), (description || '').trim(), icon || null, parseInt(display_order) || 0);
+      INSERT INTO categories (name,description,icon,display_order,guild_id) VALUES (?,?,?,?,?)
+    `).run(name.trim(), (description || '').trim(), icon || null, parseInt(display_order) || 0, req.guildId || null);
     const row = db.prepare('SELECT * FROM categories WHERE id=?').get(info.lastInsertRowid);
     audit.log({ req, action: 'category.create', target_type: 'category', target_id: row.id, details: { name } });
     res.json(row);

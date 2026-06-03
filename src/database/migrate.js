@@ -1,5 +1,7 @@
-// Runner de migrations. Aplica arquivos .sql de database/migrations/ na ordem
-// alfabetica, pulando os ja aplicados (registrados em _migrations).
+// Runner de migrations. Aplica .sql de database/migrations/ em ordem,
+// pulando ja aplicados (tabela _migrations). Tolera 'duplicate column'
+// em ALTER TABLE ADD COLUMN (esperado se a coluna ja foi criada por
+// ensureColumn no codigo antigo).
 const fs = require('fs');
 const path = require('path');
 const { db } = require('./connection');
@@ -7,13 +9,34 @@ const logger = require('../utils/logger');
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', '..', 'database', 'migrations');
 
+const IGNORABLE_ERRORS = [
+  /duplicate column name/i,
+  /already exists/i
+];
+
+function isIgnorable(err) {
+  return IGNORABLE_ERRORS.some(re => re.test(err.message));
+}
+
+function splitStatements(sql) {
+  // Remove comentarios de linha (-- ...) e separa por ;
+  // Tolerante a multi-linha (CREATE TABLE com varias colunas)
+  const cleaned = sql
+    .split('\n')
+    .filter(l => !l.trim().startsWith('--'))
+    .join('\n');
+  return cleaned
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
 function applyMigrations() {
   if (!fs.existsSync(MIGRATIONS_DIR)) {
     logger.warn({ dir: MIGRATIONS_DIR }, 'pasta de migrations nao encontrada');
     return;
   }
 
-  // garante a tabela de tracking
   db.exec(`CREATE TABLE IF NOT EXISTS _migrations (
     name TEXT PRIMARY KEY,
     applied_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
@@ -26,15 +49,23 @@ function applyMigrations() {
   for (const file of files) {
     if (applied.has(file)) continue;
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
-    try {
-      db.exec(sql);
-      db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
-      logger.info({ file }, 'migration aplicada');
-      count++;
-    } catch (e) {
-      logger.error({ err: e.message, file }, 'erro aplicando migration');
-      throw e;
+    const statements = splitStatements(sql);
+
+    let failed = 0;
+    for (const stmt of statements) {
+      try {
+        db.exec(stmt);
+      } catch (e) {
+        if (isIgnorable(e)) continue;
+        logger.error({ err: e.message, file, stmt: stmt.slice(0, 100) }, 'erro em statement');
+        failed++;
+        throw e;
+      }
     }
+
+    db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
+    logger.info({ file, statements: statements.length }, 'migration aplicada');
+    count++;
   }
   if (count === 0) logger.debug('nenhuma migration nova');
 }

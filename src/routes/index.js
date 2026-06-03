@@ -8,6 +8,7 @@ function register(app) {
   app.use('/api/onboarding', require('../controllers/onboarding.controller'));
   app.use('/api/credentials', require('../controllers/credentials.controller'));
   app.use('/api/billing', require('../controllers/billing.controller'));
+  app.use('/api/guilds', require('../controllers/guilds.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

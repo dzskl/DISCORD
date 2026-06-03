@@ -5,7 +5,9 @@ const { requireAuth } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 router.get('/', requireAuth, (req, res) => {
-  res.json(db.prepare('SELECT * FROM coupons ORDER BY active DESC, created_at DESC').all());
+  const where = req.guildId ? 'WHERE (guild_id = ? OR guild_id IS NULL)' : '';
+  const args = req.guildId ? [req.guildId] : [];
+  res.json(db.prepare(`SELECT * FROM coupons ${where} ORDER BY active DESC, created_at DESC`).all(...args));
 });
 
 router.post('/', requireAuth, (req, res) => {
@@ -17,8 +19,8 @@ router.post('/', requireAuth, (req, res) => {
 
   try {
     const info = db.prepare(`
-      INSERT INTO coupons (code,discount_percent,max_uses,expires_at,min_amount_cents,required_role_id,min_quantity,max_quantity)
-      VALUES (?,?,?,?,?,?,?,?)
+      INSERT INTO coupons (code,discount_percent,max_uses,expires_at,min_amount_cents,required_role_id,min_quantity,max_quantity,guild_id)
+      VALUES (?,?,?,?,?,?,?,?,?)
     `).run(
       code.trim().toUpperCase(), pct,
       max_uses ? parseInt(max_uses) : null,
@@ -26,7 +28,8 @@ router.post('/', requireAuth, (req, res) => {
       min_cents,
       required_role_id || null,
       min_quantity ? parseInt(min_quantity) : null,
-      max_quantity ? parseInt(max_quantity) : null
+      max_quantity ? parseInt(max_quantity) : null,
+      req.guildId || null
     );
     res.json(db.prepare('SELECT * FROM coupons WHERE id=?').get(info.lastInsertRowid));
   } catch (e) {

@@ -5,18 +5,24 @@ const { requireAuth } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  // Filtra por guild se autenticado; senao retorna global (loja publica)
+  const where = req.guildId ? 'WHERE (p.guild_id = ? OR p.guild_id IS NULL)' : '';
+  const args = req.guildId ? [req.guildId] : [];
   const rows = db.prepare(`
     SELECT p.*,
       (SELECT COUNT(*) FROM sales s WHERE s.product_id=p.id AND s.status='paid') AS sales_count
     FROM products p
+    ${where}
     ORDER BY p.active DESC, p.created_at DESC
-  `).all();
+  `).all(...args);
   res.json(rows);
 });
 
 router.post('/', requireAuth, (req, res) => {
   const { withinLimit } = require('../config/plans');
-  const count = db.prepare('SELECT COUNT(*) AS c FROM products WHERE active=1').get().c;
+  const guildFilter = req.guildId ? 'AND guild_id = ?' : '';
+  const countArgs = req.guildId ? [req.guildId] : [];
+  const count = db.prepare(`SELECT COUNT(*) AS c FROM products WHERE active=1 ${guildFilter}`).get(...countArgs).c;
   if (!withinLimit('max_products', count)) {
     return res.status(402).json({ error: 'limite do plano atingido — faça upgrade pra Pro', upgrade_required: true, feature: 'max_products' });
   }
@@ -31,11 +37,12 @@ router.post('/', requireAuth, (req, res) => {
 
   const initialStock = stock != null && stock !== '' ? parseInt(stock) : null;
   const info = db.prepare(`
-    INSERT INTO products (name,description,price_cents,cost_cents,role_id,duration,image_url,stock,accent_color,category_id,delivery_type,hook_url,active)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1)
+    INSERT INTO products (name,description,price_cents,cost_cents,role_id,duration,image_url,stock,accent_color,category_id,delivery_type,hook_url,active,guild_id)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)
   `).run(name.trim(), (description || '').trim(), price_cents, cost_cents, role_id || null, duration || 'permanent', image_url || null,
          initialStock, accent_color || null,
-         category_id ? parseInt(category_id) : null, deliveryT, hook_url || null);
+         category_id ? parseInt(category_id) : null, deliveryT, hook_url || null,
+         req.guildId || null);
 
   require('../services/audit.service').log({ req, action: 'product.create', target_type: 'product', target_id: info.lastInsertRowid, details: { name } });
 

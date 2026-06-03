@@ -44,7 +44,19 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-s
 .brand-logo{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;letter-spacing:.04em;box-shadow:0 4px 14px var(--primary-glow);flex-shrink:0;background-size:cover;background-position:center;}
 .brand-info{flex:1;min-width:0;}
 .brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
-.brand-server{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.brand-server{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;cursor:pointer;}
+.brand-server:hover{color:var(--text-dim);}
+.brand-server .chev-mini{font-size:9px;opacity:.7;}
+.guild-switcher{position:absolute;top:calc(100% - 12px);left:14px;right:14px;background:#0e0e0e;border:1px solid var(--border-strong);border-radius:9px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:30;display:none;max-height:280px;overflow-y:auto;}
+.guild-switcher.open{display:block;}
+.guild-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface-3);transition:background .12s;}
+.guild-item:last-child{border-bottom:none;}
+.guild-item:hover{background:var(--surface-3);}
+.guild-item.active{background:rgba(139,111,255,0.12);}
+.guild-item .gicon{width:24px;height:24px;border-radius:6px;background:var(--surface-3) center/cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:var(--text-dim);}
+.guild-item .gname{flex:1;font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.guild-item .gcheck{color:var(--primary);font-weight:700;}
+.guild-empty{padding:14px;color:var(--text-faint);font-size:11px;font-family:'IBM Plex Mono',monospace;text-align:center;}
 .brand-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .brand-tag{font-size:9px;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;}
 .brand-tag.live{color:var(--success);background:var(--success-bg);border:1px solid var(--success-bd);}
@@ -305,18 +317,22 @@ footer.appfoot a:hover{color:var(--text);}
 
 <div class="app">
   <aside class="sidebar" id="sidebar">
-    <div class="brand">
+    <div class="brand" style="position:relative;">
       <div class="brand-row">
         <div class="brand-logo" id="brand-logo">B</div>
         <div class="brand-info">
           <div class="brand-name" id="brand-name">BotDash</div>
-          <div class="brand-server" id="brand-server">carregando...</div>
+          <div class="brand-server" id="brand-server" onclick="toggleGuildSwitcher(event)">
+            <span id="brand-server-text">carregando...</span>
+            <span class="chev-mini">▾</span>
+          </div>
         </div>
       </div>
       <div class="brand-badges">
         <span class="brand-tag live"><span class="pulse"></span>live</span>
         <span class="brand-tag plan-free" id="brand-plan">free</span>
       </div>
+      <div class="guild-switcher" id="guild-switcher"></div>
     </div>
 
     <nav class="nav">

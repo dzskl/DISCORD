@@ -30,6 +30,8 @@ if (isProd) {
 // migrations first
 try {
   applyMigrations();
+  // backfill: cria guild legacy do DISCORD_GUILD_ID antigo se houver
+  require('./services/guild.service').backfillLegacyGuild();
 } catch (e) {
   logger.fatal({ err: e.message }, 'falha aplicando migrations');
   process.exit(1);

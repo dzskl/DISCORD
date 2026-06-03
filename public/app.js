@@ -203,14 +203,22 @@ async function loadBrand() {
     const cfg = await api('/api/config').catch(() => ({}));
     const name = cfg.bot_name || 'BotDash';
     document.getElementById('brand-name').textContent = name;
-    // server name vem do bot — se disponivel
-    const stats = await api('/api/stats/overview').catch(() => null);
-    const serverName = stats?.server_name;
-    const serverEl = document.getElementById('brand-server');
-    if (serverEl) {
-      serverEl.textContent = serverName ? `· ${serverName}` : '· seu servidor';
-    }
-    // se tiver image_url customizada no config, usa
+
+    // Carrega guilds do usuario + ativa
+    let guildName = 'seu servidor';
+    try {
+      const data = await api('/api/guilds');
+      window.__guilds = data.guilds || [];
+      window.__active_guild = data.active_guild_id || null;
+      const active = data.guilds.find(g => g.id === data.active_guild_id);
+      if (active) guildName = active.name;
+      else if (data.guilds.length === 0) guildName = '+ adicionar bot';
+    } catch {}
+
+    const txt = document.getElementById('brand-server-text');
+    if (txt) txt.textContent = '· ' + guildName;
+
+    // logo customizada
     if (cfg.brand_logo_url && /^https?:\/\//.test(cfg.brand_logo_url)) {
       const lo = document.getElementById('brand-logo');
       lo.textContent = '';
@@ -220,6 +228,52 @@ async function loadBrand() {
       lo.textContent = (name[0] || 'B').toUpperCase();
     }
   } catch {}
+}
+
+function toggleGuildSwitcher(e) {
+  e?.stopPropagation();
+  const sw = document.getElementById('guild-switcher');
+  if (sw.classList.contains('open')) {
+    sw.classList.remove('open');
+    return;
+  }
+  renderGuildSwitcher();
+  sw.classList.add('open');
+  setTimeout(() => {
+    document.addEventListener('click', closeGuildSwitcherOnce, { once: true });
+  }, 0);
+}
+
+function closeGuildSwitcherOnce() {
+  document.getElementById('guild-switcher')?.classList.remove('open');
+}
+
+function renderGuildSwitcher() {
+  const sw = document.getElementById('guild-switcher');
+  const guilds = window.__guilds || [];
+  const active = window.__active_guild;
+  if (!guilds.length) {
+    sw.innerHTML = `<div class="guild-empty">você não está em nenhum servidor.<br><a href="/onboarding.html" style="color:var(--primary);text-decoration:none;">adicionar bot →</a></div>`;
+    return;
+  }
+  sw.innerHTML = guilds.map(g => `
+    <div class="guild-item ${g.id === active ? 'active' : ''}" onclick="switchGuild('${escapeAttr(g.id)}')">
+      <div class="gicon" ${g.icon_url ? `style="background-image:url('${escapeAttr(g.icon_url)}')"` : ''}>${g.icon_url ? '' : (g.name[0] || '?').toUpperCase()}</div>
+      <div class="gname">${escapeHtml(g.name)}</div>
+      ${g.id === active ? '<span class="gcheck">✓</span>' : ''}
+    </div>
+  `).join('') + `
+    <div class="guild-item" onclick="location.href='/onboarding.html'" style="border-top:1px solid var(--border-strong);">
+      <div class="gicon" style="background:var(--primary-glow);color:var(--primary);">+</div>
+      <div class="gname" style="color:var(--primary);">adicionar outro servidor</div>
+    </div>`;
+}
+
+async function switchGuild(guildId) {
+  try {
+    await api('/api/guilds/switch/' + encodeURIComponent(guildId), { method: 'POST' });
+    location.reload();
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 // ---------- VISAO GERAL ----------

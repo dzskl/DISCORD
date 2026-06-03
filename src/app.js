@@ -14,6 +14,7 @@ const buildSession = require('./config/session');
 const limits = require('./config/rate-limits');
 const routes = require('./routes');
 const { loadUser } = require('./middlewares/auth.middleware');
+const { resolveGuild } = require('./middlewares/guild.middleware');
 
 function buildApp() {
   const app = express();
@@ -50,6 +51,7 @@ function buildApp() {
   app.use(passport.initialize());
   app.use(passport.session());
   app.use(loadUser);
+  app.use(resolveGuild);
 
   // === ROTAS ===
   routes.register(app);

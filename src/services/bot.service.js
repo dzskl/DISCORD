@@ -40,8 +40,53 @@ client.once('ready', async () => {
   logger.info({ tag: client.user.tag, guilds: client.guilds.cache.size }, 'bot online');
   await checkIntents();
   await cacheInvites();
+  await syncGuilds();
   try { await registerCommands(); }
   catch (e) { logger.warn({ err: e }, 'falha ao registrar slash commands'); }
+});
+
+// Sincroniza tabela `guilds` com as guilds que o bot esta agora
+async function syncGuilds() {
+  const guildService = require('./guild.service');
+  for (const [, g] of client.guilds.cache) {
+    try {
+      guildService.upsertGuild({
+        id: g.id,
+        name: g.name,
+        icon_url: g.iconURL?.({ size: 128 }) || null,
+        owner_discord_id: g.ownerId || null
+      });
+    } catch (e) { logger.warn({ err: e.message, gid: g.id }, 'falha sync guild'); }
+  }
+  logger.info({ count: client.guilds.cache.size }, 'guilds sincronizadas');
+}
+
+// Bot entrou num novo servidor (cliente convidou via /onboarding)
+client.on('guildCreate', async (g) => {
+  const guildService = require('./guild.service');
+  try {
+    guildService.upsertGuild({
+      id: g.id,
+      name: g.name,
+      icon_url: g.iconURL?.({ size: 128 }) || null,
+      owner_discord_id: g.ownerId || null
+    });
+    logger.info({ gid: g.id, name: g.name, owner: g.ownerId }, 'bot adicionado a uma nova guild');
+
+    // Linka o dono do servidor Discord ao tenant — se houver user com esse discord_id
+    const { db } = require('../database/connection');
+    const user = db.prepare('SELECT id FROM users WHERE discord_id=? AND active=1').get(g.ownerId);
+    if (user) {
+      guildService.linkUserToGuild(user.id, g.id, 'owner');
+      logger.info({ user_id: user.id, guild_id: g.id }, 'owner Discord linkado ao tenant');
+    }
+  } catch (e) { logger.error({ err: e.message }, 'erro em guildCreate'); }
+});
+
+client.on('guildDelete', (g) => {
+  const guildService = require('./guild.service');
+  guildService.markGuildLeft(g.id);
+  logger.info({ gid: g.id }, 'bot removido da guild');
 });
 
 client.on('inviteCreate', (inv) => {
@@ -554,13 +599,14 @@ client.on('interactionCreate', async (i) => {
 });
 
 // ---------- HELPERS USADOS PELO BACKEND ----------
-async function fetchGuild() {
-  if (!GUILD_ID) throw new Error('DISCORD_GUILD_ID nao definido');
-  return client.guilds.fetch(GUILD_ID);
+async function fetchGuild(guildId) {
+  const id = guildId || GUILD_ID;
+  if (!id) throw new Error('guild_id nao informado');
+  return client.guilds.fetch(id);
 }
 
-async function getStats() {
-  const guild = await fetchGuild();
+async function getStats(guildId) {
+  const guild = await fetchGuild(guildId);
   await guild.members.fetch().catch(() => {});
   const members = guild.members.cache;
   const online = members.filter(m => ['online', 'idle', 'dnd'].includes(m.presence?.status)).size;

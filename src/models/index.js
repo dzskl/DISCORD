@@ -2,6 +2,14 @@
 // Cada model documenta os campos esperados; usado por repositories e validators.
 
 module.exports = {
+  Guild: {
+    table: 'guilds',
+    fields: ['id', 'name', 'icon_url', 'owner_discord_id', 'bot_joined_at', 'bot_left_at', 'active', 'plan', 'subscription_status', 'subscription_ends_at', 'trial_ends_at', 'stripe_customer_id', 'stripe_subscription_id']
+  },
+  UserGuild: {
+    table: 'user_guilds',
+    fields: ['user_id', 'guild_id', 'role', 'added_at']
+  },
   User: {
     table: 'users',
     fields: ['id', 'email', 'password_hash', 'role', 'discord_id', 'discord_tag', 'discord_avatar', 'display_name', 'plan', 'stripe_customer_id', 'stripe_subscription_id', 'subscription_status', 'subscription_ends_at', 'trial_ends_at', 'active', 'created_at', 'last_login_at']

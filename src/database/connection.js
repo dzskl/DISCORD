@@ -371,9 +371,9 @@ function setConfig(updates) {
   tx(Object.entries(updates));
 }
 
-function logEvent({ type, message, discord_id = null, discord_tag = null, channel = null }) {
-  db.prepare('INSERT INTO logs (type,message,discord_id,discord_tag,channel) VALUES (?,?,?,?,?)')
-    .run(type, message, discord_id, discord_tag, channel);
+function logEvent({ type, message, discord_id = null, discord_tag = null, channel = null, guild_id = null }) {
+  db.prepare('INSERT INTO logs (type,message,discord_id,discord_tag,channel,guild_id) VALUES (?,?,?,?,?,?)')
+    .run(type, message, discord_id, discord_tag, channel, guild_id);
 }
 
 // ============ CREDENCIAIS ============

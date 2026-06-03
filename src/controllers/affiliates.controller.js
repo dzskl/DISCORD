@@ -6,17 +6,21 @@ const audit = require('../services/audit.service');
 const router = express.Router();
 
 router.get('/', requireAuth, (req, res) => {
+  const where = req.guildId ? 'WHERE (a.guild_id = ? OR a.guild_id IS NULL)' : '';
+  const args = req.guildId ? [req.guildId] : [];
   const rows = db.prepare(`
     SELECT a.*,
       (SELECT COUNT(*) FROM sales WHERE affiliate_id=a.id AND status='paid') AS sales_paid
-    FROM affiliates a ORDER BY a.total_commission_cents DESC
-  `).all();
+    FROM affiliates a ${where} ORDER BY a.total_commission_cents DESC
+  `).all(...args);
   res.json(rows);
 });
 
 router.post('/', requireAuth, (req, res) => {
   const { withinLimit } = require('../config/plans');
-  const count = db.prepare('SELECT COUNT(*) AS c FROM affiliates WHERE active=1').get().c;
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+  const count = db.prepare(`SELECT COUNT(*) AS c FROM affiliates WHERE active=1 ${gFilter}`).get(...gArgs).c;
   if (!withinLimit('max_affiliates', count)) {
     return res.status(402).json({ error: 'sistema de afiliados é do plano Pro', upgrade_required: true, feature: 'max_affiliates' });
   }
@@ -28,9 +32,9 @@ router.post('/', requireAuth, (req, res) => {
 
   try {
     const info = db.prepare(`
-      INSERT INTO affiliates (discord_id,discord_tag,code,commission_percent)
-      VALUES (?,?,?,?)
-    `).run(String(discord_id), discord_tag || null, code.trim().toUpperCase(), pct);
+      INSERT INTO affiliates (discord_id,discord_tag,code,commission_percent,guild_id)
+      VALUES (?,?,?,?,?)
+    `).run(String(discord_id), discord_tag || null, code.trim().toUpperCase(), pct, req.guildId || null);
     audit.log({ req, action: 'affiliate.create', target_type: 'affiliate', target_id: info.lastInsertRowid });
     res.json(db.prepare('SELECT * FROM affiliates WHERE id=?').get(info.lastInsertRowid));
   } catch (e) {

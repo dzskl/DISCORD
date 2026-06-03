@@ -5,13 +5,23 @@ const bot = require('../services/bot.service');
 
 const router = express.Router();
 
+function gw(req) {
+  if (!req.guildId) return { w: '', a: [] };
+  return { w: '(guild_id = ? OR guild_id IS NULL)', a: [req.guildId] };
+}
+
 router.get('/actions', requireAuth, (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 500);
-  res.json(db.prepare('SELECT * FROM mod_actions ORDER BY created_at DESC LIMIT ?').all(limit));
+  const g = gw(req);
+  const where = g.w ? `WHERE ${g.w}` : '';
+  res.json(db.prepare(`SELECT * FROM mod_actions ${where} ORDER BY created_at DESC LIMIT ?`).all(...g.a, limit));
 });
 
 router.get('/summary', requireAuth, (req, res) => {
-  const counts = db.prepare(`SELECT action, COUNT(*) AS c FROM mod_actions GROUP BY action`).all();
+  const g = gw(req);
+  const w = g.w ? `WHERE ${g.w}` : '';
+  const wAnd = g.w ? `AND ${g.w}` : '';
+  const counts = db.prepare(`SELECT action, COUNT(*) AS c FROM mod_actions ${w} GROUP BY action`).all(...g.a);
   const map = Object.fromEntries(counts.map(r => [r.action, r.c]));
 
   const months = [];
@@ -19,9 +29,9 @@ router.get('/summary', requireAuth, (req, res) => {
   for (let i = 5; i >= 0; i--) {
     const start = now - (i + 1) * 30 * 86400;
     const end = now - i * 30 * 86400;
-    const bans = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='ban' AND created_at BETWEEN ? AND ?`).get(start, end).c;
-    const kicks = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='kick' AND created_at BETWEEN ? AND ?`).get(start, end).c;
-    const mutes = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='mute' AND created_at BETWEEN ? AND ?`).get(start, end).c;
+    const bans = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='ban' AND created_at BETWEEN ? AND ? ${wAnd}`).get(start, end, ...g.a).c;
+    const kicks = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='kick' AND created_at BETWEEN ? AND ? ${wAnd}`).get(start, end, ...g.a).c;
+    const mutes = db.prepare(`SELECT COUNT(*) AS c FROM mod_actions WHERE action='mute' AND created_at BETWEEN ? AND ? ${wAnd}`).get(start, end, ...g.a).c;
     months.push({ bans, kicks, mutes });
   }
   res.json({
@@ -66,8 +76,8 @@ router.post('/timeout', requireAuth, async (req, res) => {
 router.post('/warn', requireAuth, (req, res) => {
   const { userId, userTag, reason, moderatorId, moderatorTag } = req.body || {};
   if (!userId) return res.status(400).json({ error: 'userId obrigatorio' });
-  db.prepare('INSERT INTO mod_actions (action,target_id,target_tag,moderator_id,moderator_tag,reason) VALUES (?,?,?,?,?,?)')
-    .run('warn', userId, userTag || null, moderatorId || null, moderatorTag || null, reason || '');
+  db.prepare('INSERT INTO mod_actions (action,target_id,target_tag,moderator_id,moderator_tag,reason,guild_id) VALUES (?,?,?,?,?,?,?)')
+    .run('warn', userId, userTag || null, moderatorId || null, moderatorTag || null, reason || '', req.guildId || null);
   logEvent({ type: 'warn', message: `${userTag || userId} avisado${reason ? ' — ' + reason : ''}`, discord_id: userId, discord_tag: userTag });
   res.json({ ok: true });
 });
