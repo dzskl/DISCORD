@@ -59,6 +59,49 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 - [ ] **Banner "Precisa de ajuda?"** embedável no topo das pages config (botões Ver Tutoriais + Suporte)
 - [ ] **Página Trial Gratuito dedicada**: 2 cards (features + status elegibilidade com checks)
 
+### Rodada NeverMissApps #4 — Boas-vindas / Loja / Automações / Proteção
+
+#### 🟡 Médias (~30-60min)
+- [ ] **Página "Boas-vindas"** com tabs Boas-vindas / Despedida
+  - Lista de mensagens configuradas (canal alvo, template)
+  - Botão "+ Adicionar Mensagem"
+  - Template com placeholders ({user}, {server}, {count})
+
+#### 🟠 Maiores (~1-2h cada)
+- [ ] **Página "Loja"** estruturada:
+  - Warning banner "Chave API não configurada" + Configurar agora
+  - Tabs **Produtos / Geral / Cupons**
+  - Conceito de **Painéis de Loja** — múltiplos painéis postáveis em canais diferentes
+  - Left panel: lista de painéis com busca + botão +
+  - Right panel: editor do painel selecionado
+
+- [ ] **Página "Ações Automáticas"** com 5 tabs:
+  - **Mensagens Automáticas** (broadcasts agendados)
+  - **Reações Automáticas** (auto-react em mensagens)
+  - **Repostagem Automática** (repostar produtos/anúncios pra manter fresh)
+  - **Limpeza Automática** (auto-delete mensagens antigas em canais)
+  - **Sugestões** (sistema de sugestões com canal)
+  - Cada uma: configuração + preview live do embed
+
+- [ ] **Embed Builder com preview live** (reusável):
+  - Color picker
+  - Autor (nome + link + avatar)
+  - Título + Descrição com char counter (X/256, Y/4096)
+  - Fields (campos) adicionáveis
+  - Rodapé (footer) com imagem
+  - Coluna direita: **renderização em tempo real** estilo Discord
+  - Reusável em: anúncios, sugestões, boas-vindas, etc.
+
+- [ ] **Página "Proteção" com tabs**:
+  - **Anti Fake** (toggle + config) — detecta contas fake/bots novos
+  - **Anti Spam** (toggle + config) — flood, spam, links maliciosos
+  - **Canais** — quais canais cobertos
+  - **Cargos** — quais cargos isentos
+  - **Moderação** — config de ações automáticas (mute/ban/kick auto)
+  - **Segurança Avançada** — verificação 2FA forçada, lockdown
+  - **Permissões de Comandos** — restringir quem usa cada comando
+  - Warning quando desativado globalmente
+
 ### Rodada NeverMissApps #3 — Configurar Bot / Personalização / Canais / Cargos
 
 #### 🟠 Maiores (~1-2h cada)
