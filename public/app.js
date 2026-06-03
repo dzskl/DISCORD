@@ -1814,15 +1814,53 @@ async function openWithdrawModal() {
     </div>` : ''}
     <div class="kyc-field">
       <label>Valor a sacar (R$)</label>
-      <input type="number" id="wd-amount" step="0.01" min="10" placeholder="0,00" ${!verified ? 'disabled' : ''}>
-      <div class="kyc-hint">Mínimo R$10. Taxa: R$1 por saque. Chave PIX: ${verif?.pix_key ? escapeHtml(verif.pix_key) : '—'}</div>
+      <input type="number" id="wd-amount" step="0.01" min="10" placeholder="0,00" oninput="updateWdPreview()" ${!verified ? 'disabled' : ''}>
     </div>
+    <div class="kyc-field">
+      <label>Tipo de saque</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div id="wd-opt-normal" onclick="selectWdType('normal')" style="background:#1a1a1a;border:1px solid var(--primary);border-radius:8px;padding:12px;cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;"><b style="color:#fff;font-size:13px;">Normal</b><span style="color:#7dd3a4;font-size:11px;font-family:'IBM Plex Mono',monospace;">R$ 0,50</span></div>
+          <div style="color:#888;font-size:11px;margin-top:3px;">até 24h úteis</div>
+        </div>
+        <div id="wd-opt-instant" onclick="selectWdType('instant')" style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;"><b style="color:#fff;font-size:13px;">⚡ Instantâneo</b><span style="color:#f5c542;font-size:11px;font-family:'IBM Plex Mono',monospace;">R$ 3,50</span></div>
+          <div style="color:#888;font-size:11px;margin-top:3px;">em minutos</div>
+        </div>
+      </div>
+    </div>
+    <div id="wd-preview" style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:#888;display:none;"></div>
+    <div class="kyc-hint" style="margin-bottom:14px;">Mínimo R$10. Chave PIX: <b style="color:#aaa;">${verif?.pix_key ? escapeHtml(verif.pix_key) : '—'}</b></div>
     <div class="kyc-actions">
       <button class="kyc-btn secondary" onclick="closeModal('modal-withdraw')">Cancelar</button>
       <button class="kyc-btn primary" onclick="submitWithdraw()" ${!verified ? 'disabled' : ''}>Solicitar saque</button>
     </div>
   `;
+  window.__wdType = 'normal';
   document.getElementById('modal-withdraw').classList.add('open');
+}
+
+function selectWdType(type) {
+  window.__wdType = type;
+  const n = document.getElementById('wd-opt-normal');
+  const i = document.getElementById('wd-opt-instant');
+  if (n) { n.style.background = type === 'normal' ? '#1a1a1a' : '#0a0a0a'; n.style.borderColor = type === 'normal' ? 'var(--primary)' : 'var(--border)'; }
+  if (i) { i.style.background = type === 'instant' ? '#1a1a1a' : '#0a0a0a'; i.style.borderColor = type === 'instant' ? 'var(--primary)' : 'var(--border)'; }
+  updateWdPreview();
+}
+
+function updateWdPreview() {
+  const amt = parseFloat(document.getElementById('wd-amount')?.value || 0);
+  const preview = document.getElementById('wd-preview');
+  if (!preview) return;
+  if (!amt || amt < 10) { preview.style.display = 'none'; return; }
+  const fee = window.__wdType === 'instant' ? 3.50 : 0.50;
+  const net = amt - fee;
+  preview.style.display = 'block';
+  preview.innerHTML = `Valor solicitado <b style="color:#fff;float:right;">R$ ${amt.toFixed(2).replace('.', ',')}</b><br>
+    Taxa de saque <b style="color:#f5c542;float:right;">- R$ ${fee.toFixed(2).replace('.', ',')}</b><br>
+    <div style="border-top:1px solid var(--border);margin:6px 0;padding-top:6px;"></div>
+    Você receberá <b style="color:#7dd3a4;float:right;font-size:13.5px;">R$ ${net.toFixed(2).replace('.', ',')}</b>`;
 }
 
 async function submitWithdraw() {
@@ -1832,7 +1870,7 @@ async function submitWithdraw() {
     const r = await fetch('/api/wallet/withdraw', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount })
+      body: JSON.stringify({ amount, type: window.__wdType || 'normal' })
     });
     const j = await r.json();
     if (!r.ok) return toast(j.error || 'Falha no saque', 'err');
@@ -2910,5 +2948,48 @@ if (typeof __origSp5 === 'function' && !window.__spHookedV5) {
   window.sp = function (page, el) {
     __origSp5(page, el);
     if (page === 'tutoriais') loadTutorials();
+  };
+}
+
+// ============ PÁGINA CARTEIRA ============
+async function loadCarteira() {
+  try {
+    const [bal, withdrawals] = await Promise.all([
+      fetch('/api/wallet/balance', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/wallet/withdrawals', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+
+    const fmt = c => 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ',');
+    document.getElementById('wa-available').textContent = fmt(bal.available_cents);
+    document.getElementById('wa-pending').textContent = fmt(bal.pending_cents);
+    document.getElementById('wa-blocked').textContent = fmt(bal.blocked_cents);
+    document.getElementById('wa-total').textContent = fmt(bal.earned_cents);
+
+    document.getElementById('wa-w-count').textContent = withdrawals.length || 0;
+    const tbody = document.getElementById('wa-w-tbody');
+    tbody.innerHTML = withdrawals.length ? withdrawals.map(w => {
+      const statusColor = { paid: '#22c55e', approved: '#3b82f6', pending: '#f5c542', rejected: '#ef4444' }[w.status] || '#888';
+      const tlabel = w.withdraw_type === 'instant' ? '⚡ instantâneo' : 'normal';
+      return `
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#aaa;">${new Date(w.requested_at * 1000).toLocaleString('pt-BR')}</td>
+          <td style="font-size:11px;color:#aaa;">${tlabel}</td>
+          <td>${fmt(w.amount_cents)}</td>
+          <td style="color:#f5c542;font-size:11px;">${fmt(w.fee_cents)}</td>
+          <td style="color:#7dd3a4;font-weight:700;">${fmt(w.net_cents)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#888;">${escapeHtml((w.pix_key || '').slice(0, 18))}${(w.pix_key || '').length > 18 ? '…' : ''}</td>
+          <td><span style="font-size:10px;padding:3px 8px;border-radius:10px;background:${statusColor}22;color:${statusColor};text-transform:uppercase;font-weight:600;">${w.status}</span></td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="7" style="color:#444;text-align:center;padding:30px;">nenhum saque ainda</td></tr>';
+  } catch (e) { console.warn(e); }
+}
+
+const __origSp6 = window.sp;
+if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
+  window.__spHookedV6 = true;
+  window.sp = function (page, el) {
+    __origSp6(page, el);
+    if (page === 'carteira') loadCarteira();
   };
 }

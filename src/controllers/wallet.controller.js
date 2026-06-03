@@ -10,7 +10,7 @@ const audit = require('../services/audit.service');
 const router = express.Router();
 router.use(requireAuth);
 
-const WITHDRAW_FEE_CENTS = 100;       // R$1 por saque
+const WITHDRAW_FEE = { normal: 50, instant: 350 };  // R$ 0,50 / R$ 3,50
 const WITHDRAW_MIN_CENTS = 1000;      // R$10 minimo
 
 function balanceFor(userId, guildId) {
@@ -50,7 +50,8 @@ router.get('/withdrawals', (req, res) => {
 });
 
 router.post('/withdraw', (req, res) => {
-  const { amount } = req.body || {};
+  const { amount, type } = req.body || {};
+  const withdrawType = type === 'instant' ? 'instant' : 'normal';
   const cents = Math.round(parseFloat(amount) * 100);
   if (!(cents >= WITHDRAW_MIN_CENTS)) {
     return res.status(400).json({ error: `valor minimo de saque: R$ ${(WITHDRAW_MIN_CENTS / 100).toFixed(2)}` });
@@ -67,20 +68,22 @@ router.post('/withdraw', (req, res) => {
     return res.status(400).json({ error: 'saldo insuficiente' });
   }
 
-  const fee = WITHDRAW_FEE_CENTS;
+  const fee = WITHDRAW_FEE[withdrawType];
   const net = cents - fee;
 
   const info = db.prepare(`
-    INSERT INTO withdrawals (user_id, guild_id, amount_cents, pix_key, pix_key_type, status, fee_cents, net_cents)
-    VALUES (?,?,?,?,?, 'pending', ?, ?)
-  `).run(req.appUser.id, req.guildId || null, cents, verif.pix_key, detectPixKeyType(verif.pix_key), fee, net);
+    INSERT INTO withdrawals (user_id, guild_id, amount_cents, pix_key, pix_key_type, status, fee_cents, net_cents, withdraw_type)
+    VALUES (?,?,?,?,?, 'pending', ?, ?, ?)
+  `).run(req.appUser.id, req.guildId || null, cents, verif.pix_key, detectPixKeyType(verif.pix_key), fee, net, withdrawType);
 
   audit.log({ req, action: 'wallet.withdraw_request', target_type: 'withdrawal', target_id: info.lastInsertRowid, details: { amount_cents: cents } });
 
   db.prepare(`INSERT INTO notifications (user_id,guild_id,kind,title,body) VALUES (?,?,?,?,?)`)
     .run(req.appUser.id, req.guildId || null, 'withdrawal',
-      `Saque solicitado: R$ ${(net / 100).toFixed(2)}`,
-      `Sua solicitacao foi enviada e sera processada em ate 24h uteis.`);
+      `Saque solicitado: R$ ${(net / 100).toFixed(2).replace('.', ',')}`,
+      withdrawType === 'instant'
+        ? 'Saque instantâneo — será processado em minutos.'
+        : 'Saque normal — será processado em até 24h úteis.');
 
   res.json(db.prepare('SELECT * FROM withdrawals WHERE id=?').get(info.lastInsertRowid));
 });
