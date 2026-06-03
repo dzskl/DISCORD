@@ -46,4 +46,13 @@ router.get('/recent-sales', (req, res) => {
   })));
 });
 
+// Configuracao publica (GA tracking ID etc)
+router.get('/config', (req, res) => {
+  const { getConfig } = require('../database/connection');
+  const cfg = getConfig();
+  res.json({
+    ga_measurement_id: cfg.ga_measurement_id || ''
+  });
+});
+
 module.exports = router;

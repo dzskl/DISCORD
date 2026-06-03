@@ -2,6 +2,28 @@
 // Owner = quem deve "pagar" pelo plano. Outros admins herdam o plano do owner.
 
 const PLANS = {
+  trial_24h: {
+    id: 'trial_24h',
+    name: 'Trial 24h',
+    price_monthly_brl: 0,
+    description: 'tudo liberado por 24h pra testar',
+    duration_hours: 24,
+    features: {
+      max_products: Infinity,
+      max_coupons: Infinity,
+      max_affiliates: Infinity,
+      max_giveaways_active: Infinity,
+      autoreply: true,
+      tickets: true,
+      manual_delivery: true,
+      stripe_checkout: true,
+      misticpay_checkout: true,
+      custom_branding: true,
+      daily_report: true,
+      audit_log: true,
+      api_webhooks: true
+    }
+  },
   free: {
     id: 'free',
     name: 'Free',

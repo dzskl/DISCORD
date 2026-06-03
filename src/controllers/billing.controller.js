@@ -223,4 +223,22 @@ function mapPriceToPlan(priceId) {
   return null;
 }
 
+// Trial 24h "tudo liberado" — ativavel uma unica vez
+router.post('/trial-24h', (req, res) => {
+  if (!req.appUser) return res.status(401).json({ error: 'nao autenticado' });
+  const user = db.prepare('SELECT * FROM users WHERE id=?').get(req.appUser.id);
+  if (!user) return res.status(404).json({ error: 'user nao encontrado' });
+  // Bloqueia se ja usou um trial qualquer
+  if (user.trial_ends_at || user.subscription_status === 'trialing' || user.plan === 'pro') {
+    return res.status(400).json({ error: 'voce ja usa/usou um trial' });
+  }
+  const ends = Math.floor(Date.now() / 1000) + 24 * 3600;
+  db.prepare(`
+    UPDATE users SET plan='trial_24h', subscription_status='trialing', trial_ends_at=?, subscription_ends_at=?
+    WHERE id=?
+  `).run(ends, ends, user.id);
+  audit.log({ req, action: 'billing.trial_24h_activated', target_id: user.id });
+  res.json({ ok: true, ends_at: ends });
+});
+
 module.exports = router;

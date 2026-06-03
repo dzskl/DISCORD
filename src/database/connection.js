@@ -341,6 +341,7 @@ const defaultConfig = {
   fraud_block_threshold: '80',
   cart_followup_enabled: '1',
   cart_followup_message: '👋 Ei, {tag}! Você deixou um pedido no carrinho da nossa loja. Finalize agora: {url}',
+  ga_measurement_id: '',
   fee_percent: '4',
   fee_fixed_cents: '39',
   ticket_category: 'tickets',
