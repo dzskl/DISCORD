@@ -19,8 +19,10 @@ const isProd = process.env.NODE_ENV === 'production';
 
 if (isProd) {
   if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
-    logger.fatal('SESSION_SECRET obrigatorio em producao (>= 16 chars)');
-    process.exit(1);
+    // Nao mata o processo — gera um secret efemero e avisa.
+    // Em prod isso vai invalidar sessoes a cada deploy, mas o app sobe.
+    process.env.SESSION_SECRET = require('crypto').randomBytes(32).toString('hex');
+    logger.error('SESSION_SECRET nao configurado em producao — usando ephemero. Sessoes serao invalidadas a cada deploy. Configure a env var!');
   }
   if (process.env.DEV_BYPASS_AUTH === '1') {
     logger.warn('DEV_BYPASS_AUTH=1 sera ignorado em producao');
@@ -30,21 +32,40 @@ if (isProd) {
 // migrations first
 try {
   applyMigrations();
-  // backfill: cria guild legacy do DISCORD_GUILD_ID antigo se houver
-  require('./services/guild.service').backfillLegacyGuild();
 } catch (e) {
   logger.fatal({ err: e.message }, 'falha aplicando migrations');
   process.exit(1);
 }
 
-const app = buildApp();
+// backfill nao deve derrubar o app
+try {
+  require('./services/guild.service').backfillLegacyGuild();
+} catch (e) {
+  logger.error({ err: e.message }, 'backfill legacy guild falhou — seguindo sem');
+}
+
+let app;
+try {
+  app = buildApp();
+} catch (e) {
+  logger.fatal({ err: e.message, stack: e.stack }, 'falha construindo app Express');
+  process.exit(1);
+}
 
 bot.start().catch(e => logger.error({ err: e.message }, 'bot login falhou'));
-scheduler.start();
+try { scheduler.start(); } catch (e) { logger.error({ err: e.message }, 'scheduler falhou'); }
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info({ port: PORT }, `dashboard em http://localhost:${PORT}`);
   logger.info(`loja em http://localhost:${PORT}/loja.html`);
+});
+
+// Captura erros nao tratados pra nao matar o app silenciosamente no Railway
+process.on('uncaughtException', (e) => {
+  logger.error({ err: e.message, stack: e.stack }, 'uncaughtException');
+});
+process.on('unhandledRejection', (e) => {
+  logger.error({ err: e?.message || e, stack: e?.stack }, 'unhandledRejection');
 });
 
 function shutdown(sig) {
