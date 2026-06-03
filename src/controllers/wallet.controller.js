@@ -97,4 +97,61 @@ function detectPixKeyType(key) {
   return 'random';
 }
 
+// ============ ADMIN (owner) ============
+const { requireOwner } = require('../middlewares/auth.middleware');
+
+router.get('/admin/withdrawals', requireOwner, (req, res) => {
+  const status = req.query.status;
+  const where = status ? 'WHERE w.status=?' : '';
+  const args = status ? [status] : [];
+  const rows = db.prepare(`
+    SELECT w.*, u.email, u.display_name, u.discord_tag, u.discord_avatar
+    FROM withdrawals w
+    JOIN users u ON u.id = w.user_id
+    ${where}
+    ORDER BY
+      CASE w.status WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'paid' THEN 3 ELSE 4 END,
+      w.requested_at DESC
+    LIMIT 200
+  `).all(...args);
+  res.json(rows);
+});
+
+router.post('/admin/withdrawals/:id/review', requireOwner, (req, res) => {
+  const { action, reason, external_tx_id } = req.body || {};
+  const w = db.prepare('SELECT * FROM withdrawals WHERE id=?').get(req.params.id);
+  if (!w) return res.status(404).json({ error: 'nao encontrado' });
+  if (w.status !== 'pending' && w.status !== 'approved') return res.status(400).json({ error: 'saque ja finalizado' });
+
+  if (action === 'approve') {
+    db.prepare(`UPDATE withdrawals SET status='approved', processed_at=strftime('%s','now') WHERE id=?`).run(w.id);
+    db.prepare(`INSERT INTO notifications (user_id, kind, title, body) VALUES (?, 'withdrawal', 'Saque aprovado', 'Seu saque foi aprovado e sera transferido em breve.')`).run(w.user_id);
+  } else if (action === 'paid') {
+    db.prepare(`UPDATE withdrawals SET status='paid', processed_at=strftime('%s','now'), external_tx_id=? WHERE id=?`).run(external_tx_id || null, w.id);
+    db.prepare(`INSERT INTO notifications (user_id, kind, title, body) VALUES (?, 'withdrawal', '💸 Saque pago!', ?)`).run(w.user_id, `R$ ${(w.net_cents / 100).toFixed(2).replace('.', ',')} enviado pra sua chave PIX.`);
+  } else if (action === 'reject') {
+    db.prepare(`UPDATE withdrawals SET status='rejected', processed_at=strftime('%s','now'), reason=? WHERE id=?`).run(reason || null, w.id);
+    db.prepare(`INSERT INTO notifications (user_id, kind, title, body) VALUES (?, 'warning', 'Saque rejeitado', ?)`).run(w.user_id, reason || 'Sem motivo especificado');
+  } else {
+    return res.status(400).json({ error: 'action invalido (approve|paid|reject)' });
+  }
+  audit.log({ req, action: `wallet.${action}`, target_type: 'withdrawal', target_id: w.id });
+  res.json({ ok: true });
+});
+
+// Vendas suspeitas (fraud_score >= threshold)
+router.get('/admin/suspicious-sales', requireOwner, (req, res) => {
+  const { getConfig } = require('../database/connection');
+  const t = parseInt(getConfig().fraud_threshold) || 60;
+  const rows = db.prepare(`
+    SELECT s.id, s.discord_id, s.discord_tag, s.amount_cents, s.status, s.created_at,
+           s.fraud_score, s.fraud_signals, s.last_ip, p.name AS product_name
+    FROM sales s LEFT JOIN products p ON p.id=s.product_id
+    WHERE s.fraud_score >= ?
+    ORDER BY s.fraud_score DESC, s.created_at DESC
+    LIMIT 100
+  `).all(t);
+  res.json(rows);
+});
+
 module.exports = router;

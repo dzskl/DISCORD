@@ -2996,3 +2996,154 @@ if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
     if (page === 'carteira') loadCarteira();
   };
 }
+
+// ============ SAQUES ADMIN ============
+async function loadAdminWithdrawals(status, btn) {
+  if (btn) {
+    document.querySelectorAll('.sq-tab').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = '#888';
+    });
+    btn.style.background = '#1a1a1a';
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = '#fff';
+  }
+  try {
+    const r = await fetch('/api/wallet/admin/withdrawals?status=' + (status || ''), { credentials: 'same-origin' });
+    if (!r.ok) {
+      document.getElementById('saques-tbody').innerHTML = '<tr><td colspan="8" style="color:#ff6b6b">sem permissão</td></tr>';
+      return;
+    }
+    const rows = await r.json();
+    const statusColor = { pending: '#f5c542', approved: '#3b82f6', paid: '#22c55e', rejected: '#ef4444' };
+    document.getElementById('saques-tbody').innerHTML = rows.length ? rows.map(w => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${w.discord_avatar ? `background:url('${escapeAttr(w.discord_avatar)}') center/cover;` : ''}">${w.discord_avatar ? '' : (w.display_name || w.email || '?').charAt(0).toUpperCase()}</div>
+            <div><div style="color:#fff;font-size:12px;">${escapeHtml(w.display_name || w.discord_tag || w.email)}</div><div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(w.email)}</div></div>
+          </div>
+        </td>
+        <td><span style="font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:10px;background:${w.withdraw_type === 'instant' ? 'rgba(245,197,66,.15)' : 'rgba(59,130,246,.15)'};color:${w.withdraw_type === 'instant' ? '#f5c542' : '#88c0ff'};font-family:'IBM Plex Mono',monospace;">${w.withdraw_type || 'normal'}</span></td>
+        <td style="font-family:'IBM Plex Mono',monospace;">R$ ${(w.amount_cents/100).toFixed(2).replace('.', ',')}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#f5c542;">- R$ ${(w.fee_cents/100).toFixed(2).replace('.', ',')}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#7dd3a4;font-weight:700;">R$ ${(w.net_cents/100).toFixed(2).replace('.', ',')}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#aaa;">${escapeHtml(w.pix_key)}</td>
+        <td style="font-size:11px;color:#888;">${new Date(w.requested_at * 1000).toLocaleString('pt-BR')}</td>
+        <td><span style="font-size:10px;padding:3px 8px;border-radius:10px;background:${statusColor[w.status]}22;color:${statusColor[w.status]};font-weight:600;text-transform:uppercase;">${w.status}</span>
+          ${w.status === 'pending' ? `
+            <button class="btn-w" style="padding:5px 9px;font-size:10.5px;margin-left:6px;" onclick="reviewWithdraw(${w.id},'approve')">aprovar</button>
+            <button class="btn-g" style="padding:5px 9px;font-size:10.5px;color:#ff8a8a;border-color:rgba(255,107,107,.3);" onclick="reviewWithdraw(${w.id},'reject')">rejeitar</button>
+          ` : w.status === 'approved' ? `
+            <button class="btn-w" style="padding:5px 9px;font-size:10.5px;margin-left:6px;background:#22c55e;color:#000;" onclick="reviewWithdraw(${w.id},'paid')">marcar pago</button>
+          ` : ''}
+        </td>
+      </tr>
+    `).join('') : '<tr><td colspan="8" style="color:#666;text-align:center;padding:30px;">nenhum saque</td></tr>';
+  } catch (e) { console.warn(e); }
+}
+
+async function reviewWithdraw(id, action) {
+  let reason, external_tx_id;
+  if (action === 'reject') {
+    reason = prompt('Motivo da rejeição:');
+    if (!reason) return;
+  } else if (action === 'paid') {
+    external_tx_id = prompt('ID da transação PIX (opcional):') || '';
+  }
+  try {
+    const r = await fetch(`/api/wallet/admin/withdrawals/${id}/review`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, reason, external_tx_id })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast({ approve: 'Saque aprovado', paid: 'Marcado como pago', reject: 'Saque rejeitado' }[action]);
+    const active = document.querySelector('.sq-tab[style*="rgb(139, 111, 255)"]') || document.querySelector('.sq-tab');
+    loadAdminWithdrawals(active?.dataset.sq || 'pending', active);
+    updateAdminBadges();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ ANTI-FRAUDE ADMIN ============
+async function loadFraudPage() {
+  try {
+    const cfg = await fetch('/api/config', { credentials: 'same-origin' }).then(r => r.json()).catch(() => ({}));
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('fraud-threshold', cfg.fraud_threshold || '60');
+    set('fraud-block-threshold', cfg.fraud_block_threshold || '80');
+    set('fraud-blacklist', cfg.fraud_blacklist || '');
+
+    const rows = await fetch('/api/wallet/admin/suspicious-sales', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []);
+    document.getElementById('fraud-tbody').innerHTML = rows.length ? rows.map(s => {
+      let signals = [];
+      try { signals = JSON.parse(s.fraud_signals || '[]'); } catch {}
+      const sigText = signals.map(g => typeof g === 'string' ? g : g.kind).join(', ');
+      const scoreColor = s.fraud_score >= 80 ? '#ef4444' : s.fraud_score >= 60 ? '#f5c542' : '#888';
+      return `
+        <tr>
+          <td><span style="font-size:14px;font-weight:800;font-family:'IBM Plex Mono',monospace;color:${scoreColor};">${s.fraud_score}</span></td>
+          <td><div style="color:#fff;font-size:12px;">${escapeHtml(s.discord_tag || '—')}</div><div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(s.discord_id)}</div></td>
+          <td style="font-size:12px;">${escapeHtml(s.product_name || '—')}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;">R$ ${(s.amount_cents/100).toFixed(2).replace('.', ',')}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#aaa;">${escapeHtml(s.last_ip || '—')}</td>
+          <td style="font-size:10.5px;color:#aaa;">${escapeHtml(sigText)}</td>
+          <td><span style="font-size:10px;padding:3px 8px;border-radius:10px;background:#1a1a1a;color:#aaa;">${s.status}</span></td>
+          <td><a href="#" onclick="addToBlacklist('${escapeAttr(s.discord_id)}');return false;" style="color:#ff8a8a;font-size:11px;">+ blacklist</a></td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="8" style="color:#666;text-align:center;padding:30px;">nenhuma venda suspeita</td></tr>';
+  } catch (e) { console.warn(e); }
+}
+
+async function saveFraudConfig() {
+  const body = {
+    fraud_threshold: document.getElementById('fraud-threshold').value,
+    fraud_block_threshold: document.getElementById('fraud-block-threshold').value,
+    fraud_blacklist: document.getElementById('fraud-blacklist').value
+  };
+  try {
+    const r = await fetch('/api/config', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Configuração salva');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function addToBlacklist(id) {
+  const t = document.getElementById('fraud-blacklist');
+  const cur = (t.value || '').trim();
+  t.value = cur ? cur + ', ' + id : id;
+  toast('Adicione e clique em salvar');
+}
+
+async function updateAdminBadges() {
+  try {
+    const r = await fetch('/api/wallet/admin/withdrawals?status=pending', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const nav = document.getElementById('nav-saques');
+    const badge = document.getElementById('saques-badge');
+    if (nav) nav.style.display = 'flex';
+    if (badge) {
+      if (rows.length > 0) { badge.style.display = 'inline-block'; badge.textContent = rows.length; }
+      else badge.style.display = 'none';
+    }
+    // anti-fraude tem nav visivel pra owner
+    const f = document.getElementById('nav-fraude');
+    if (f) f.style.display = 'flex';
+  } catch {}
+}
+
+const __origSp6 = window.sp;
+if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
+  window.__spHookedV6 = true;
+  window.sp = function (page, el) {
+    __origSp6(page, el);
+    if (page === 'saques-admin') loadAdminWithdrawals('pending', document.querySelector('.sq-tab[data-sq="pending"]'));
+    if (page === 'fraude') loadFraudPage();
+  };
+}
+setTimeout(updateAdminBadges, 1800);
+setInterval(updateAdminBadges, 90000);
