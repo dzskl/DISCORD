@@ -100,6 +100,46 @@ router.post('/upload-proof', express.json({ limit: '8mb' }), (req, res) => {
   res.json(db.prepare('SELECT * FROM user_verifications WHERE user_id=?').get(req.appUser.id));
 });
 
+// Webhook do gateway PIX (MisticPay/qualquer) chamando aqui quando o
+// pagamento de R$0,99 chegar. Confirma automaticamente sem precisar de
+// upload de comprovante. O webhook precisa enviar o tx_id (mesmo gerado
+// no /start) em metadata ou no body como "txid".
+router.post('/webhook/payment', express.json(), (req, res) => {
+  try {
+    const body = req.body || {};
+    // formato generico: { txid, status, paid_amount_cents }
+    const txid = body.txid || body.tx_id || body.metadata?.tx_id || body.metadata?.txid;
+    if (!txid) return res.status(400).json({ error: 'txid ausente' });
+
+    const v = db.prepare('SELECT * FROM user_verifications WHERE payment_tx_id=?').get(txid);
+    if (!v) return res.status(404).json({ error: 'verificacao nao encontrada' });
+
+    const status = (body.status || '').toLowerCase();
+    const paid = ['paid', 'approved', 'completed', 'confirmed'].includes(status);
+    if (!paid) return res.json({ received: true, ignored: true });
+
+    // Confirma valor minimo bate (R$ 0,99)
+    const amount = parseInt(body.paid_amount_cents || body.amount_cents || 0);
+    if (amount && amount < v.payment_amount_cents) {
+      return res.status(400).json({ error: 'valor abaixo do esperado' });
+    }
+
+    // Auto-aprova: pula direto pro approved
+    db.prepare(`
+      UPDATE user_verifications SET
+        status = 'approved', reviewed_at = strftime('%s','now')
+      WHERE id = ?
+    `).run(v.id);
+    try {
+      db.prepare(`INSERT INTO notifications (user_id, kind, title, body) VALUES (?, 'info', 'Verificacao aprovada automaticamente', 'Pagamento PIX confirmado. Voce ja pode sacar.')`).run(v.user_id);
+    } catch {}
+    audit.log({ req, action: 'verification.auto_approved', target_id: v.id });
+    res.json({ received: true, approved: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Lista todas as verificacoes (owner only) — pra tela admin
 router.get('/admin/list', requireOwner, (req, res) => {
   const status = req.query.status;

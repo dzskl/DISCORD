@@ -54,6 +54,7 @@ try {
 
 bot.start().catch(e => logger.error({ err: e.message }, 'bot login falhou'));
 try { scheduler.start(); } catch (e) { logger.error({ err: e.message }, 'scheduler falhou'); }
+try { require('./services/telegram.service').start(); } catch (e) { logger.error({ err: e.message }, 'telegram falhou'); }
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info({ port: PORT }, `dashboard em http://localhost:${PORT}`);
