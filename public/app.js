@@ -2684,3 +2684,95 @@ if (typeof __origSp3 === 'function' && !window.__spHookedV3) {
     if (page === 'vips') loadVips();
   };
 }
+
+// ============ BOT SWITCHER (multi-bot) ============
+let __botInstances = [];
+let __activeBot = null;
+let __botSwOpen = false;
+
+async function loadBotSwitcher() {
+  try {
+    const j = await fetch('/api/bots', { credentials: 'same-origin' }).then(r => r.json());
+    __botInstances = j.instances || [];
+    __activeBot = __botInstances.find(b => b.id === j.active_id) || __botInstances[0];
+    renderBotSwitcher();
+  } catch (e) { console.warn('bot switcher', e.message); }
+}
+
+function renderBotSwitcher() {
+  if (!__activeBot) return;
+  const av = document.getElementById('bot-sw-avatar');
+  const nm = document.getElementById('bot-sw-name');
+  const id = document.getElementById('bot-sw-id');
+  if (av) {
+    if (__activeBot.avatar_url) {
+      av.style.backgroundImage = `url('${__activeBot.avatar_url}')`;
+      av.textContent = '';
+    } else {
+      av.style.backgroundImage = '';
+      av.textContent = (__activeBot.name || '?').charAt(0).toUpperCase();
+    }
+  }
+  if (nm) nm.textContent = __activeBot.name;
+  if (id) id.textContent = __activeBot.discord_client_id || ('id ' + __activeBot.id);
+}
+
+function toggleBotSwitcher(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('bot-sw-menu');
+  __botSwOpen = !__botSwOpen;
+  if (!__botSwOpen) { menu.style.display = 'none'; return; }
+  menu.innerHTML = `
+    ${__botInstances.map(b => `
+      <div onclick="activateBot(${b.id})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid #131313;${b.id === __activeBot?.id ? 'background:#1a1a1a;' : ''}">
+        <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;${b.avatar_url ? `background:url('${escapeAttr(b.avatar_url)}') center/cover;` : ''}">${b.avatar_url ? '' : (b.name || '?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:#fff;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.name)}</div>
+          <div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">${b.status} · ${b.plan}</div>
+        </div>
+        ${b.id === __activeBot?.id ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>
+    `).join('')}
+    <div onclick="openNewBotPrompt()" style="display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;color:#3b82f6;font-weight:600;font-size:12.5px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      criar novo bot
+    </div>
+  `;
+  menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', closeBotSwitcherOnce, { once: true }), 50);
+}
+
+function closeBotSwitcherOnce() {
+  const m = document.getElementById('bot-sw-menu');
+  if (m) m.style.display = 'none';
+  __botSwOpen = false;
+}
+
+async function activateBot(id) {
+  try {
+    await fetch(`/api/bots/${id}/activate`, { method: 'POST', credentials: 'same-origin' });
+    toast('bot ativado');
+    closeBotSwitcherOnce();
+    // recarrega pra trocar de contexto (guild/dados)
+    setTimeout(() => location.reload(), 300);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openNewBotPrompt() {
+  closeBotSwitcherOnce();
+  const name = prompt('Nome do novo bot:');
+  if (!name) return;
+  try {
+    const r = await fetch('/api/bots', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Bot criado! Vá em Credenciais pra configurar o token.');
+    setTimeout(() => location.reload(), 600);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+setTimeout(loadBotSwitcher, 600);

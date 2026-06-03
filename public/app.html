@@ -371,6 +371,17 @@ footer.appfoot a:hover{color:var(--text);}
 
 <div class="app">
   <aside class="sidebar" id="sidebar">
+    <div id="bot-switcher" style="padding:12px 14px;border-bottom:1px solid var(--border);position:relative;cursor:pointer;" onclick="toggleBotSwitcher(event)">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="bot-sw-avatar" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0;background-size:cover;background-position:center;"></div>
+        <div style="flex:1;min-width:0;">
+          <div id="bot-sw-name" style="color:#fff;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+          <div id="bot-sw-id" style="color:#666;font-size:10.5px;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div id="bot-sw-menu" style="display:none;position:absolute;top:calc(100% + 4px);left:8px;right:8px;background:#0e0e0e;border:1px solid var(--border-strong);border-radius:10px;z-index:30;max-height:340px;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5);"></div>
+    </div>
     <div class="brand" style="position:relative;">
       <div class="brand-row">
         <div class="brand-logo" id="brand-logo">B</div>
