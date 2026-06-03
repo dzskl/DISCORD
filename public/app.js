@@ -70,7 +70,10 @@ function openModal(html) {
   document.getElementById('modal-body').innerHTML = html;
   document.getElementById('modal-bg').classList.add('show');
 }
-function closeModal() { document.getElementById('modal-bg').classList.remove('show'); }
+function closeModal(id) {
+  if (id) { document.getElementById(id)?.classList.remove('open'); return; }
+  document.getElementById('modal-bg').classList.remove('show');
+}
 
 function confirmAsync(msg) {
   return new Promise(resolve => {
@@ -1774,3 +1777,271 @@ bootstrap();
 setInterval(() => { if (document.getElementById('page-geral').classList.contains('show')) loadOverview(); }, 30000);
 setInterval(pollNotifs, 45000);
 setTimeout(pollNotifs, 2000);
+
+// ============ SALDO + SACAR ============
+async function loadBalance() {
+  try {
+    const r = await fetch('/api/wallet/balance', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const v = (j.available_cents || 0) / 100;
+    const el = document.getElementById('balance-val');
+    if (el) el.textContent = 'R$ ' + v.toFixed(2).replace('.', ',');
+    window.__balance = j;
+  } catch {}
+}
+
+async function openWithdrawModal() {
+  await loadBalance();
+  const b = window.__balance || { available_cents: 0, pending_cents: 0, blocked_cents: 0 };
+  const verif = await fetch('/api/verification', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+  const verified = verif && verif.status === 'approved';
+  const avail = (b.available_cents / 100).toFixed(2).replace('.', ',');
+
+  document.getElementById('modal-withdraw-body').innerHTML = `
+    <div style="display:flex;gap:14px;margin-bottom:18px;">
+      <div style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-size:10px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">disponível</div>
+        <div style="font-size:22px;font-weight:800;color:#7dd3a4;margin-top:6px;">R$ ${avail}</div>
+      </div>
+      <div style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-size:10px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">pendente</div>
+        <div style="font-size:16px;font-weight:700;color:#aaa;margin-top:8px;">R$ ${(b.pending_cents/100).toFixed(2).replace('.',',')}</div>
+      </div>
+    </div>
+    ${!verified ? `<div style="background:rgba(245,197,66,0.10);border:1px solid rgba(245,197,66,0.30);border-radius:8px;padding:12px;margin-bottom:14px;color:#f5c542;font-size:12.5px;">
+      ⚠ Você precisa verificar sua identidade antes de sacar. <a href="#" onclick="closeModal('modal-withdraw');openVerificationModal();return false;" style="color:#f5c542;text-decoration:underline;">Verificar agora</a>
+    </div>` : ''}
+    <div class="kyc-field">
+      <label>Valor a sacar (R$)</label>
+      <input type="number" id="wd-amount" step="0.01" min="10" placeholder="0,00" ${!verified ? 'disabled' : ''}>
+      <div class="kyc-hint">Mínimo R$10. Taxa: R$1 por saque. Chave PIX: ${verif?.pix_key ? escapeHtml(verif.pix_key) : '—'}</div>
+    </div>
+    <div class="kyc-actions">
+      <button class="kyc-btn secondary" onclick="closeModal('modal-withdraw')">Cancelar</button>
+      <button class="kyc-btn primary" onclick="submitWithdraw()" ${!verified ? 'disabled' : ''}>Solicitar saque</button>
+    </div>
+  `;
+  document.getElementById('modal-withdraw').classList.add('open');
+}
+
+async function submitWithdraw() {
+  const amount = document.getElementById('wd-amount').value;
+  if (!amount || parseFloat(amount) < 10) return toast('Valor mínimo R$10', 'err');
+  try {
+    const r = await fetch('/api/wallet/withdraw', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha no saque', 'err');
+    toast('Saque solicitado! Será processado em até 24h.');
+    closeModal('modal-withdraw');
+    loadBalance();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ VERIFICAÇÃO DE IDENTIDADE ============
+let __verifState = null;
+
+async function openVerificationModal() {
+  const r = await fetch('/api/verification', { credentials: 'same-origin' });
+  __verifState = await r.json();
+  renderVerifModal();
+  document.getElementById('modal-verify').classList.add('open');
+}
+
+function renderVerifModal() {
+  const s = __verifState || { status: 'not_started' };
+  const body = document.getElementById('modal-verify-body');
+  const stepIdx = { not_started: 0, pending_payment: 0, pending_proof: 1, pending_review: 2, approved: 2, rejected: 0 }[s.status] ?? 0;
+
+  const steps = `
+    <div class="kyc-steps">
+      <div class="kyc-step ${stepIdx >= 0 ? 'active' : ''} ${stepIdx > 0 ? 'done' : ''}"><div class="num">${stepIdx > 0 ? '✓' : '1'}</div>Pagamento</div>
+      <div class="kyc-step-bar ${stepIdx > 0 ? 'done' : ''}"></div>
+      <div class="kyc-step ${stepIdx >= 1 ? 'active' : ''} ${stepIdx > 1 ? 'done' : ''}"><div class="num">${stepIdx > 1 ? '✓' : '2'}</div>Comprovante</div>
+      <div class="kyc-step-bar ${stepIdx > 1 ? 'done' : ''}"></div>
+      <div class="kyc-step ${stepIdx >= 2 ? 'active' : ''} ${s.status === 'approved' ? 'done' : ''}"><div class="num">${s.status === 'approved' ? '✓' : '3'}</div>Concluído</div>
+    </div>
+  `;
+
+  if (s.status === 'not_started' || s.status === 'rejected') {
+    body.innerHTML = steps + `
+      ${s.status === 'rejected' ? `<div style="background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.30);padding:10px;border-radius:8px;color:#ff8a8a;font-size:12px;margin-bottom:14px;">Sua verificação anterior foi rejeitada: ${escapeHtml(s.rejection_reason || 'motivo nao informado')}. Corrija os dados e tente de novo.</div>` : ''}
+      <div class="kyc-field">
+        <label>CPF ou CNPJ</label>
+        <input id="kyc-doc" placeholder="apenas números (11 ou 14 dígitos)" inputmode="numeric">
+        <div class="kyc-hint">Use o documento do titular da chave PIX.</div>
+      </div>
+      <div class="kyc-field">
+        <label>Nova chave PIX</label>
+        <input id="kyc-pix" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória">
+        <div class="kyc-hint">A chave PIX deve estar vinculada à conta bancária do mesmo CPF/CNPJ informado acima.</div>
+      </div>
+      <div class="kyc-actions">
+        <button class="kyc-btn secondary" onclick="closeModal('modal-verify')">Cancelar</button>
+        <button class="kyc-btn primary" onclick="kycStart()">Iniciar Verificação</button>
+      </div>
+    `;
+  } else if (s.status === 'pending_payment') {
+    body.innerHTML = steps + `
+      <div class="kyc-grid">
+        <div>
+          <h4 style="margin:0 0 10px;color:#fff;font-size:14px;">Informações do Pagamento</h4>
+          <p style="font-size:12.5px;color:#bbb;line-height:1.5;">Escaneie com o app do seu banco e efetue o pagamento de <b style="color:#fff;">R$ 0,99</b> para confirmar sua identidade.</p>
+          <div style="background:rgba(245,197,66,0.08);border:1px solid rgba(245,197,66,0.25);padding:10px;border-radius:8px;font-size:11.5px;color:#d4b860;line-height:1.5;margin-top:12px;">
+            <b>Importante:</b> Após o pagamento, o sistema confirma que você é o titular da conta. O valor é reembolsado em até 24h.
+          </div>
+        </div>
+        <div>
+          <div class="kyc-qr"><canvas id="kyc-qr-canvas"></canvas></div>
+          <div style="margin-top:10px;">
+            <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Código PIX</div>
+            <div class="kyc-pix-code" id="kyc-pix-payload">${escapeHtml(s.payment_qr_payload || '')}</div>
+            <button class="kyc-btn secondary" style="width:100%;margin-top:8px;" onclick="kycCopyPix()">Copiar Código PIX</button>
+          </div>
+        </div>
+      </div>
+      <div class="kyc-actions">
+        <button class="kyc-btn secondary" onclick="closeModal('modal-verify')">Fechar</button>
+        <button class="kyc-btn primary" onclick="kycGoProofStep()">Já paguei — enviar comprovante</button>
+      </div>
+    `;
+    if (window.QRCode && s.payment_qr_payload) {
+      QRCode.toCanvas(document.getElementById('kyc-qr-canvas'), s.payment_qr_payload, { width: 280, margin: 1 }, () => {});
+    }
+  } else if (s.status === 'pending_proof' || (s.status === 'pending_review' && !s.proof_file_path)) {
+    body.innerHTML = steps + `
+      <div style="text-align:center;margin-bottom:18px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <h3 style="margin:8px 0 4px;color:#fff;font-size:16px;">Envie o Comprovante de Pagamento</h3>
+        <div style="font-size:12.5px;color:#aaa;">Formatos aceitos: JPG, PNG ou PDF (até 5MB)</div>
+      </div>
+      <div class="dropzone" onclick="document.getElementById('kyc-file').click()">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="color:#fff;font-weight:600;font-size:13px;">Clique para selecionar o comprovante</div>
+        <div style="font-size:11px;color:#666;margin-top:4px;">ou arraste e solte aqui</div>
+        <input type="file" id="kyc-file" accept="image/*,.pdf" style="display:none;" onchange="kycUploadProof(this)">
+      </div>
+      <div class="kyc-actions">
+        <button class="kyc-btn secondary" onclick="closeModal('modal-verify')">Cancelar</button>
+      </div>
+    `;
+  } else if (s.status === 'pending_review') {
+    body.innerHTML = steps + `
+      <div style="text-align:center;padding:30px 10px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <h3 style="margin:14px 0 8px;color:#fff;">Em análise</h3>
+        <div style="color:#aaa;font-size:13px;line-height:1.5;">Recebemos seu comprovante. Vamos analisar e aprovar sua verificação em até 24h úteis. Você receberá uma notificação.</div>
+      </div>
+      <div class="kyc-actions"><button class="kyc-btn secondary" onclick="closeModal('modal-verify')">Fechar</button></div>
+    `;
+  } else if (s.status === 'approved') {
+    body.innerHTML = steps + `
+      <div style="text-align:center;padding:30px 10px;">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <h3 style="margin:14px 0 8px;color:#fff;">Verificação aprovada</h3>
+        <div style="color:#aaa;font-size:13px;line-height:1.5;">Você já pode receber pagamentos e sacar para sua chave PIX <b style="color:#fff;">${escapeHtml(s.pix_key || '')}</b>.</div>
+      </div>
+      <div class="kyc-actions"><button class="kyc-btn primary" onclick="closeModal('modal-verify')">Fechar</button></div>
+    `;
+  }
+}
+
+async function kycStart() {
+  const cpf = document.getElementById('kyc-doc').value.trim();
+  const pix = document.getElementById('kyc-pix').value.trim();
+  if (!cpf || !pix) return toast('Preencha CPF/CNPJ e chave PIX', 'err');
+  try {
+    const r = await fetch('/api/verification/start', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cpf_cnpj: cpf, pix_key: pix })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    __verifState = j;
+    renderVerifModal();
+    checkKycBanner();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function kycCopyPix() {
+  const txt = document.getElementById('kyc-pix-payload')?.textContent || '';
+  navigator.clipboard.writeText(txt).then(() => toast('Código PIX copiado'));
+}
+
+async function kycGoProofStep() {
+  __verifState = { ...__verifState, status: 'pending_proof' };
+  renderVerifModal();
+}
+
+async function kycUploadProof(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) return toast('Arquivo > 5MB', 'err');
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const r = await fetch('/api/verification/upload-proof', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, content_base64: reader.result })
+      });
+      const j = await r.json();
+      if (!r.ok) return toast(j.error || 'Falha no upload', 'err');
+      __verifState = j;
+      renderVerifModal();
+      checkKycBanner();
+      toast('Comprovante enviado!');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function checkKycBanner() {
+  try {
+    const j = await fetch('/api/verification', { credentials: 'same-origin' }).then(r => r.json());
+    const banner = document.getElementById('kyc-banner');
+    if (!banner) return;
+    if (j.status === 'approved') { banner.style.display = 'none'; return; }
+    const msgs = {
+      not_started: 'Confirme sua identidade para evitar interrupções no serviço de pagamento.',
+      pending_payment: 'Você iniciou a verificação. Pague o PIX de R$ 0,99 e envie o comprovante.',
+      pending_proof: 'Envie o comprovante do pagamento para concluir.',
+      pending_review: 'Comprovante recebido — em análise.',
+      rejected: 'Sua verificação foi rejeitada. Tente novamente.'
+    };
+    document.getElementById('kyc-banner-d').textContent = msgs[j.status] || msgs.not_started;
+    banner.style.display = 'flex';
+  } catch {}
+}
+
+// ============ BOT CONTROLS ============
+async function botCtl(action) {
+  if (!confirm(`${action === 'stop' ? 'Desligar' : action === 'restart' ? 'Reiniciar' : 'Ligar'} o bot?`)) return;
+  try {
+    const r = await fetch(`/api/bot/${action}`, { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast(`bot ${action === 'stop' ? 'desligado' : action === 'restart' ? 'reiniciado' : 'ligado'}`);
+    setTimeout(refreshBotStatus, 2000);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function refreshBotStatus() {
+  try {
+    const j = await fetch('/api/bot/status', { credentials: 'same-origin' }).then(r => r.json());
+    const txt = document.getElementById('bot-status-text');
+    if (txt) txt.textContent = j.ready ? 'online' : 'offline';
+    const ctls = document.getElementById('bot-controls');
+    if (ctls) ctls.style.display = 'flex';
+  } catch {}
+}
+
+// inicia ao carregar
+setTimeout(() => { loadBalance(); checkKycBanner(); refreshBotStatus(); }, 800);
+setInterval(loadBalance, 60000);
+setInterval(refreshBotStatus, 30000);

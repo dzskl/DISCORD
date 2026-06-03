@@ -9,6 +9,10 @@ function register(app) {
   app.use('/api/credentials', require('../controllers/credentials.controller'));
   app.use('/api/billing', require('../controllers/billing.controller'));
   app.use('/api/guilds', require('../controllers/guilds.controller'));
+  app.use('/api/wallet', require('../controllers/wallet.controller'));
+  app.use('/api/verification', require('../controllers/verification.controller'));
+  app.use('/api/notifications', require('../controllers/notifications.controller'));
+  app.use('/api/bot', require('../controllers/bot-control.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

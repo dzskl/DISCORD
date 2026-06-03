@@ -94,6 +94,60 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-s
 .page-sub{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-top:2px;}
 .topbar-right{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;}
 .topbar-status{display:flex;align-items:center;gap:6px;}
+.balance-chip{display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:1px solid rgba(34,197,94,0.25);padding:7px 11px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#7dd3a4;}
+.balance-chip .bi{width:22px;height:22px;border-radius:6px;background:#22c55e;color:#0a0a0a;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;}
+.btn-sacar{background:#22c55e;color:#0a0a0a;border:0;padding:8px 13px;border-radius:8px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:filter .12s;}
+.btn-sacar:hover{filter:brightness(1.07);}
+.btn-sacar svg{width:13px;height:13px;}
+.bot-controls{display:flex;gap:6px;padding:0 18px 14px;}
+.bot-ctl{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:var(--surface-3);border:1px solid var(--border-strong);color:var(--text-dim);padding:7px 0;border-radius:8px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;transition:all .12s;}
+.bot-ctl:hover{color:#fff;background:#1a1a1a;}
+.bot-ctl.start{color:#7dd3a4;border-color:rgba(34,197,94,0.25);}
+.bot-ctl.restart{color:#f5c542;border-color:rgba(245,197,66,0.25);}
+.bot-ctl.stop{color:#ff6b6b;border-color:rgba(255,107,107,0.25);}
+.bot-ctl svg{width:12px;height:12px;}
+
+.kyc-banner{background:linear-gradient(90deg,rgba(245,197,66,0.10),rgba(245,197,66,0.02));border:1px solid rgba(245,197,66,0.30);border-radius:11px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;}
+.kyc-banner-l{display:flex;gap:12px;align-items:flex-start;}
+.kyc-banner-l svg{flex-shrink:0;color:#f5c542;margin-top:2px;}
+.kyc-banner-t{font-weight:700;color:#f5c542;font-size:13px;}
+.kyc-banner-d{font-size:11.5px;color:#bbb;margin-top:3px;}
+.kyc-banner button{background:#f5c542;color:#0a0a0a;border:0;padding:8px 14px;border-radius:7px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;flex-shrink:0;}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+.modal-back.open{display:flex;}
+.modal{background:#0e0e0e;border:1px solid var(--border-strong);border-radius:14px;width:min(640px,100%);max-height:92vh;overflow-y:auto;}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{margin:0;font-size:16px;font-weight:700;color:#fff;}
+.modal-x{background:transparent;border:0;color:var(--text-faint);font-size:20px;cursor:pointer;line-height:1;}
+.modal-body{padding:22px;}
+.kyc-steps{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.kyc-step{display:flex;align-items:center;gap:8px;color:var(--text-faint);font-size:12px;}
+.kyc-step .num{width:24px;height:24px;border-radius:50%;background:#1a1a1a;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;}
+.kyc-step.done .num{background:#3b82f6;color:#fff;border-color:#3b82f6;}
+.kyc-step.active{color:#fff;}
+.kyc-step.active .num{background:#3b82f6;color:#fff;border-color:#3b82f6;}
+.kyc-step-bar{flex:1;height:2px;background:#1a1a1a;}
+.kyc-step-bar.done{background:#3b82f6;}
+.kyc-qr{background:#fff;padding:14px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.kyc-qr svg, .kyc-qr canvas{display:block;width:100%;max-width:280px;height:auto;}
+.kyc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:640px){.kyc-grid{grid-template-columns:1fr;}}
+.kyc-field{margin-bottom:14px;}
+.kyc-field label{display:block;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:6px;}
+.kyc-field input{width:100%;background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;}
+.kyc-field input:focus{outline:0;border-color:var(--primary);}
+.kyc-hint{font-size:11px;color:var(--text-faint);margin-top:4px;}
+.kyc-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+.kyc-btn{padding:10px 16px;border-radius:8px;font-weight:700;border:0;cursor:pointer;font-size:12.5px;font-family:inherit;}
+.kyc-btn.primary{background:#3b82f6;color:#fff;}
+.kyc-btn.primary:disabled{opacity:.5;cursor:not-allowed;}
+.kyc-btn.secondary{background:transparent;color:var(--text-dim);border:1px solid var(--border-strong);}
+.kyc-btn.danger{background:#ef4444;color:#fff;}
+.kyc-pix-code{background:#0a0a0a;border:1px solid var(--border);padding:10px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;word-break:break-all;max-height:80px;overflow-y:auto;color:#999;}
+.dropzone{border:2px dashed var(--border-strong);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .12s;}
+.dropzone:hover{border-color:var(--primary);}
+.dropzone svg{color:var(--primary);margin-bottom:10px;}
 .global-search{position:relative;display:flex;align-items:center;gap:8px;background:#0a0a0a;border:1px solid var(--border);border-radius:7px;padding:7px 10px;width:300px;transition:border-color .12s;}
 .global-search:focus-within{border-color:var(--primary);}
 .global-search svg{color:var(--text-faint);flex-shrink:0;}
@@ -335,6 +389,18 @@ footer.appfoot a:hover{color:var(--text);}
       <div class="guild-switcher" id="guild-switcher"></div>
     </div>
 
+    <div class="bot-controls" id="bot-controls" style="display:none;">
+      <button class="bot-ctl start" onclick="botCtl('start')" title="ligar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg> on
+      </button>
+      <button class="bot-ctl restart" onclick="botCtl('restart')" title="reiniciar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> re
+      </button>
+      <button class="bot-ctl stop" onclick="botCtl('stop')" title="desligar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg> off
+      </button>
+    </div>
+
     <nav class="nav">
       <div class="nav-group" data-toggle="painel" onclick="toggleGroup(this)">
         <span>painel</span>
@@ -471,6 +537,11 @@ footer.appfoot a:hover{color:var(--text);}
           <kbd>⌘K</kbd>
           <div class="gs-results" id="gs-results"></div>
         </div>
+        <div class="balance-chip" id="balance-chip" title="saldo disponivel"><span class="bi">$</span><span id="balance-val">R$ 0,00</span></div>
+        <button class="btn-sacar" onclick="openWithdrawModal()" title="solicitar saque">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+          sacar
+        </button>
         <div class="notif-wrap">
           <button class="notif-btn" onclick="toggleNotif(event)" id="notif-btn" title="notificações">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -478,11 +549,21 @@ footer.appfoot a:hover{color:var(--text);}
           </button>
           <div class="notif-panel" id="notif-panel"></div>
         </div>
-        <span class="topbar-status"><span class="dot-live"></span>online</span>
+        <span class="topbar-status"><span class="dot-live"></span><span id="bot-status-text">online</span></span>
       </div>
     </header>
 
     <div class="content">
+      <div id="kyc-banner" class="kyc-banner" style="display:none;">
+        <div class="kyc-banner-l">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <div class="kyc-banner-t">Ação necessária — Verificação de documento pendente</div>
+            <div class="kyc-banner-d" id="kyc-banner-d">Confirme sua identidade para evitar interrupções no serviço de pagamento.</div>
+          </div>
+        </div>
+        <button onclick="openVerificationModal()">Completar Verificação</button>
+      </div>
       <div id="page-geral" class="page show">
         <div class="mgrid">
           <div class="mc"><div class="mlabel">membros totais</div><div class="mval" id="m-total">—</div><div class="mdelta up" id="m-join-week">—</div></div>
@@ -1323,7 +1404,28 @@ footer.appfoot a:hover{color:var(--text);}
   </div>
 </div>
 
+<div class="modal-back" id="modal-verify">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Verificação de Identidade</h3>
+      <button class="modal-x" onclick="closeModal('modal-verify')">×</button>
+    </div>
+    <div class="modal-body" id="modal-verify-body"></div>
+  </div>
+</div>
+
+<div class="modal-back" id="modal-withdraw">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Solicitar saque</h3>
+      <button class="modal-x" onclick="closeModal('modal-withdraw')">×</button>
+    </div>
+    <div class="modal-body" id="modal-withdraw-body"></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

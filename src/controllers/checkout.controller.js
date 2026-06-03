@@ -192,6 +192,19 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         stripe_payment_intent=?, expires_at=? WHERE id=?
       `).run(session.payment_intent || null, expiresAt, sale.id);
 
+      // Notifica o dono do tenant da venda
+      try {
+        const target = sale.guild_id
+          ? db.prepare(`SELECT ug.user_id AS id FROM user_guilds ug WHERE ug.guild_id=? AND ug.role IN ('owner','admin')`).all(sale.guild_id)
+          : db.prepare(`SELECT id FROM users WHERE role='owner' AND active=1`).all();
+        const title = `Nova venda: ${firstProduct?.name || 'produto'}`;
+        const body = `R$ ${(sale.amount_cents / 100).toFixed(2).replace('.', ',')} · ${sale.discord_tag || sale.discord_id}`;
+        for (const u of target) {
+          db.prepare(`INSERT INTO notifications (user_id, guild_id, kind, title, body, link) VALUES (?, ?, 'sale', ?, ?, '/app.html#vendas')`)
+            .run(u.id, sale.guild_id || null, title, body);
+        }
+      } catch (e) { /* no notif table yet ou outro erro — nao quebra checkout */ }
+
       if (meta.coupon_id) db.prepare('UPDATE coupons SET uses=uses+1 WHERE id=?').run(parseInt(meta.coupon_id));
 
       // Comissao do afiliado
