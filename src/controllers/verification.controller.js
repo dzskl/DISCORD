@@ -100,6 +100,38 @@ router.post('/upload-proof', express.json({ limit: '8mb' }), (req, res) => {
   res.json(db.prepare('SELECT * FROM user_verifications WHERE user_id=?').get(req.appUser.id));
 });
 
+// Lista todas as verificacoes (owner only) — pra tela admin
+router.get('/admin/list', requireOwner, (req, res) => {
+  const status = req.query.status;
+  const where = status ? 'WHERE v.status = ?' : '';
+  const args = status ? [status] : [];
+  const rows = db.prepare(`
+    SELECT v.*, u.email, u.display_name, u.discord_tag, u.discord_avatar
+    FROM user_verifications v
+    JOIN users u ON u.id = v.user_id
+    ${where}
+    ORDER BY
+      CASE v.status
+        WHEN 'pending_review' THEN 1
+        WHEN 'pending_payment' THEN 2
+        WHEN 'rejected' THEN 3
+        WHEN 'approved' THEN 4
+        ELSE 5
+      END,
+      v.created_at DESC
+    LIMIT 200
+  `).all(...args);
+  res.json(rows.map(r => ({ ...r, has_proof: !!r.proof_file_path })));
+});
+
+// Download do comprovante (owner only)
+router.get('/admin/:userId/proof', requireOwner, (req, res) => {
+  const v = db.prepare('SELECT proof_file_path FROM user_verifications WHERE user_id=?').get(req.params.userId);
+  if (!v || !v.proof_file_path) return res.status(404).json({ error: 'comprovante nao encontrado' });
+  if (!require('fs').existsSync(v.proof_file_path)) return res.status(404).json({ error: 'arquivo ausente' });
+  res.sendFile(v.proof_file_path);
+});
+
 // Approve/reject (owner only)
 router.post('/:userId/review', requireOwner, (req, res) => {
   const { action, reason } = req.body || {};

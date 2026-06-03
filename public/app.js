@@ -2417,3 +2417,101 @@ async function saveRoleChanges() {
     renderRolePermsPane();
   } catch (e) { toast(e.message, 'err'); }
 }
+
+// ============ ADMIN KYC (owner only) ============
+async function loadVerifications(status, btn) {
+  if (btn) {
+    document.querySelectorAll('.vf-tab').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = '#888';
+    });
+    btn.style.background = '#1a1a1a';
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = '#fff';
+  }
+  try {
+    const qs = status ? '?status=' + status : '';
+    const r = await fetch('/api/verification/admin/list' + qs, { credentials: 'same-origin' });
+    if (!r.ok) {
+      document.getElementById('verif-tbody').innerHTML = '<tr><td colspan="6" style="color:#ff6b6b">sem permissão (apenas owner)</td></tr>';
+      return;
+    }
+    const rows = await r.json();
+    document.getElementById('verif-tbody').innerHTML = rows.length ? rows.map(v => {
+      const docMasked = v.cpf_cnpj ? (v.cpf_cnpj.slice(0, 3) + '***' + v.cpf_cnpj.slice(-2)) : '—';
+      const statusColor = { approved: '#22c55e', pending_review: '#f5c542', rejected: '#ef4444', pending_payment: '#888', pending_proof: '#888' }[v.status] || '#888';
+      const statusLabel = { approved: 'aprovada', pending_review: 'em análise', rejected: 'rejeitada', pending_payment: 'aguardando pagamento', pending_proof: 'aguardando comprovante' }[v.status] || v.status;
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${v.discord_avatar ? `background:url('${escapeAttr(v.discord_avatar)}') center/cover;` : ''}">${v.discord_avatar ? '' : (v.display_name || v.email || '?').charAt(0).toUpperCase()}</div>
+              <div>
+                <div style="color:#fff;font-size:12px;">${escapeHtml(v.display_name || v.discord_tag || v.email)}</div>
+                <div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(v.email)}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${escapeHtml(docMasked)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#aaa;">${escapeHtml(v.pix_key)}</td>
+          <td><span style="font-size:10px;padding:3px 8px;border-radius:10px;background:${statusColor}22;color:${statusColor};font-weight:600;text-transform:uppercase;">${statusLabel}</span></td>
+          <td>${v.has_proof ? `<a href="/api/verification/admin/${v.user_id}/proof" target="_blank" style="color:#3b82f6;font-size:11px;">ver →</a>` : '<span style="color:#666;font-size:11px;">—</span>'}</td>
+          <td>
+            ${v.status === 'pending_review' || v.status === 'rejected' ? `<button class="btn-w" style="padding:5px 10px;font-size:11px;margin-right:4px;" onclick="reviewKyc(${v.user_id},'approve')">aprovar</button>` : ''}
+            ${v.status === 'pending_review' || v.status === 'approved' ? `<button class="btn-g" style="padding:5px 10px;font-size:11px;color:#ff8a8a;border-color:rgba(255,107,107,.3);" onclick="reviewKyc(${v.user_id},'reject')">rejeitar</button>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="6" style="color:#666;text-align:center;padding:30px;">nenhuma verificação</td></tr>';
+  } catch (e) { console.warn(e); }
+}
+
+async function reviewKyc(userId, action) {
+  let reason = '';
+  if (action === 'reject') {
+    reason = prompt('Motivo da rejeição:');
+    if (!reason) return;
+  }
+  try {
+    const r = await fetch(`/api/verification/${userId}/review`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, reason })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast(action === 'approve' ? 'Verificação aprovada' : 'Verificação rejeitada');
+    const active = document.querySelector('.vf-tab[style*="rgb(139, 111, 255)"]') || document.querySelector('.vf-tab.active') || document.querySelector('.vf-tab');
+    const status = active?.dataset.vf || 'pending_review';
+    loadVerifications(status, active);
+    updateVerifBadge();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function updateVerifBadge() {
+  try {
+    const r = await fetch('/api/verification/admin/list?status=pending_review', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const nav = document.getElementById('nav-verif');
+    const badge = document.getElementById('verif-badge');
+    if (nav) nav.style.display = 'flex';
+    if (badge) {
+      if (rows.length > 0) { badge.style.display = 'inline-block'; badge.textContent = rows.length; }
+      else badge.style.display = 'none';
+    }
+  } catch {}
+}
+
+// Hook page
+const __origSp2 = window.sp;
+if (typeof __origSp2 === 'function' && !window.__spHookedV2) {
+  window.__spHookedV2 = true;
+  window.sp = function (page, el) {
+    __origSp2(page, el);
+    if (page === 'verificacoes') loadVerifications('pending_review', document.querySelector('.vf-tab[data-vf="pending_review"]'));
+  };
+}
+setTimeout(updateVerifBadge, 1500);
+setInterval(updateVerifBadge, 90000);

@@ -496,6 +496,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           credenciais
         </div>
+        <div class="ni" data-page="verificacoes" onclick="sp('verificacoes',this)" id="nav-verif" style="display:none;">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+          verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
+        </div>
         <div class="ni" data-page="auditoria" onclick="sp('auditoria',this)">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
           auditoria
@@ -1036,6 +1040,22 @@ footer.appfoot a:hover{color:var(--text);}
         <div id="plan-banner" style="display:none;background:linear-gradient(135deg,#1a1530,#0e0e2e);border:1px solid #2a2a4e;border-radius:12px;padding:20px 24px;margin-bottom:18px;color:#fff;"></div>
         <div id="plan-current" class="card" style="margin-bottom:18px;"></div>
         <div id="plan-compare" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;"></div>
+      </div>
+
+      <!-- VERIFICACOES (owner only) -->
+      <div id="page-verificacoes" class="page">
+        <div style="display:flex;gap:8px;margin-bottom:14px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
+          <button class="vf-tab active" data-vf="pending_review" onclick="loadVerifications('pending_review',this)" style="padding:8px 14px;border-radius:8px;background:#1a1a1a;border:1px solid var(--primary);color:#fff;cursor:pointer;font-family:inherit;">Pendentes</button>
+          <button class="vf-tab" data-vf="approved" onclick="loadVerifications('approved',this)" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid var(--border);color:#888;cursor:pointer;font-family:inherit;">Aprovadas</button>
+          <button class="vf-tab" data-vf="rejected" onclick="loadVerifications('rejected',this)" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid var(--border);color:#888;cursor:pointer;font-family:inherit;">Rejeitadas</button>
+          <button class="vf-tab" data-vf="" onclick="loadVerifications('',this)" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid var(--border);color:#888;cursor:pointer;font-family:inherit;">Todas</button>
+        </div>
+        <div class="card">
+          <table class="vtable">
+            <thead><tr><th>usuário</th><th>CPF/CNPJ</th><th>chave PIX</th><th>status</th><th>comprovante</th><th>ações</th></tr></thead>
+            <tbody id="verif-tbody"><tr><td colspan="6" style="color:#444">carregando...</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- EQUIPE -->
