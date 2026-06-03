@@ -2859,3 +2859,56 @@ if (typeof __origSp4 === 'function' && !window.__spHookedV4) {
     if (page === 'conquistas') loadAchievements();
   };
 }
+
+// ============ TUTORIAIS ============
+let __tutCat = '';
+async function loadTutorials() {
+  const q = document.getElementById('tut-search')?.value || '';
+  try {
+    const j = await fetch('/api/tutorials?category=' + encodeURIComponent(__tutCat) + '&q=' + encodeURIComponent(q), { credentials: 'same-origin' }).then(r => r.json());
+
+    const cats = document.getElementById('tut-cats');
+    if (cats) cats.innerHTML = j.categories.map(c => `
+      <button onclick="setTutCat('${c.slug}')" style="background:${__tutCat === c.slug ? 'rgba(139,111,255,.2)' : 'transparent'};border:1px solid ${__tutCat === c.slug ? 'var(--primary)' : 'var(--border)'};color:${__tutCat === c.slug ? '#fff' : '#888'};padding:7px 14px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:600;">
+        ${escapeHtml(c.label)} <span style="opacity:.6;font-size:10px;margin-left:3px;">${c.count}</span>
+      </button>
+    `).join('');
+
+    const grid = document.getElementById('tut-grid');
+    if (grid) grid.innerHTML = j.tutorials.length ? j.tutorials.map(t => `
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'" ${t.video_url ? `onclick="window.open('${escapeAttr(t.video_url)}','_blank')"` : ''}>
+        <div style="aspect-ratio:16/9;background:linear-gradient(135deg,#1a1a3e,#0a0a1f);position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(139,111,255,.25);backdrop-filter:blur(4px);border:1px solid rgba(139,111,255,.5);display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10.5px;padding:2px 7px;border-radius:4px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(t.duration)}</div>
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.5);color:#aaa;font-size:9px;padding:2px 7px;border-radius:4px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">${escapeHtml(t.category)}</div>
+        </div>
+        <div style="padding:14px;">
+          <div style="color:#fff;font-weight:700;font-size:13.5px;line-height:1.3;">${escapeHtml(t.title)}</div>
+          <div style="color:#888;font-size:11.5px;margin-top:6px;line-height:1.5;">${escapeHtml(t.description)}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:10.5px;color:#666;font-family:'IBM Plex Mono',monospace;">
+            <span>👁 ${t.views || 0} views</span>
+            <span>⏱ ${escapeHtml(t.duration)}</span>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<div style="grid-column:1/-1;color:#666;text-align:center;padding:40px;">Nenhum tutorial encontrado.</div>';
+  } catch (e) { console.warn(e); }
+}
+
+function setTutCat(slug) {
+  __tutCat = slug;
+  loadTutorials();
+}
+
+const __origSp5 = window.sp;
+if (typeof __origSp5 === 'function' && !window.__spHookedV5) {
+  window.__spHookedV5 = true;
+  window.sp = function (page, el) {
+    __origSp5(page, el);
+    if (page === 'tutoriais') loadTutorials();
+  };
+}
