@@ -3086,49 +3086,6 @@ if (typeof __origSp5 === 'function' && !window.__spHookedV5) {
   };
 }
 
-// ============ PÁGINA CARTEIRA ============
-async function loadCarteira() {
-  try {
-    const [bal, withdrawals] = await Promise.all([
-      fetch('/api/wallet/balance', { credentials: 'same-origin' }).then(r => r.json()),
-      fetch('/api/wallet/withdrawals', { credentials: 'same-origin' }).then(r => r.json())
-    ]);
-
-    const fmt = c => 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ',');
-    document.getElementById('wa-available').textContent = fmt(bal.available_cents);
-    document.getElementById('wa-pending').textContent = fmt(bal.pending_cents);
-    document.getElementById('wa-blocked').textContent = fmt(bal.blocked_cents);
-    document.getElementById('wa-total').textContent = fmt(bal.earned_cents);
-
-    document.getElementById('wa-w-count').textContent = withdrawals.length || 0;
-    const tbody = document.getElementById('wa-w-tbody');
-    tbody.innerHTML = withdrawals.length ? withdrawals.map(w => {
-      const statusColor = { paid: '#22c55e', approved: '#3b82f6', pending: '#f5c542', rejected: '#ef4444' }[w.status] || '#888';
-      const tlabel = w.withdraw_type === 'instant' ? '⚡ instantâneo' : 'normal';
-      return `
-        <tr>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#aaa;">${new Date(w.requested_at * 1000).toLocaleString('pt-BR')}</td>
-          <td style="font-size:11px;color:#aaa;">${tlabel}</td>
-          <td>${fmt(w.amount_cents)}</td>
-          <td style="color:#f5c542;font-size:11px;">${fmt(w.fee_cents)}</td>
-          <td style="color:#7dd3a4;font-weight:700;">${fmt(w.net_cents)}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#888;">${escapeHtml((w.pix_key || '').slice(0, 18))}${(w.pix_key || '').length > 18 ? '…' : ''}</td>
-          <td><span style="font-size:10px;padding:3px 8px;border-radius:10px;background:${statusColor}22;color:${statusColor};text-transform:uppercase;font-weight:600;">${w.status}</span></td>
-        </tr>
-      `;
-    }).join('') : '<tr><td colspan="7" style="color:#444;text-align:center;padding:30px;">nenhum saque ainda</td></tr>';
-  } catch (e) { console.warn(e); }
-}
-
-const __origSp6 = window.sp;
-if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
-  window.__spHookedV6 = true;
-  window.sp = function (page, el) {
-    __origSp6(page, el);
-    if (page === 'carteira') loadCarteira();
-  };
-}
-
 // ============ SAQUES ADMIN ============
 async function loadAdminWithdrawals(status, btn) {
   if (btn) {

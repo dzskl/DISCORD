@@ -1452,49 +1452,6 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
       </div>
 
-      <!-- CARTEIRA -->
-      <div id="page-carteira" class="page">
-        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-bottom:18px;">
-          <div style="background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(34,197,94,.02));border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:24px;">
-            <div style="font-size:11px;text-transform:uppercase;color:#7dd3a4;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Saldo disponível</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;margin-top:8px;line-height:1;" id="wa-available">R$ 0,00</div>
-            <div style="display:flex;gap:18px;margin-top:18px;">
-              <div><div style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Pendente</div><div style="color:#f5c542;font-weight:700;margin-top:3px;" id="wa-pending">R$ 0,00</div></div>
-              <div><div style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Bloqueado</div><div style="color:#aaa;font-weight:700;margin-top:3px;" id="wa-blocked">R$ 0,00</div></div>
-              <div><div style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Total recebido</div><div style="color:#fff;font-weight:700;margin-top:3px;" id="wa-total">R$ 0,00</div></div>
-            </div>
-            <button class="btn-sacar" style="margin-top:18px;padding:11px 18px;" onclick="openWithdrawModal()">sacar agora →</button>
-          </div>
-          <div class="card" style="margin-bottom:0;">
-            <div class="ctitle">opções de saque</div>
-            <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
-              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <div style="color:#fff;font-weight:700;font-size:12.5px;">Normal</div>
-                  <div style="color:#7dd3a4;font-size:11px;font-family:'IBM Plex Mono',monospace;">R$ 0,50</div>
-                </div>
-                <div style="color:#888;font-size:11px;margin-top:3px;">processa em até 24h úteis</div>
-              </div>
-              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <div style="color:#fff;font-weight:700;font-size:12.5px;">⚡ Instantâneo</div>
-                  <div style="color:#f5c542;font-size:11px;font-family:'IBM Plex Mono',monospace;">R$ 3,50</div>
-                </div>
-                <div style="color:#888;font-size:11px;margin-top:3px;">processa em minutos</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="ctitle">histórico de saques <span class="cbadge" id="wa-w-count">0</span></div>
-          <table class="vtable">
-            <thead><tr><th>data</th><th>tipo</th><th>valor</th><th>taxa</th><th>líquido</th><th>chave PIX</th><th>status</th></tr></thead>
-            <tbody id="wa-w-tbody"><tr><td colspan="7" style="color:#444;text-align:center;padding:30px;">nenhum saque ainda</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- TUTORIAIS -->
       <div id="page-tutoriais" class="page">
         <div style="text-align:center;padding:6px 0 18px;">
