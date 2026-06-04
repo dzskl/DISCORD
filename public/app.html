@@ -604,6 +604,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
         </div>
+        <div class="ni" data-page="promo-codes" onclick="sp('promo-codes',this)" id="nav-promo" style="display:none;">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          códigos promo
+        </div>
         <div class="ni" data-page="saques-admin" onclick="sp('saques-admin',this)" id="nav-saques" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           saques <span id="saques-badge" style="margin-left:auto;background:#22c55e;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -2140,6 +2144,80 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
 
         <div id="aa-body"></div>
+      </div>
+
+      <!-- PROMO CODES (owner) -->
+      <div id="page-promo-codes" class="page">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:22px;font-weight:800;color:#fff;">Códigos Promocionais</div>
+          <div style="font-size:13px;color:#888;margin-top:4px;">Gere códigos NEVER-XXXX-XXXX-XXXX pra trial/créditos/módulos</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:380px 1fr;gap:14px;">
+          <!-- Form gerar -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;">
+            <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:14px;">Gerar Códigos</div>
+
+            <div style="margin-bottom:10px;">
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Tipo</label>
+              <select id="pc-kind" class="inp" style="margin-top:5px;">
+                <option value="trial_extend">Extensão de trial (dias)</option>
+                <option value="credit">Crédito em saldo (R$)</option>
+                <option value="module_unlock">Desbloquear módulo</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <label id="pc-value-label" style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Valor</label>
+              <input id="pc-value" type="text" placeholder="ex: 7" class="inp" style="margin-top:5px;">
+              <div id="pc-value-hint" style="font-size:10.5px;color:#666;margin-top:4px;">7 = 7 dias de trial estendido</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Quantidade</label>
+                <input id="pc-count" type="number" min="1" max="50" value="1" class="inp" style="margin-top:5px;">
+              </div>
+              <div>
+                <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Usos máximos por código</label>
+                <input id="pc-max-uses" type="number" min="1" value="1" class="inp" style="margin-top:5px;">
+              </div>
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Expira em <span style="text-transform:none;color:#666;">(opcional, AAAA-MM-DD)</span></label>
+              <input id="pc-expires" type="date" class="inp" style="margin-top:5px;">
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Descrição interna</label>
+              <input id="pc-desc" type="text" placeholder="campanha black friday..." class="inp" style="margin-top:5px;">
+            </div>
+
+            <button onclick="generatePromoCodes()" style="width:100%;background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:11px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">Gerar Códigos</button>
+
+            <div id="pc-just-generated" style="margin-top:14px;display:none;">
+              <div style="font-size:10.5px;text-transform:uppercase;color:#7dd3a4;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">✓ Recém-gerados</div>
+              <div id="pc-just-generated-list" style="background:#0e0e0e;border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#7dd3a4;max-height:140px;overflow-y:auto;"></div>
+              <button onclick="copyAllJustGenerated()" style="margin-top:6px;background:transparent;border:1px solid var(--border);color:#aaa;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Copiar todos</button>
+            </div>
+          </div>
+
+          <!-- Lista -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div style="font-weight:700;color:#fff;font-size:13.5px;">Códigos existentes</div>
+              <button onclick="loadPromoCodes()" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:5px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Atualizar
+              </button>
+            </div>
+            <table class="vtable">
+              <thead><tr><th>código</th><th>tipo</th><th>valor</th><th>usos</th><th>expira</th><th>criado</th></tr></thead>
+              <tbody id="pc-tbody"><tr><td colspan="6" style="color:#666;text-align:center;padding:30px;">Sem códigos ainda</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- TICKETS — Paineis de Suporte -->

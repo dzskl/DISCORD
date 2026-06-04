@@ -6348,3 +6348,94 @@ function updateCmdPerm(cmdKey, field, value) {
   __protCfg[__protTab][cmdKey][field] = value;
   saveProtTabDebounced();
 }
+
+// ============ PROMO CODES ADMIN ============
+let __pcJustGenerated = [];
+
+async function loadPromoCodes() {
+  try {
+    const rows = await fetch('/api/bot-config/admin/promo-codes', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []);
+    const tbody = document.getElementById('pc-tbody');
+    if (!tbody) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#666;text-align:center;padding:30px;">Sem códigos ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const status = r.expires_at && r.expires_at < Math.floor(Date.now() / 1000) ? 'expirado' :
+                    (r.max_uses && r.used_count >= r.max_uses) ? 'esgotado' : 'ativo';
+      const statusColor = status === 'ativo' ? '#7dd3a4' : (status === 'expirado' ? '#f5c542' : '#888');
+      return `
+        <tr>
+          <td><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fff;font-weight:700;cursor:pointer;" onclick="copyPromoCode('${escapeAttr(r.code)}')" title="Click pra copiar">${escapeHtml(r.code)}</span></td>
+          <td><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#1a1a1a;color:#aaa;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${escapeHtml(r.kind || '-')}</span></td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fff;">${escapeHtml(r.value || '-')}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${statusColor};">${r.used_count || 0}${r.max_uses ? '/' + r.max_uses : ''}</td>
+          <td style="font-size:10.5px;color:#888;">${r.expires_at ? new Date(r.expires_at * 1000).toLocaleDateString('pt-BR') : 'nunca'}</td>
+          <td style="font-size:10.5px;color:#888;">${r.created_at ? new Date(r.created_at * 1000).toLocaleDateString('pt-BR') : '-'}</td>
+        </tr>
+      `;
+    }).join('');
+    document.getElementById('nav-promo').style.display = 'flex';
+  } catch (e) { console.warn('promo codes', e.message); }
+}
+
+function copyPromoCode(code) {
+  navigator.clipboard.writeText(code).then(() => toast(code + ' copiado'));
+}
+
+function copyAllJustGenerated() {
+  if (!__pcJustGenerated.length) return;
+  navigator.clipboard.writeText(__pcJustGenerated.join('\n')).then(() => toast(__pcJustGenerated.length + ' códigos copiados'));
+}
+
+async function generatePromoCodes() {
+  const kind = document.getElementById('pc-kind').value;
+  const value = document.getElementById('pc-value').value.trim();
+  const count = parseInt(document.getElementById('pc-count').value) || 1;
+  const max_uses = parseInt(document.getElementById('pc-max-uses').value) || null;
+  const expDate = document.getElementById('pc-expires').value;
+  const expires_at = expDate ? Math.floor(new Date(expDate).getTime() / 1000) : null;
+  const description = document.getElementById('pc-desc').value || null;
+
+  if (!value) return toast('Valor obrigatório', 'err');
+
+  try {
+    const r = await fetch('/api/bot-config/admin/promo-codes', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, value, count, max_uses, expires_at, description })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast(j.codes.length + ' código(s) gerado(s)!');
+    __pcJustGenerated = j.codes;
+    document.getElementById('pc-just-generated').style.display = 'block';
+    document.getElementById('pc-just-generated-list').innerHTML = j.codes.map(c => '<div>' + escapeHtml(c) + '</div>').join('');
+    loadPromoCodes();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Atualiza hint conforme tipo
+document.addEventListener('change', (e) => {
+  if (e.target?.id === 'pc-kind') {
+    const hints = {
+      trial_extend: '7 = 7 dias de trial estendido',
+      credit: '50.00 = R$ 50,00 de crédito',
+      module_unlock: 'autoreply / vips / ecloud / etc'
+    };
+    const hint = document.getElementById('pc-value-hint');
+    if (hint) hint.textContent = hints[e.target.value] || '';
+  }
+});
+
+// Hook nav
+const __origSpPc = window.sp;
+if (typeof __origSpPc === 'function' && !window.__spHookedPc) {
+  window.__spHookedPc = true;
+  window.sp = function (page, el) {
+    __origSpPc(page, el);
+    if (page === 'promo-codes') loadPromoCodes();
+  };
+}
+setTimeout(() => loadPromoCodes(), 1500);
