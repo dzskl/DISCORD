@@ -3883,22 +3883,164 @@ function renderBvList() {
   const empty = document.getElementById('bv-empty');
   if (!wrap) return;
   empty.style.display = list.length ? 'none' : 'block';
-  wrap.innerHTML = list.map((m, i) => `
-    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal: #${escapeHtml(m.channel || 'qualquer')}</div>
-        <button onclick="removeBvMessage(${i})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+  wrap.innerHTML = list.map((m, i) => {
+    const mode = m.mode || 'texto';
+    const preview = mode === 'embed'
+      ? (m.embed?.title || m.embed?.description || '(embed sem título)')
+      : (m.message || '(sem mensagem)');
+    const channels = Array.isArray(m.channels) ? m.channels : (m.channel ? [m.channel] : []);
+    return `
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${mode === 'embed' ? 'rgba(139,111,255,.15)' : '#1a1a1a'};color:${mode === 'embed' ? '#b9a8ff' : '#aaa'};text-transform:uppercase;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace;">${mode}</span>
+            <span style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">${channels.length ? channels.map(c => '#' + escapeHtml(c)).join(', ') : 'qualquer canal'}</span>
+          </div>
+          <div style="font-size:12.5px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(preview).slice(0, 90)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openBvModal(${i})" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Editar</button>
+          <button onclick="removeBvMessage(${i})" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:#ff8a8a;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;">×</button>
+        </div>
       </div>
-      <input value="${escapeAttr(m.channel || '')}" oninput="__bvData['${__bvTab}'][${i}].channel=this.value" placeholder="nome do canal" class="inp" style="margin-bottom:6px;">
-      <textarea oninput="__bvData['${__bvTab}'][${i}].message=this.value" placeholder="Mensagem com {user} {server} {count}" rows="2" class="inp">${escapeHtml(m.message || '')}</textarea>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function addBvMessage() {
-  __bvData[__bvTab].push({ channel: '', message: '' });
+  __bvData[__bvTab].push({ mode: 'texto', message: '', channels: [], delay: 0, embed: null });
   renderBvList();
   saveBvDebounced();
+  openBvModal(__bvData[__bvTab].length - 1);
+}
+
+// ============ Modal Boas-vindas/Despedida v2 ============
+let __bvEditIdx = null;
+let __bvEditBuilder = null;
+let __bvEditMode = 'texto';
+let __bvEditEmbed = null;
+
+function openBvModal(idx) {
+  const m = __bvData[__bvTab][idx];
+  if (!m) return;
+  __bvEditIdx = idx;
+  __bvEditMode = m.mode || 'texto';
+  __bvEditEmbed = m.embed || { color: '#5865F2', title: '', description: '' };
+
+  document.getElementById('modal-bv-title').textContent =
+    (__bvTab === 'boas_vindas' ? 'Boas-vindas' : 'Despedida') + ' — Mensagem #' + (idx + 1);
+
+  const body = document.getElementById('modal-bv-body');
+  const channels = Array.isArray(m.channels) ? m.channels : (m.channel ? [m.channel] : []);
+  body.innerHTML = `
+    <div style="background:rgba(139,111,255,.06);border:1px solid rgba(139,111,255,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span style="font-size:12px;font-weight:700;color:#b9a8ff;text-transform:uppercase;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace;">Variáveis disponíveis</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;">
+        ${[
+          { v: '{serverName}', d: 'Nome do servidor' },
+          { v: '{user}', d: 'Menção do usuário' },
+          { v: '{user.name}', d: 'Nome global do usuário' },
+          { v: '{user.username}', d: 'Username do usuário' }
+        ].map(x => `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button onclick="bvCopyVar('${x.v}')" style="background:#1a1a1a;border:1px solid var(--border);color:#b9a8ff;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;">${x.v}</button>
+            <span style="color:#888;font-size:11px;">${x.d}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <span style="font-size:11.5px;color:#888;">Modo:</span>
+      <div style="display:flex;gap:6px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:4px;">
+        <button class="bv-mode-btn" data-mode="texto" onclick="switchBvMode('texto')" style="background:${__bvEditMode === 'texto' ? '#1a1a1a' : 'transparent'};border:0;color:${__bvEditMode === 'texto' ? '#fff' : '#888'};padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:600;">Texto</button>
+        <button class="bv-mode-btn" data-mode="embed" onclick="switchBvMode('embed')" style="background:${__bvEditMode === 'embed' ? 'linear-gradient(90deg,#8b6fff,#7758ff)' : 'transparent'};border:0;color:${__bvEditMode === 'embed' ? '#fff' : '#888'};padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:600;">Embed</button>
+      </div>
+    </div>
+
+    <div id="bv-content-wrap"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 200px;gap:12px;margin-top:14px;">
+      <div>
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canais (nomes sem #, separados por vírgula)</label>
+        <input id="bv-channels" type="text" value="${escapeAttr(channels.join(', '))}" placeholder="geral, boas-vindas" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+      <div>
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Delay para exclusão (s)</label>
+        <input id="bv-delay" type="number" min="0" value="${m.delay || 0}" class="inp" style="margin-top:5px;">
+        <div style="font-size:10.5px;color:#666;margin-top:4px;">0 = não excluir automaticamente</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+      <button onclick="closeModal('modal-bv-edit')" class="kyc-btn secondary">Cancelar</button>
+      <button onclick="saveBvFromModal()" class="kyc-btn primary">Salvar</button>
+    </div>
+  `;
+
+  renderBvContent(m);
+  document.getElementById('modal-bv-edit').classList.add('open');
+}
+
+function bvCopyVar(v) {
+  navigator.clipboard.writeText(v).then(() => toast('Variável copiada: ' + v));
+}
+
+function switchBvMode(mode) {
+  __bvEditMode = mode;
+  document.querySelectorAll('.bv-mode-btn').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.style.background = on ? (mode === 'embed' ? 'linear-gradient(90deg,#8b6fff,#7758ff)' : '#1a1a1a') : 'transparent';
+    b.style.color = on ? '#fff' : '#888';
+  });
+  renderBvContent(__bvData[__bvTab][__bvEditIdx]);
+}
+
+function renderBvContent(m) {
+  const wrap = document.getElementById('bv-content-wrap');
+  if (!wrap) return;
+  if (__bvEditMode === 'texto') {
+    wrap.innerHTML = `
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Mensagem</label>
+        <textarea id="bv-text-message" rows="4" placeholder="Digite uma mensagem de boas-vindas..." class="inp" style="margin-top:5px;">${escapeHtml(m.message || '')}</textarea>
+      </div>
+    `;
+    __bvEditBuilder = null;
+  } else {
+    wrap.innerHTML = '<div id="bv-embed-builder"></div>';
+    __bvEditBuilder = mountEmbedBuilder({
+      container: document.getElementById('bv-embed-builder'),
+      value: __bvEditEmbed,
+      showAuthor: true, showImage: true, showFooter: true, showFields: true,
+      onChange: v => { __bvEditEmbed = v; }
+    });
+  }
+}
+
+async function saveBvFromModal() {
+  if (__bvEditIdx == null) return;
+  const channels = (document.getElementById('bv-channels')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+  const delay = parseInt(document.getElementById('bv-delay')?.value) || 0;
+  const m = __bvData[__bvTab][__bvEditIdx];
+  m.mode = __bvEditMode;
+  m.channels = channels;
+  delete m.channel; // legado
+  m.delay = delay;
+  if (__bvEditMode === 'texto') {
+    m.message = document.getElementById('bv-text-message').value;
+    m.embed = null;
+  } else {
+    m.embed = __bvEditBuilder ? __bvEditBuilder.getValue() : __bvEditEmbed;
+    m.message = '';
+  }
+  renderBvList();
+  saveBvDebounced();
+  closeModal('modal-bv-edit');
+  toast('Mensagem salva');
 }
 
 function removeBvMessage(i) {
