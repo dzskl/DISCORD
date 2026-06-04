@@ -131,16 +131,8 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - [ ] Card BIO Personalizada com paywall R$5 (status rotativo)
   - [ ] Card Informações readonly (Nome, ID, Status)
   - [ ] Card Prefixo do bot Discord
-- [ ] **Página "Canais" agrupada** por contexto:
-  - [ ] Sistema (Logs, Comandos)
-  - [ ] Loja (Compras, Eventos de Compras, Feedback)
-  - [ ] Membros (Entrada, Saída, Mensagens, Tráfego)
-  - [ ] Convites (Log de Convites, Boas-vindas/Despedida)
-  - [ ] Moderação (Bans, Kicks, Timeouts)
-  - [ ] Cargos (Adicionados, Removidos, Criados)
-- [ ] **Página "Cargos" agrupada**:
-  - [ ] Administração (Admin, Staff Vendas, Staff Ticket)
-  - [ ] Membros (Verificado eCloud, Cliente, Membro Auto-Role)
+- [x] **Página "Canais" agrupada** por contexto (6 grupos)
+- [x] **Página "Cargos" agrupada** (Administração / Membros)
 
 #### 🔴 Backend pesado
 - [x] **Sistema de Códigos Promocionais**:

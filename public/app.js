@@ -860,6 +860,8 @@ const PAGE_META = {
   plano: ['Plano', 'sua assinatura e limites de uso'],
   trial: ['Trial Gratuito', '24 horas com tudo liberado'],
   'configurar-bot': ['Configurar Bot', 'token, códigos e transferência de posse'],
+  'canais-config': ['Canais', 'configure canais para logs e notificações'],
+  'cargos-config': ['Cargos', 'cargos para administração e membros'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -3528,5 +3530,123 @@ if (typeof __origSpCb === 'function' && !window.__spHookedCb) {
   window.sp = function (page, el) {
     __origSpCb(page, el);
     if (page === 'configurar-bot') loadConfigurarBot();
+  };
+}
+
+// ============ CANAIS CONFIG ============
+let __chMeta = null, __chCfg = null, __chChannels = null;
+
+async function loadCanaisConfig() {
+  try {
+    const [meta, cfg, channels] = await Promise.all([
+      fetch('/api/channel-config/_meta', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/channel-config', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/config/channels', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []).catch(() => [])
+    ]);
+    __chMeta = meta; __chCfg = cfg; __chChannels = channels;
+    renderChannelGroups();
+  } catch (e) { console.warn('canais cfg', e.message); }
+}
+
+function renderChannelGroups() {
+  const wrap = document.getElementById('cc-groups');
+  if (!wrap || !__chMeta) return;
+  wrap.innerHTML = __chMeta.map(g => `
+    <div class="card" style="padding:16px 18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="width:3px;height:14px;background:var(--primary);border-radius:2px;"></span>
+        <div style="font-size:13px;color:#fff;font-weight:700;">${escapeHtml(g.label)}</div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:14px;padding-left:11px;">${escapeHtml(g.desc)}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        ${g.keys.map(k => `
+          <div>
+            <div style="font-size:11px;color:#aaa;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(k.label)}</div>
+            <select data-cc="${escapeAttr(k.key)}" class="inp" style="width:100%;font-size:12px;">
+              <option value="">${'#'} Não configurado</option>
+              ${(__chChannels || []).map(ch => `<option value="${escapeAttr(ch.id)}" ${__chCfg[k.key] === ch.id ? 'selected' : ''}># ${escapeHtml(ch.name)}</option>`).join('')}
+            </select>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveChannelConfig() {
+  const body = {};
+  document.querySelectorAll('[data-cc]').forEach(s => { body[s.dataset.cc] = s.value || null; });
+  try {
+    const r = await fetch('/api/channel-config', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Canais salvos');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ CARGOS CONFIG ============
+let __rcMeta = null, __rcCfg = null, __rcRoles = null;
+
+async function loadCargosConfig() {
+  try {
+    const [meta, cfg, roles] = await Promise.all([
+      fetch('/api/role-config/_meta', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/role-config', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/config/roles', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []).catch(() => [])
+    ]);
+    __rcMeta = meta; __rcCfg = cfg; __rcRoles = roles;
+    renderRoleGroups();
+  } catch (e) { console.warn('cargos cfg', e.message); }
+}
+
+function renderRoleGroups() {
+  const wrap = document.getElementById('rc-groups');
+  if (!wrap || !__rcMeta) return;
+  wrap.innerHTML = __rcMeta.map(g => `
+    <div class="card" style="padding:16px 18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="width:3px;height:14px;background:var(--primary);border-radius:2px;"></span>
+        <div style="font-size:13px;color:#fff;font-weight:700;">${escapeHtml(g.label)}</div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:14px;padding-left:11px;">${escapeHtml(g.desc)}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        ${g.keys.map(k => `
+          <div>
+            <div style="font-size:11px;color:#aaa;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(k.label)}</div>
+            <select data-rc="${escapeAttr(k.key)}" class="inp" style="width:100%;font-size:12px;">
+              <option value="">⚪ Não configurado</option>
+              ${(__rcRoles || []).map(r => `<option value="${escapeAttr(r.id)}" style="color:${r.color || '#aaa'};" ${__rcCfg[k.key] === r.id ? 'selected' : ''}>● ${escapeHtml(r.name)}</option>`).join('')}
+            </select>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveRoleConfig() {
+  const body = {};
+  document.querySelectorAll('[data-rc]').forEach(s => { body[s.dataset.rc] = s.value || null; });
+  try {
+    const r = await fetch('/api/role-config', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Cargos salvos');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+const __origSpCc = window.sp;
+if (typeof __origSpCc === 'function' && !window.__spHookedCc) {
+  window.__spHookedCc = true;
+  window.sp = function (page, el) {
+    __origSpCc(page, el);
+    if (page === 'canais-config') loadCanaisConfig();
+    if (page === 'cargos-config') loadCargosConfig();
   };
 }

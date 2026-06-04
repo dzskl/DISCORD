@@ -568,6 +568,14 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
           configurar bot
         </div>
+        <div class="ni" data-page="canais-config" onclick="sp('canais-config',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 9 20 9"/><polyline points="4 15 20 15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+          canais
+        </div>
+        <div class="ni" data-page="cargos-config" onclick="sp('cargos-config',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          cargos
+        </div>
         <div class="ni" data-page="verificacoes" onclick="sp('verificacoes',this)" id="nav-verif" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -1368,6 +1376,26 @@ footer.appfoot a:hover{color:var(--text);}
         <div class="card">
           <div class="ctitle">próximas conquistas <span class="cbadge">em progresso</span></div>
           <div id="ach-locked" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <!-- CANAIS CONFIG -->
+      <div id="page-canais-config" class="page">
+        <h2 style="font-size:18px;font-weight:700;color:#fff;">Canais</h2>
+        <p style="color:#888;font-size:12.5px;margin-top:4px;margin-bottom:18px;">Configure os canais da aplicação para logs e notificações</p>
+        <div id="cc-groups" style="display:flex;flex-direction:column;gap:20px;"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button onclick="saveChannelConfig()" class="btn-w">salvar canais</button>
+        </div>
+      </div>
+
+      <!-- CARGOS CONFIG -->
+      <div id="page-cargos-config" class="page">
+        <h2 style="font-size:18px;font-weight:700;color:#fff;">Cargos</h2>
+        <p style="color:#888;font-size:12.5px;margin-top:4px;margin-bottom:18px;">Configure os cargos da aplicação para administração e membros</p>
+        <div id="rc-groups" style="display:flex;flex-direction:column;gap:20px;"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button onclick="saveRoleConfig()" class="btn-w">salvar cargos</button>
         </div>
       </div>
 
