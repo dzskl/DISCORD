@@ -147,6 +147,43 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #6 — Configurações / Boas-vindas avançada
+
+#### 🟡 Médias (~30-60min)
+- [ ] **Página "Configurações" com sub-tabs Carteira / Segurança**:
+  - Tab Segurança:
+    - Card **2FA** com botão "Gerenciar 2FA no Perfil" → vai pra Minha Conta
+    - Card **Encerrar Todas as Sessões** com warning vermelho + botão
+      - "Isso irá deslogar todos os seus dispositivos. O próximo login
+        deverá ser feito com Discord."
+
+#### 🟠 Maiores (~1-2h cada)
+- [ ] **Página "Boas-vindas" completa** com tabs Boas-vindas / Despedida:
+  - Card "Variáveis disponíveis" no topo (chips):
+    - `{serverName}` - Nome do servidor
+    - `{user.name}` - Nome global do usuário
+    - `{user}` - Menção do usuário
+    - `{user.username}` - Username do usuário
+  - **Toggle Modo: Texto / Embed** (pills selecionáveis)
+  - **Modo Texto** (simples):
+    - Textarea Mensagem
+    - Select multi Canais
+    - Input "Delay para exclusão (segundos)" — 0 = nao excluir
+    - Salvar / Cancelar
+  - **Modo Embed** (layout 2-colunas):
+    - **Esquerda — Configuração de Embed**:
+      - Cor (color picker)
+      - Autor (avatar upload + nome)
+      - Título (texto + URL do título)
+      - Descrição (textarea)
+      - Campos (lista expandível com + Adicionar)
+      - Imagem (drop zone PNG/JPG/GIF até 10MB)
+      - Rodapé (avatar + texto)
+      - Canais (multi-select)
+      - Delay para exclusão
+    - **Direita — Preview live** estilo Discord renderizando em tempo real
+  - Despedida = mesma estrutura, contexto goodbye
+
 ### Rodada NeverMissApps #5 — Convites / Sorteios / Tickets / eCloud / Carteira
 
 #### 🟠 Maiores (~1-2h cada)
