@@ -584,6 +584,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-6 0v4"/><path d="M5 9h14l1 12H4l1-12z"/></svg>
           boas-vindas
         </div>
+        <div class="ni" data-page="invite-tracker" onclick="sp('invite-tracker',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          tracking de convites
+        </div>
         <div class="ni" data-page="verificacoes" onclick="sp('verificacoes',this)" id="nav-verif" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -1313,6 +1317,68 @@ footer.appfoot a:hover{color:var(--text);}
             <div class="fgroup"><div class="flabel">DM de venda confirmada</div><textarea class="inp" id="brand-sale-dm" rows="2" placeholder="🎉 Obrigado pela compra de {produto}!"></textarea></div>
             <button class="btn-w" onclick="saveBrandingMessages()">salvar mensagens</button>
           </div>
+        </div>
+      </div>
+
+      <!-- INVITE TRACKER -->
+      <div id="page-invite-tracker" class="page">
+        <h2 style="font-size:18px;font-weight:700;color:#fff;">Rastreamento de Convites</h2>
+        <p style="color:#888;font-size:12.5px;margin-top:4px;margin-bottom:18px;">Configure mensagens e recompensas baseadas em convites</p>
+
+        <div class="card" style="margin-bottom:14px;padding:16px 18px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span style="width:3px;height:14px;background:var(--primary);border-radius:2px;"></span>
+            <div style="font-size:13px;color:#fff;font-weight:700;">Configurações Gerais</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="color:#fff;font-weight:600;font-size:12.5px;">Status do Sistema</div>
+              <div style="color:#888;font-size:11px;margin-top:2px;">Ativar ou desativar o invite tracker</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+              <input type="checkbox" id="it-enabled" onchange="saveIt()" style="opacity:0;width:0;height:0;">
+              <span class="tg-bg" style="position:absolute;inset:0;background:#1a1a1a;border:1px solid var(--border);border-radius:22px;transition:.2s;"></span>
+              <span class="tg-th" style="position:absolute;height:16px;width:16px;left:3px;top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+            </label>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:11px;color:#aaa;margin-bottom:5px;">Canal de Logs</div>
+            <input id="it-log-channel" class="inp" placeholder="ID ou nome do canal" oninput="saveItDebounced()">
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;padding:16px 18px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span style="width:3px;height:14px;background:#22c55e;border-radius:2px;"></span>
+            <div style="font-size:13px;color:#fff;font-weight:700;">Mensagens do Sistema</div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <div style="font-size:11.5px;color:#7dd3a4;font-weight:600;margin-bottom:6px;">+ Mensagem de Entrada</div>
+            <div style="font-size:10.5px;color:#666;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg>
+              Variáveis disponíveis (clique para copiar):
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+              ${'{member} {membername} {inviter} {invitername} {invites}'.split(' ').map(v => `<button onclick="navigator.clipboard.writeText('${v}');toast('${v} copiado')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:5px;padding:3px 8px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;cursor:pointer;">${v}</button>`).join('')}
+            </div>
+            <textarea id="it-entry-msg" class="inp" rows="2" placeholder="Ex: Bem-vindo {member}! Convidado por {inviter} ({invites} convites)" oninput="saveItDebounced()"></textarea>
+          </div>
+
+          <div>
+            <div style="font-size:11.5px;color:#ff8a8a;font-weight:600;margin-bottom:6px;">× Mensagem de Saída</div>
+            <textarea id="it-leave-msg" class="inp" rows="2" placeholder="Ex: {membername} saiu do servidor. Convidado por {invitername}" oninput="saveItDebounced()"></textarea>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px 18px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="width:3px;height:14px;background:#f5c542;border-radius:2px;"></span>
+            <div style="font-size:13px;color:#fff;font-weight:700;">Cargos por Convite</div>
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:12px;padding-left:11px;">Atribuição automática de cargos baseada em metas</div>
+          <div id="it-rewards" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button onclick="addItReward()" class="btn-w" style="margin-top:10px;">+ adicionar meta</button>
         </div>
       </div>
 

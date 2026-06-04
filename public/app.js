@@ -864,6 +864,7 @@ const PAGE_META = {
   'cargos-config': ['Cargos', 'cargos para administração e membros'],
   boasvindas: ['Boas-vindas', 'mensagens de entrada e saída'],
   carteira: ['Carteira', 'saldo, saques e estatísticas'],
+  'invite-tracker': ['Rastreamento de Convites', 'mensagens e cargos por meta'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -4042,5 +4043,84 @@ if (typeof __origSpCt === 'function' && !window.__spHookedCt) {
   window.sp = function (page, el) {
     __origSpCt(page, el);
     if (page === 'carteira') loadCarteira();
+  };
+}
+
+// ============ INVITE TRACKER ============
+let __itData = null;
+async function loadInviteTracker() {
+  try {
+    __itData = await fetch('/api/extras/invite-tracker', { credentials: 'same-origin' }).then(r => r.json());
+    document.getElementById('it-enabled').checked = !!__itData.enabled;
+    document.getElementById('it-log-channel').value = __itData.log_channel || '';
+    document.getElementById('it-entry-msg').value = __itData.entry_message || '';
+    document.getElementById('it-leave-msg').value = __itData.leave_message || '';
+    // toggle visual
+    const ck = document.getElementById('it-enabled');
+    const bg = ck.parentElement.querySelector('.tg-bg');
+    const th = ck.parentElement.querySelector('.tg-th');
+    bg.style.background = ck.checked ? '#22c55e' : '#1a1a1a';
+    bg.style.borderColor = ck.checked ? '#22c55e' : 'var(--border)';
+    th.style.left = ck.checked ? '19px' : '3px';
+    renderItRewards();
+  } catch (e) { console.warn('it', e.message); }
+}
+
+function renderItRewards() {
+  const wrap = document.getElementById('it-rewards');
+  if (!wrap || !__itData) return;
+  const rewards = __itData.role_rewards || [];
+  wrap.innerHTML = rewards.length ? rewards.map((r, i) => `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#aaa;">A partir de</div>
+      <input type="number" min="1" value="${r.invites || 0}" oninput="__itData.role_rewards[${i}].invites=parseInt(this.value)||0;saveItDebounced()" class="inp" style="width:80px;font-family:'IBM Plex Mono',monospace;">
+      <div style="font-size:11px;color:#aaa;">convites →</div>
+      <input value="${escapeAttr(r.role_id || '')}" oninput="__itData.role_rewards[${i}].role_id=this.value;saveItDebounced()" placeholder="ID do cargo" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+      <button onclick="__itData.role_rewards.splice(${i},1);renderItRewards();saveIt()" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+    </div>
+  `).join('') : '<div style="color:#666;font-size:11.5px;text-align:center;padding:14px;">Nenhuma meta configurada</div>';
+}
+
+function addItReward() {
+  if (!__itData.role_rewards) __itData.role_rewards = [];
+  __itData.role_rewards.push({ invites: 10, role_id: '' });
+  renderItRewards();
+  saveIt();
+}
+
+let __itSaveTimer = null;
+function saveItDebounced() {
+  clearTimeout(__itSaveTimer);
+  __itSaveTimer = setTimeout(saveIt, 600);
+}
+
+async function saveIt() {
+  if (!__itData) return;
+  __itData.enabled = document.getElementById('it-enabled').checked;
+  __itData.log_channel = document.getElementById('it-log-channel').value;
+  __itData.entry_message = document.getElementById('it-entry-msg').value;
+  __itData.leave_message = document.getElementById('it-leave-msg').value;
+  // toggle visual sync
+  const ck = document.getElementById('it-enabled');
+  const bg = ck.parentElement.querySelector('.tg-bg');
+  const th = ck.parentElement.querySelector('.tg-th');
+  bg.style.background = ck.checked ? '#22c55e' : '#1a1a1a';
+  bg.style.borderColor = ck.checked ? '#22c55e' : 'var(--border)';
+  th.style.left = ck.checked ? '19px' : '3px';
+  try {
+    await fetch('/api/extras/invite-tracker', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(__itData)
+    });
+  } catch {}
+}
+
+const __origSpIt = window.sp;
+if (typeof __origSpIt === 'function' && !window.__spHookedIt) {
+  window.__spHookedIt = true;
+  window.sp = function (page, el) {
+    __origSpIt(page, el);
+    if (page === 'invite-tracker') loadInviteTracker();
   };
 }

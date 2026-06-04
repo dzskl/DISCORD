@@ -150,7 +150,7 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 ### Rodada NeverMissApps #5 — Convites / Sorteios / Tickets / eCloud / Carteira
 
 #### 🟠 Maiores (~1-2h cada)
-- [ ] **Página "Rastreamento de Convites" estruturada**:
+- [x] **Página "Rastreamento de Convites" estruturada**:
   - Status do Sistema (toggle global) + Canal de Logs
   - Mensagens do Sistema (Entrada / Saída) com:
     - Variáveis copiáveis em chips: `{member}` `{membername}` `{inviter}` `{invitername}` `{invites}`
