@@ -94,7 +94,63 @@ function setCfg(guildId, value) {
   `).run(guildId, 'protection_v2', JSON.stringify(value));
 }
 
-router.get('/_meta', (req, res) => res.json(STRUCTURE));
+// Esquema dos campos esperados em cada tipo de regra (pro frontend renderizar).
+// 'monitoring': Limite + Intervalo + Punicao + Imunes + Logs
+// 'defense'   : Punicao + Imunes + Logs
+// 'globals'   : Punicao + Imunes + Logs (fallback do tab)
+const RULE_SCHEMAS = {
+  monitoring: ['limite', 'intervalo', 'punicao', 'cargos_imunes', 'canal_logs'],
+  defense:    ['limite', 'intervalo', 'punicao', 'cargos_imunes', 'canal_logs'],
+  globals:    ['punicao', 'cargos_imunes', 'canal_logs']
+};
+
+const PUNICOES = [
+  { value: 'banir',         label: 'Banir' },
+  { value: 'expulsar',      label: 'Expulsar' },
+  { value: 'silenciar',     label: 'Silenciar (timeout)' },
+  { value: 'tirar_cargos',  label: 'Tirar Cargos' },
+  { value: 'remover_perms', label: 'Remover Permissões' },
+  { value: 'avisar',        label: 'Apenas Avisar' }
+];
+
+// Marca tipo de cada regra
+const RULE_TYPES = {
+  defesa_delecao_canais: 'defense',  defesa_edicao_canais: 'defense',  defesa_criacao_canais: 'defense',
+  defesa_delecao_cargos: 'defense',  defesa_edicao_cargos: 'defense',  defesa_criacao_cargos: 'defense',
+  monitoramento_banimentos: 'monitoring', monitoramento_expulsoes: 'monitoring',
+  protecao_admin: 'defense', controle_mencoes: 'monitoring', gestao_punicoes: 'defense',
+  monitor_integracoes: 'defense', controle_cargos_privados: 'defense'
+};
+
+router.get('/_meta', (req, res) => res.json({
+  structure: STRUCTURE,
+  schemas: RULE_SCHEMAS,
+  punicoes: PUNICOES,
+  rule_types: RULE_TYPES
+}));
+
+// PUT regra individual: body { rule_key, enabled?, limite?, intervalo?, punicao?, cargos_imunes?, canal_logs? }
+router.put('/:tab/rule/:ruleKey', (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  if (!STRUCTURE[req.params.tab]) return res.status(400).json({ error: 'tab invalida' });
+  const cfg = getCfg(req.guildId);
+  if (!cfg[req.params.tab]) cfg[req.params.tab] = {};
+  if (!cfg[req.params.tab].rules) cfg[req.params.tab].rules = {};
+  cfg[req.params.tab].rules[req.params.ruleKey] = { ...(cfg[req.params.tab].rules[req.params.ruleKey] || {}), ...req.body };
+  setCfg(req.guildId, cfg);
+  res.json({ ok: true });
+});
+
+// PUT configurações globais do tab: body { punicao?, cargos_imunes?, canal_logs? }
+router.put('/:tab/globals', (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  if (!STRUCTURE[req.params.tab]) return res.status(400).json({ error: 'tab invalida' });
+  const cfg = getCfg(req.guildId);
+  if (!cfg[req.params.tab]) cfg[req.params.tab] = {};
+  cfg[req.params.tab].globals = { ...(cfg[req.params.tab].globals || {}), ...req.body };
+  setCfg(req.guildId, cfg);
+  res.json({ ok: true });
+});
 
 router.get('/', (req, res) => res.json(getCfg(req.guildId)));
 

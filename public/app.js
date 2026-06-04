@@ -2644,6 +2644,13 @@ async function toggleFeature(key, enabled) {
 // ============ PROTEÇÃO ============
 // ============ PROTECAO 7 TABS ============
 let __protMeta = null, __protCfg = null, __protTab = 'anti_fake';
+// Backwards-compat: backend agora retorna { structure, schemas, punicoes, rule_types }
+function protStructure() { return __protMeta?.structure || __protMeta || {}; }
+function protRuleType(key) { return (__protMeta?.rule_types || {})[key]; }
+function protPunicoes() { return __protMeta?.punicoes || [
+  { value: 'banir', label: 'Banir' },
+  { value: 'avisar', label: 'Apenas Avisar' }
+]; }
 
 async function loadProtection() {
   if (!document.getElementById('prot-tabs')) return;
@@ -2661,7 +2668,7 @@ async function loadProtection() {
 function renderProtTabs() {
   const wrap = document.getElementById('prot-tabs');
   if (!wrap || !__protMeta) return;
-  wrap.innerHTML = Object.entries(__protMeta).map(([id, g]) => `
+  wrap.innerHTML = Object.entries(protStructure()).map(([id, g]) => `
     <button onclick="switchProtTab('${id}')" style="background:transparent;border:0;color:${__protTab === id ? '#fff' : '#666'};padding:10px 14px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid ${__protTab === id ? 'var(--primary)' : 'transparent'};">${escapeHtml(g.label)}</button>
   `).join('');
 }
@@ -2675,7 +2682,7 @@ function switchProtTab(id) {
 function renderProtTab() {
   const wrap = document.getElementById('prot-tab-body');
   if (!wrap || !__protMeta) return;
-  const g = __protMeta[__protTab];
+  const g = protStructure()[__protTab];
   if (!g) return;
   const tabCfg = __protCfg[__protTab] || {};
   const isPermsTab = __protTab === 'permissoes_comandos';
@@ -2736,7 +2743,7 @@ function renderProtTab() {
                 <span style="position:absolute;inset:0;background:${on ? '#22c55e' : '#1a1a1a'};border:1px solid ${on ? '#22c55e' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
                 <span style="position:absolute;height:16px;width:16px;left:${on ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
               </label>
-              <button onclick="toast('editar em breve','info')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:7px;padding:6px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+              <button onclick="openProtRuleModal('${escapeAttr(r.key)}','${escapeAttr(r.label)}')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:7px;padding:6px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Editar
               </button>
@@ -2774,6 +2781,84 @@ async function saveProtTab() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(__protCfg[__protTab] || {})
     });
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ MODAL "Editar Regra de Proteção" reusável ============
+function openProtRuleModal(ruleKey, ruleLabel, isGlobals) {
+  const type = isGlobals ? 'globals' : (protRuleType(ruleKey) || 'defense');
+  const tabCfg = __protCfg[__protTab] || {};
+  const cur = isGlobals ? (tabCfg.globals || {}) : ((tabCfg.rules || {})[ruleKey] || {});
+  document.getElementById('modal-prot-title').textContent = isGlobals
+    ? 'Configurações Globais'
+    : ruleLabel;
+  const showLimite = type === 'monitoring' || type === 'defense';
+  const body = `
+    ${showLimite ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Limite</label>
+          <input id="prm-limite" type="number" min="1" value="${cur.limite || 3}" class="inp" style="margin-top:5px;">
+        </div>
+        <div>
+          <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Intervalo (s)</label>
+          <input id="prm-intervalo" type="number" min="1" value="${cur.intervalo || 60}" class="inp" style="margin-top:5px;">
+        </div>
+      </div>
+    ` : ''}
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Punição</label>
+      <select id="prm-punicao" class="inp" style="margin-top:5px;">
+        ${protPunicoes().map(p => `<option value="${p.value}" ${cur.punicao === p.value ? 'selected' : ''}>${escapeHtml(p.label)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Cargos Imunes (IDs, vírgula)</label>
+      <input id="prm-imunes" type="text" value="${escapeAttr((cur.cargos_imunes || []).join(', '))}" placeholder="Selecione cargos..." class="inp" style="margin-top:5px;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Canal de Logs</label>
+      <input id="prm-canal" type="text" value="${escapeAttr(cur.canal_logs || '')}" placeholder="ID do canal (vazio = nenhum)" class="inp" style="margin-top:5px;">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+      <button onclick="closeModal('modal-prot-rule')" class="kyc-btn secondary">Cancelar</button>
+      <button onclick="saveProtRuleModal('${escapeAttr(ruleKey)}',${!!isGlobals})" class="kyc-btn primary">Salvar</button>
+    </div>
+  `;
+  document.getElementById('modal-prot-body').innerHTML = body;
+  document.getElementById('modal-prot-rule').classList.add('open');
+}
+
+async function saveProtRuleModal(ruleKey, isGlobals) {
+  const get = id => document.getElementById(id);
+  const data = {
+    punicao: get('prm-punicao')?.value || 'banir',
+    cargos_imunes: (get('prm-imunes')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+    canal_logs: get('prm-canal')?.value?.trim() || null
+  };
+  if (get('prm-limite')) data.limite = parseInt(get('prm-limite').value) || 3;
+  if (get('prm-intervalo')) data.intervalo = parseInt(get('prm-intervalo').value) || 60;
+
+  const path = isGlobals
+    ? `/api/protection-v2/${__protTab}/globals`
+    : `/api/protection-v2/${__protTab}/rule/${ruleKey}`;
+  try {
+    const r = await fetch(path, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); return toast(j.error || 'Falha ao salvar', 'err'); }
+    toast('Configuração salva');
+    // atualiza cache local
+    if (!__protCfg[__protTab]) __protCfg[__protTab] = {};
+    if (isGlobals) {
+      __protCfg[__protTab].globals = { ...(__protCfg[__protTab].globals || {}), ...data };
+    } else {
+      if (!__protCfg[__protTab].rules) __protCfg[__protTab].rules = {};
+      __protCfg[__protTab].rules[ruleKey] = { ...(__protCfg[__protTab].rules[ruleKey] || {}), ...data };
+    }
+    closeModal('modal-prot-rule');
   } catch (e) { toast(e.message, 'err'); }
 }
 

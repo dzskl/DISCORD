@@ -2331,6 +2331,17 @@ footer.appfoot a:hover{color:var(--text);}
   </div>
 </div>
 
+<!-- Modal "Editar Regra de Proteção" reusável -->
+<div class="modal-back" id="modal-prot-rule">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <h3 id="modal-prot-title">Editar configuração</h3>
+      <button class="modal-x" onclick="closeModal('modal-prot-rule')">×</button>
+    </div>
+    <div class="modal-body" id="modal-prot-body"></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="/app.js"></script>
