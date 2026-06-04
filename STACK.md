@@ -1,516 +1,264 @@
 # Stack de ideias acumuladas
 
-Tracking de tudo pedido via screenshots. Quando o user mandar "começar",
+Tracking de tudo pedido via screenshots. Quando o user mandar "vai/começar",
 implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
 ## ✅ JÁ ENTREGUE (não mexer)
 
-### Rodada NeverMissApps #1 — Landing + Pricing
-- [x] Calculadora interativa na landing
+### Landing + Pricing
+- [x] Calculadora interativa
 - [x] Comparação de taxas vs Kirvano/Cartpanda/Hotmart/Kiwify/Ticto
 - [x] Simulação de venda animada 5-step
-- [x] Carteira (saldo + saque normal R$0,50 / instantâneo R$3,50)
-- [x] Follow-up de carrinho abandonado (cron 15min)
-- [x] Assinaturas recorrentes pro cliente final (Stripe Price recurring)
-- [x] Bot Telegram skeleton (/start /loja /vips /suporte)
-- [x] GA tracking dinâmico via config
-- [x] Trial 24h opcional (plano trial_24h)
-- [x] Central de Tutoriais in-app (16 vídeos, 6 categorias)
-- [x] Carousel "Nossos Clientes" na landing
-- [x] Premiações por marcos (6 tiers de volume + 5 de count)
-- [x] Anti-fraude avançado (score, blacklist, threshold, suspicious sales)
-- [x] Setup em 5min wizard com auto-detect via polling
+- [x] Carousel "Nossos Clientes"
 - [x] Métricas globais no hero (servers/tx/members/volume)
 - [x] Feed de vendas em tempo real no hero
 
-### Rodada Easebot — Permissões + KYC
-- [x] Permissões granulares 26 chaves agrupadas (Principal/Geral/Moderação)
+### Carteira / Pagamentos
+- [x] Carteira completa (4 cards saldo + MED + Premiações + 2FA + saque turbo)
+- [x] Saque normal R$0,50 / instantâneo R$3,50
+- [x] 2FA TOTP pro user (setup + recovery codes)
+- [x] Extrato por Email (CSV/PDF)
+- [x] Follow-up de carrinho abandonado (cron 15min)
+- [x] Assinaturas recorrentes pro cliente final (Stripe Price recurring)
+- [x] Trial 24h opcional + Trial 7 dias
+
+### Bot management
+- [x] Bot Telegram skeleton (/start /loja /vips /suporte)
+- [x] GA tracking dinâmico via config
+- [x] Central de Tutoriais in-app (16 vídeos, 6 categorias)
+- [x] Premiações por marcos (6 tiers volume + 5 count)
+- [x] Anti-fraude (score, blacklist, threshold)
+- [x] Setup em 5min wizard com auto-detect
+- [x] Multi-bot lite com switcher na sidebar
+- [x] Apelido custom do bot no breadcrumb
+- [x] Bot card polido sidebar (avatar + ID + Reiniciar/Desligar)
+- [x] Loading modal "Preparando seu bot"
+- [x] User dropdown topbar (Minha Conta / Configurações / Sair)
+- [x] Warning banner "config faltando"
+- [x] Renomeações empresariais (Aplicações/Automações)
+- [x] Página Trial Gratuito dedicada
+- [x] Breadcrumb na topbar
+
+### Permissões + KYC
+- [x] Permissões granulares 26 chaves agrupadas
 - [x] Aba Cargos (Discord roles) paralela a Membros
 - [x] Bulk save com "● Alterações não salvas" + Limpar/Salvar
 - [x] Add membro por busca de username/ID (modal)
 - [x] KYC PIX 3-step (Pagamento QR → Comprovante → Concluído)
-- [x] Admin de KYC (aprovar/rejeitar com motivo)
-- [x] Admin de saques (aprovar/marcar pago/rejeitar)
-- [x] Multi-bot lite com switcher na sidebar
-- [x] Stub pages: Personalização, Recursos, Proteção, eCloud, VIPs
+- [x] Admin de KYC + admin de saques
+
+### Páginas estruturadas entregues
+- [x] Configurar Bot (Token + Resgatar Código + Transferência de Posse)
+- [x] Personalização (banner + tabs Geral/Embeds + BIO paywall + Prefixo)
+- [x] Canais agrupada (6 grupos)
+- [x] Cargos agrupada (Administração / Membros)
+- [x] Proteção 7 tabs (Anti Fake, Anti Spam, Canais, Cargos, Moderação,
+  Segurança Avançada, Permissões de Comandos)
+- [x] Boas-vindas v1 (lista + adicionar + autosave)
+- [x] Cards Servidor Principal + Auditoria na Visão Geral
+- [x] Card Assinatura + Módulos
+- [x] Banner "Precisa de ajuda?" embedável
+- [x] Rastreamento de Convites (status + mensagens + variáveis chips)
+
+### Backend pesado entregue
+- [x] Sistema de Códigos Promocionais (migration + resgate + tipos)
+- [x] Transferência de Posse (endpoint + notificação + confirmação)
 
 ---
 
 ## 🟡 PENDENTE — Ordem de implementação
 
-### Rodada NeverMissApps #2 — Trial / Sidebar / Visão Geral
+### 🟢 Rápidas (~15-30min cada)
+*(nenhuma — todas as rápidas já entregues)*
 
-#### 🟢 Rápidas (~15-30min)
-- [x] **User dropdown no topbar**: avatar → menu com nome+email+último acesso, Minha Conta / Aplicações / Carteira / Configurações / Sair
-- [x] **Warning banner "config faltando"** reusável (ex: "Chave API não configurada" + botão "Configurar agora")
-- [x] **Renomeações empresariais**: "Aplicações" em vez de "Bots", "Automações" em vez de "Auto-respostas"
-- [x] **"Aplicação ativa" label** com dot verde no card do bot
-- [x] **"Meus Bots" link** voltando pra listagem
-- [x] **Apelido custom do bot** (short name editável usado no breadcrumb)
+### 🟡 Médias (~30-60min cada)
 
-#### 🟡 Médias (~30-60min)
-- [x] **Bot card polido na sidebar**: avatar + ID truncado + status + ID full com copy + Reiniciar (amarelo) + Desligar (vermelho) em destaque
-- [x] **Breadcrumb na topbar** mostrando bot ativo (`9498...-TRIAL / Visão Geral`)
-- [x] **Card Assinatura + Módulos na Visão Geral**: "X dias restantes" big + Renovar + lista MÓDULOS com dot colorido
-- [x] **Cards Servidor Principal + Auditoria** lado a lado na Visão Geral (mesmo vazios)
-- [x] **Loading modal "Preparando seu bot"** com progress bar fake (10-30s)
-- [x] **Banner "Precisa de ajuda?"** embedável no topo das pages config (botões Ver Tutoriais + Suporte)
-- [x] **Página Trial Gratuito dedicada**: 2 cards (features + status elegibilidade com checks)
+- [ ] **Configurações user-level — tab Segurança**:
+  - Card 2FA com botão "Gerenciar 2FA no Perfil"
+  - Card "Encerrar Todas as Sessões" com warning vermelho
+    ("Isso irá deslogar todos dispositivos. Próximo login será com Discord")
 
-### Rodada NeverMissApps #4 — Boas-vindas / Loja / Automações / Proteção
-
-#### 🟡 Médias (~30-60min)
-- [x] **Página "Boas-vindas"** com tabs Boas-vindas / Despedida
-  (Lista + + Adicionar + autosave debounce)
-
-#### 🟠 Maiores (~1-2h cada)
-- [ ] **Página "Loja"** estruturada:
-  - Warning banner "Chave API não configurada" + Configurar agora
-  - Tabs **Produtos / Geral / Cupons**
-  - Conceito de **Painéis de Loja** — múltiplos painéis postáveis em canais diferentes
-  - Left panel: lista de painéis com busca + botão +
-  - Right panel: editor do painel selecionado
-
-- [ ] **Página "Ações Automáticas"** com 5 tabs:
-  - **Mensagens Automáticas** (broadcasts agendados)
-  - **Reações Automáticas** (auto-react em mensagens)
-  - **Repostagem Automática** (repostar produtos/anúncios pra manter fresh)
-  - **Limpeza Automática** (auto-delete mensagens antigas em canais)
-  - **Sugestões** (sistema de sugestões com canal)
-  - Cada uma: configuração + preview live do embed
-
-- [ ] **Embed Builder com preview live** (reusável):
-  - Color picker
-  - Autor (nome + link + avatar)
-  - Título + Descrição com char counter (X/256, Y/4096)
-  - Fields (campos) adicionáveis
-  - Rodapé (footer) com imagem
-  - Coluna direita: **renderização em tempo real** estilo Discord
-  - Reusável em: anúncios, sugestões, boas-vindas, etc.
-
-- [x] **Página "Proteção" anti-raid completa** (7 tabs):
-  - **Anti Fake** (toggle global) — detecta contas fake/bots novos
-  - **Anti Spam** (toggle global + warning se off) — flood, spam, links
-  - **Canais** — defesas contra ataques de destruição:
-    - Defesa contra Deleção de Canais (toggle + editar)
-    - Defesa contra Edição de Canais (toggle + editar)
-    - Defesa contra Criação de Canais (toggle + editar)
-    - Configurações Globais (punição + cargos imunes + canal de logs)
-  - **Cargos** — espelha estrutura de Canais:
-    - Defesa contra Deleção de Cargos
-    - Defesa contra Edição de Cargos
-    - Defesa contra Criação de Cargos
-    - Configurações Globais
-  - **Moderação** — abusos de moderadores:
-    - Monitoramento de Banimentos Massivos
-    - Monitoramento de Expulsões Massivas
-  - **Segurança Avançada** — 5 toggles:
-    - Proteção de Permissões Administrativas
-    - Controle de Menções Abusivas (@everyone, @here)
-    - Gestão de Punições do Sistema (auditoria + controle)
-    - Monitoramento de Integrações (Bots maliciosos)
-    - Controle de Adição de Cargos Privados
-  - **Permissões de Comandos** — lista colapsável de comandos:
-    - /ban, /unban, /kick, /mute, /unmute, /lock, /clear, /cleardm,
-      /nuke, /say, /dm — cada um expandível pra setar cargos permitidos
-
-### Rodada NeverMissApps #3 — Configurar Bot / Personalização / Canais / Cargos
-
-#### 🟠 Maiores (~1-2h cada)
-- [x] **Página "Configurar Bot"** completa:
-  - [x] Card Token do Bot (input + show/hide + Atualizar)
-  - [x] Card Resgatar Código de Presente (`NEVER-XXXX-XXXX-XXXX`)
-  - [x] Card Transferência de Posse (input Discord ID + warning irreversível + botão vermelho)
-- [x] **Página "Personalização" estruturada**:
-  - [x] Banner header customizável (URL input)
-  - [x] Tabs Geral / Embeds
-  - [x] Card BIO Personalizada com paywall R$5 (placeholder)
-  - [x] Card Informações readonly (Nome, ID, Status)
-  - [x] Card Prefixo do bot Discord
-- [x] **Página "Canais" agrupada** por contexto (6 grupos)
-- [x] **Página "Cargos" agrupada** (Administração / Membros)
-
-#### 🔴 Backend pesado
-- [x] **Sistema de Códigos Promocionais**:
-  - [x] Migration `promo_codes` (code, kind, value, max_uses, expires_at)
-  - [ ] Admin page pra gerar códigos (backend pronto, UI ainda nao)
-  - [x] User resgata via página Configurar Bot
-  - [x] Tipos: extension trial, créditos saldo, módulo desbloqueado
-- [x] **Transferência de Posse** real:
-  - [x] Endpoint que valida Discord ID destino
-  - [x] Cria notificação pro novo dono
-  - [x] Move ownership (com confirmacao IRREVERSIVEL)
-- [ ] **BIO rotativa** (renderização real no Discord profile + paywall R$5)
-- [ ] **Servidor Principal conectado** card com avatar+ID+stats+botão "Adicionar a outro servidor"
-
----
-
-### Rodada NeverMissApps #12 — Modal "Editar" reusável para regras de Proteção
-
-#### 🟡 Médias (~1h)
-- [ ] **Modal "Editar Regra de Proteção" reusável** — cada toggle de
-  Proteção tem botão "Editar" que abre modal com campos padronizados:
-  - Header: nome da regra + "Editar configurações" + X
-  - Campos variam por contexto:
-    - **Regras de monitoramento** (Banimentos/Expulsões Massivas):
-      - Limite (numérico)
-      - Intervalo em segundos (numérico)
-      - Punição (dropdown: Banir/Kick/Mute/Tirar Cargo/Remover Perms)
-      - Cargos Imunes (multi-select)
-      - Canal de Logs (dropdown)
-    - **Regras de defesa** (Deleção/Edição/Criação Canais/Cargos,
-      Segurança Avançada):
-      - Punição
-      - Cargos Imunes
-      - Canal de Logs
-    - **Configurações Globais** (compartilhado por tab):
-      - Mesmos 3 campos (Punição + Cargos Imunes + Canal de Logs)
-      - Aplica como fallback quando regra específica não setou
-  - Footer: botão Fechar
-
-- [ ] **Editor "Editar" em todas as regras de Proteção** (substitui
-    edição inline):
-  - Cargos tab — Configurações Globais + 3 regras
-  - Canais tab — Configurações Globais + 3 regras
-  - Moderação tab — 2 regras (Banimentos/Expulsões)
-  - Segurança Avançada — 5 regras
-  - Anti Fake, Anti Spam (já têm config inline diferente)
-
-### Rodada NeverMissApps #11 — Convites detalhado + Permissões de Comandos expandidas
-
-#### 🟠 Maiores (~2h cada)
-- [ ] **Permissões de Comandos** — expansão (cada comando colapsável):
-  - Por comando ao expandir:
-    - **Cargos Permitidos** (dropdown "Todos os cargos")
-    - **Usuários Permitidos** (textarea IDs um por linha)
-  - Novos comandos a incluir:
-    - /convites — Ver convites de outros
-    - /gerar-pix — Gerar cobranças PIX manualmente
-
-- [ ] **Página Rastreamento de Convites — Cargos por Convite**:
-  - Section dedicada "Atribuição automática de cargos baseada em metas"
-  - Cards de Configuração (múltiplas):
-    - Toggle Habilitado
-    - Toggle Persistente (não remove ao perder convites) com tooltip
-    - Input numérico "Meta de Convites"
-    - Multi-select "Cargos a Atribuir"
-    - Botão X remove
-  - Empty card "+ Nova Configuração" no fim pra adicionar
-
-- [ ] **Convites — Editor de Embed por Mensagem**:
-  - Botão "Abrir Editor" / "Ocultar Editor" em cada mensagem
-  - Quando aberto:
-    - Layout 2-colunas: Config + Preview Discord
-    - Cor, autor, título, descrição, fields, imagem, rodapé
-    - Preview live com avatar bot + nome + timestamp
-
-### Rodada NeverMissApps #10 — Sorteios profundos (Requisitos + Tarefas)
-
-#### 🔴 Backend pesado (~3-4h)
-- [ ] **Sorteios — aba Requisitos** (filtros de elegibilidade):
-  - Lista de toggles (Requisitos de Participação):
-    - Membro Cliente / Feedback Science / Membro Verificado
-    - Em Canal de Voz / Voz Mutada / Voz Surda
-  - Inputs numéricos:
-    - Dias de Conta Mínimos
-    - Convites Mínimos
-    - Gasto Mínimo / Gasto Máximo
-    - Primeira Compra (Dias) / Última Compra (Dias)
-  - Multi-selects:
-    - Cargos Obrigatórios
-    - Cargos Bloqueados
-    - Canais de Voz
-  - Lista "Inviters" + botão "Adicionar Inviter"
-  - Textareas (um por linha):
-    - Nicknames Customizados
-    - Status Customizados
-    - Atividades Customizadas
-    - Bios Customizadas
-
-- [ ] **Sorteios — aba Tarefas** (gamificação pra entrar):
-  - Lista de Tarefas (sidebar esquerda)
-  - Painel direito (editor da tarefa selecionada)
-  - Empty state "Crie uma tarefa para começar" com ícone calendário
-  - Botão + pra adicionar
-  - Cada tarefa: tipo (seguir Twitter, entrar Discord externo,
-    inscrever YouTube, etc) + verificação automática quando possível
-
-### Rodada NeverMissApps #9 — Configurações da Conta (user-level) + Proteção tabs restantes
-
-#### 🟠 Maiores (~1-2h cada)
-- [ ] **Página "Configurações" (user-level)** com tabs Carteira / Segurança:
-  - **Tab Carteira** (config da empresa/conta, NÃO saldo):
-    - Banner azul **2FA Necessária** → "Ative em Minha Conta para
-      gerar API Keys" + botão Ativar 2FA
-    - Card **API Key** — input com show/hide + copy + botão Gerar
-    - Card **Opções de Pagamento** — checkbox "Repassar taxa ao cliente"
-    - Card **Dados da Empresa**:
-      - Nome da Empresa
-      - Logo da Empresa (URL)
-      - Cor da Empresa (color picker hex)
-    - Card **Integrações**:
-      - Webhook URL (notificações de eventos)
-      - Callback URL (retorno pós-pagamento)
-    - Botão "💾 Salvar Configurações" no fim
-
-- [ ] **Multi-conta** (avatar dropdown):
-  - Botão "+ Adicionar conta" no dropdown do user
-  - Login com conta diferente sem deslogar a atual
+- [ ] **Multi-conta no avatar dropdown**:
+  - Botão "+ Adicionar conta"
   - Switcher entre contas com check verde na ativa
 
-- [ ] **Anti Link / Convites** (Proteção):
-  - Toggle global "Filtra URLs enviadas no chat"
-  - Toggle "Bloquear Todos" (qualquer domínio não-liberado)
-  - Toggle "Permitir Convites Discord" (discord.gg/ ignorado)
-  - Textarea **Domínios Permitidos** (um por linha)
-  - Textarea **Domínios Bloqueados** (um por linha)
-  - 6 dropdowns aplicar/ignorar × canais/cargos/usuários
+- [ ] **Modal "Editar Regra de Proteção" reusável** — substitui edição inline,
+  cada toggle de Proteção tem botão Editar que abre modal:
+  - Regras de monitoramento (Banimentos/Expulsões): Limite + Intervalo +
+    Punição + Cargos Imunes + Canal de Logs
+  - Regras de defesa (Deleção/Edição/Criação): Punição + Imunes + Logs
+  - Configurações Globais (por tab): fallback dos 3 campos
+  - Aplica em: Cargos (3 + Globais), Canais (3 + Globais), Moderação (2),
+    Segurança Avançada (5)
 
-- [ ] **Anti Padrão em Massa (Raids)** (Proteção):
-  - "Detecta comportamento repetitivo de múltiplos usuários
-    simultaneamente (ex: botnets atacando chat)"
-  - Toggle
-  - 4 sliders: Janela de tempo (60s) / Mínimo de usuários (5) /
-    Mínimo de mensagens (10) / Tamanho mín. caracteres (3)
-  - 6 dropdowns aplicar/ignorar
+### 🟠 Maiores (~1-2h cada)
 
-### Rodada NeverMissApps #8 — Ações Automáticas (Limpeza/Repostagem/Sugestões) + Proteção detalhada
+#### Páginas estruturadas faltando
 
-#### 🟠 Maiores (~1-2h cada)
-- [ ] **Aba "Limpeza Automática"** (Ações Automáticas):
-  - Toggle global "Ativar limpeza automática"
-  - Lista de "Canais para Limpeza" + "Adicionar Canal"
-  - Por canal:
-    - Dropdown canal
-    - Toggle "Limpar mensagens ao trancar" Sim/Não
-    - Time picker "Horario para Trancar" (default 22:00)
-    - Time picker "Horario para Destrancar" (default 08:00)
-    - X vermelho remove
+- [ ] **Configurações user-level — tab Carteira** (config da empresa):
+  - Banner 2FA Necessária + Ativar 2FA
+  - Card API Key (input + show/hide + copy + Gerar)
+  - Card Opções de Pagamento (checkbox Repassar taxa)
+  - Card Dados da Empresa (Nome + Logo URL + Cor hex)
+  - Card Integrações (Webhook URL + Callback URL)
+  - Botão Salvar Configurações
 
-- [ ] **Aba "Repostagem Automática"**:
-  - Toggle global
-  - Time picker "Horario da Repostagem"
-  - **Time picker custom componente**: dropdown 2 colunas (HORA/MIN)
-    com valores rolling + botão Confirmar (reusável em outras telas)
-
-- [ ] **Aba "Sugestões"** com builder + preview live (já mencionado
-    rodada #4, agora detalhado):
-  - Coluna esquerda:
-    - Canal de Sugestões + Canal para enviar painel (com botão Enviar)
-    - Cor da Embed
-    - Autor (avatar + Nome + Link) - 0/256
-    - Título (Central de Sugestões) - 20/256
-    - Descrição (Clique no botao abaixo...) - 48/4096
-    - Fields (Campos) +
-    - Imagem placeholder
-    - Rodapé (avatar + texto) - 0/2048
-  - Coluna direita: **VISUALIZAÇÃO EM TEMPO REAL** estilo Discord
-    com botão roxo "🔵 Enviar Sugestão"
-
-#### 🔴 Backend pesado — Proteção CADA TAB com config profunda
-- [ ] **Anti Fake** config expandida (já existe toggle, expandir):
-  - Input "Dias Mínimos de Conta" (idade mínima do user pra entrar)
-  - Textarea **Status Blacklist** (palavras no status que bloqueiam)
-  - Textarea **Nomes Blacklist** (nomes/padrões que bloqueiam)
-
-- [ ] **Anti Spam** config expandida (mega-painel, ~3h):
-  - Section **Configurações Gerais**:
-    - Toggle "Aplicar em comandos"
-    - Toggle "Ignorar Administradores"
-    - Dropdown Canal de Logs
-    - Multi-select Canais Ignorados (Global)
-    - Multi-select Cargos Ignorados (Global)
-    - Multi-select Usuários Ignorados (Global)
-  - Section **Ação Padrão para Violações**:
-    - Toggle Apagar Mensagem
-    - Toggle Avisar Usuário
-    - Slider Timeout (segundos)
-  - Section **Sistema de Tolerância** (toggle):
-    - "Aplica punições progressivas baseadas em strikes"
-  - Sub-card **Anti Flood** (separado):
-    - Toggle + Slider Máximo de mensagens + Janela de tempo
-    - 6 dropdowns: Aplicar somente / Ignorar × canais/cargos/usuários
-  - Sub-card **Anti Spam** (repetições):
-    - Toggle + 3 sliders (Mensagens similares max / Janela análise / Tamanho mínimo)
-    - 6 dropdowns iguais ao Anti Flood
-  - Sub-card **Anti Garbage**:
-    - Toggle + Sliders (Proporção Max não-alfanumérico / Max repetição mesma letra)
-  - Dica amarela explicando "Lista vazia em Aplicar somente = aplica
-    em todos. Itens em Ignorar sempre excluem do filtro."
-
-### Rodada NeverMissApps #7 — Loja Geral / Ações Automáticas detalhadas
-
-#### 🟠 Maiores (~2h cada)
-- [ ] **Página "Loja" aba Geral** completa (config da experiência de venda):
-  - Section **Chave API (Gateway YuvexPay)** com input + link tutorial
-  - Section **Taxa de Processamento** — toggle "Repassar Taxa para
-    o Cliente" + explicação que NÃO é taxa do sistema
-  - Section **Localização**:
-    - Dropdown Moeda (BRL/USD/EUR)
-    - Dropdown Idioma (PT-BR/EN/ES)
-    - Card "Configurações Atuais" mostrando formatação (R$ 29,90)
-  - Section **Posições** — Posição 1/2/3 default de produtos
-    - Dropdown produto + input ordem por slot
-  - Section **Marca** do checkout:
-    - Cor Central (color picker #8B5CF6)
-    - Cor da Borda (color picker #6D28D9)
-    - Logo do QR Code (drop zone)
-    - Zoom da Logo (slider 90%-140%)
-    - Posição do QR Code (pills Imagem Principal / Thumbnail)
-  - Section **Mensagem de Instruções** (padrão do checkout):
-    - Toggle habilitar
-    - Textarea mensagem
-    - Nome do Botão (Opcional) + URL do Botão (Opcional)
-    - Dica: "Se apenas um dos campos for preenchido, o botão não
-      será exibido"
-  - **Preview live à direita** renderizando o embed PIX que o
-    cliente recebe (avatar do bot + Pagamento via PIX + Expira em
-    + Código Copia e Cola + QR Code com logo no centro)
-
-- [ ] **Modal "Adicionar Mensagem Automática"** (reusável):
-  - Campo Canal (dropdown)
-  - Campo Conteúdo (texto acima da embed)
-  - **Modo de Envio** com 3 pills:
-    - **Embed (Padrão)** — embed builder normal
-    - **Components V2** — Discord components (botões/menus modernos)
-    - **Legacy (Texto)** — texto puro sem embed
-  - Intervalo em minutos (default 60)
-  - Embed builder esquerda + Preview live direita
-  - Section **BOTÕES (0/4)** com botão "Adicionar Botão" — até 4
-    botões clicáveis no embed
-
-- [ ] **Página "Ações Automáticas"** com 5 sub-tabs:
-  - **Mensagens Automáticas**:
-    - Toggle global "Ativar mensagens automáticas"
-    - Lista de mensagens configuradas + "+ Adicionar Mensagem"
-    - Search por canal
-    - Cada mensagem usa o modal acima
-  - **Reações Automáticas**:
-    - Toggle "Ativar reações automáticas"
-    - Card "Canais com Reações" + "Adicionar Canal"
-    - Por canal: dropdown canal + input emoji picker
-    - Botão X vermelho remove canal
-  - **Repostagem Automática** — repostar produtos/anúncios fresh
-  - **Limpeza Automática** — auto-delete msgs antigas por canal
-  - **Sugestões** — sistema de suggestion box com canal
-
-### Rodada NeverMissApps #6 — Configurações / Boas-vindas avançada
-
-#### 🟡 Médias (~30-60min)
-- [ ] **Página "Configurações" com sub-tabs Carteira / Segurança**:
-  - Tab Segurança:
-    - Card **2FA** com botão "Gerenciar 2FA no Perfil" → vai pra Minha Conta
-    - Card **Encerrar Todas as Sessões** com warning vermelho + botão
-      - "Isso irá deslogar todos os seus dispositivos. O próximo login
-        deverá ser feito com Discord."
-
-#### 🟠 Maiores (~1-2h cada)
-- [ ] **Página "Boas-vindas" completa** com tabs Boas-vindas / Despedida:
-  - Card "Variáveis disponíveis" no topo (chips):
-    - `{serverName}` - Nome do servidor
-    - `{user.name}` - Nome global do usuário
-    - `{user}` - Menção do usuário
-    - `{user.username}` - Username do usuário
-  - **Toggle Modo: Texto / Embed** (pills selecionáveis)
-  - **Modo Texto** (simples):
-    - Textarea Mensagem
-    - Select multi Canais
-    - Input "Delay para exclusão (segundos)" — 0 = nao excluir
-    - Salvar / Cancelar
-  - **Modo Embed** (layout 2-colunas):
-    - **Esquerda — Configuração de Embed**:
-      - Cor (color picker)
-      - Autor (avatar upload + nome)
-      - Título (texto + URL do título)
-      - Descrição (textarea)
-      - Campos (lista expandível com + Adicionar)
-      - Imagem (drop zone PNG/JPG/GIF até 10MB)
-      - Rodapé (avatar + texto)
-      - Canais (multi-select)
-      - Delay para exclusão
-    - **Direita — Preview live** estilo Discord renderizando em tempo real
-  - Despedida = mesma estrutura, contexto goodbye
-
-### Rodada NeverMissApps #5 — Convites / Sorteios / Tickets / eCloud / Carteira
-
-#### 🟠 Maiores (~1-2h cada)
-- [x] **Página "Rastreamento de Convites" estruturada**:
-  - Status do Sistema (toggle global) + Canal de Logs
-  - Mensagens do Sistema (Entrada / Saída) com:
-    - Variáveis copiáveis em chips: `{member}` `{membername}` `{inviter}` `{invitername}` `{invites}`
-    - Textarea de conteúdo + "Abrir Editor" pra embed
-  - **Cargos por Convite** — atribuição automática baseada em metas
-    (10 convites → cargo X, 50 → cargo Y, etc)
+- [ ] **Página "Loja" estruturada** com tabs Produtos / Geral / Cupons:
+  - Conceito de **Painéis de Loja** (múltiplos painéis postáveis em
+    canais diferentes)
+  - Aba Produtos: left panel lista de painéis com busca + right editor
+  - Aba **Geral** (config checkout):
+    - Chave API YuvexPay + link tutorial
+    - Toggle Repassar Taxa pro Cliente (não é taxa do sistema)
+    - Localização (Moeda + Idioma + Card Configurações Atuais com formatação)
+    - Posições (3 slots default de produtos)
+    - Marca do checkout (Cor Central + Cor Borda + Logo QR + Zoom 90-140%
+      + Posição Imagem/Thumbnail)
+    - Mensagem de Instruções (toggle + textarea + Nome/URL botão opcional)
+    - Preview live à direita do embed PIX que o cliente vê
+  - Aba Cupons: lista atual + form
 
 - [ ] **Página "Sorteios" avançada** com tabs Geral / Requisitos / Tarefas:
-  - Geral: nome, ícone, banner (upload), descrição, **Modo de Entrega
-    Automática** (cargo / código / mensagem), monitorar toggle
-  - Requisitos: cargos exigidos, mínimo de convites, idade da conta
-  - **Tarefas** (gamificação): seguir IG, entrar em outro server, etc
+  - Aba Geral: nome, ícone, banner (upload), descrição, Modo de Entrega
+    Automática (cargo/código/mensagem), monitorar toggle
+  - **Aba Requisitos** (filtros profundos):
+    - Toggles: Membro Cliente / Feedback / Verificado / Em Voz / Mutado / Surdo
+    - Numéricos: Dias conta min, Convites min, Gasto min/max, Primeira/Última
+      compra (dias)
+    - Multi-selects: Cargos Obrigatórios, Cargos Bloqueados, Canais de Voz
+    - Lista Inviters específicos + Adicionar
+    - Textareas (um por linha): Nicknames/Status/Atividades/Bios Customizados
+  - **Aba Tarefas** (gamificação):
+    - Lista esquerda + editor direito
+    - Tipos: seguir Twitter, entrar Discord externo, inscrever YouTube
+    - Verificação automática quando possível
 
-- [ ] **Página "Tickets — Painéis de Suporte"** estruturada:
+- [ ] **Página "Tickets — Painéis de Suporte"**:
   - Lista de painéis com status Postado/Não postado
-  - Sincronizar + Novo Painel buttons
-  - Search
+  - Sincronizar + Novo Painel + Search
   - Painel expandido com tabs Geral / Funções / Embed
-  - **Configurações de Funcionamento**:
-    - Horário de início/fim (opcional)
-    - Dias de funcionamento (pills Seg-Dom selecionáveis)
+  - Configurações de Funcionamento: horário início/fim + dias da semana (pills)
   - Sticky save "Alterações não salvas | Limpar | Salvar"
   - Card **IA de Atendimento** (paywall) — AI auto-responde tickets
 
 - [ ] **Página "eCloud" landing**:
   - Logo grande + "Sistema de verificação OAuth2 e pull de membros"
-  - 2 CTAs: **Registrar Novo Bot** / **Vincular Chave Existente**
+  - 2 CTAs: Registrar Novo Bot / Vincular Chave Existente
 
-#### 🔴 Backend pesado / nova arquitetura
-- [x] **Página "Carteira" completa** (alem do modal):
-  - **4 cards de saldo**: Disponível / Bloqueado pelo Banco / Congelado (MED) / Total
-  - Conceito de **MED** (Mecanismo Especial de Devolução — bloqueio PIX BC)
-  - **Premiações de Faturamento**: progress bar com marcos
-    R$0 / R$100k / R$500k / R$1M + placas trofeu
-  - Banner "2FA Necessária pra sacar" + botão Ativar 2FA
-  - **Solicitar Saque** card:
-    - Validar chave PIX (botão valida no gateway)
-    - **Saque Turbo** checkbox (Instantâneo R$3,50 vs Normal R$0,50)
-    - Resumo: disponível / congelado / mínimo / taxa
-    - Botão disabled até 2FA ativo
-  - **Resumo** card:
-    - Estatísticas: Total de Vendas / Volume Total / Total Sacado / MEDs Ativos
-    - Status: Aprovadas / Pendentes / Reembolsadas / Canceladas
-    - Gráfico de receita com filtros Hoje/Semanal/Mensal/Total/Período
-  - Botões topo: **Extrato por Email** + Atualizar
+#### Embed Builder + Mensagens Automáticas
 
-- [x] **2FA pro user** (TOTP):
-  - Setup QR code (Google Authenticator etc)
-  - Validação obrigatória antes de saques
-  - Recovery codes
-  - Desativar com password
+- [ ] **Embed Builder reusável com preview live** (componente):
+  - Cor (color picker)
+  - Autor (avatar upload + nome + link) - 0/256
+  - Título (texto + URL) - 0/256
+  - Descrição (textarea) - 0/4096
+  - Fields (Campos) lista expandível + Adicionar
+  - Imagem (drop zone PNG/JPG/GIF até 10MB)
+  - Rodapé (avatar + texto) - 0/2048
+  - **Coluna direita**: renderização em tempo real estilo Discord
+  - Usado em: Boas-vindas, Anúncios, Sugestões, Convites, Mensagens Automáticas
 
-- [x] **Extrato por Email**:
-  - Backend gera CSV/PDF do período
-  - Envia pro email cadastrado
-  - Async com confirmação visual
+- [ ] **Modal "Adicionar Mensagem Automática"** (reusável):
+  - Canal (dropdown)
+  - Conteúdo (texto acima do embed)
+  - Modo de Envio 3 pills: **Embed (Padrão)** / **Components V2**
+    (botões+menus Discord) / **Legacy (Texto)**
+  - Intervalo em minutos
+  - Embed builder + Preview live
+  - Section **BOTÕES (0/4)** + Adicionar Botão — até 4 botões clicáveis
 
-## 🟠 Sobraram desta rodada (próxima sessão)
+- [ ] **Página "Ações Automáticas"** com 5 sub-tabs:
+  - **Mensagens Automáticas**: toggle global + lista + search por canal
+    + modal acima
+  - **Reações Automáticas**: toggle + canais com emojis + X remove
+  - **Repostagem Automática**: toggle + time picker custom (HORA/MIN rolling)
+  - **Limpeza Automática**: por canal — dropdown + toggle "limpar ao trancar"
+    + horários trancar/destrancar (22:00/08:00 default)
+  - **Sugestões**: builder + preview live com botão "Enviar Sugestão"
 
-- [ ] **Página "Sorteios" avançada** (tabs Geral/Requisitos/Tarefas)
-- [ ] **Página "Tickets — Painéis de Suporte"** (tabs Geral/Funções/Embed)
-- [ ] **Página "eCloud" landing** (CTAs Registrar Novo Bot / Vincular Chave)
-- [ ] **Página "Loja"** com Painéis (tabs Produtos/Geral/Cupons)
-- [ ] **Página "Ações Automáticas"** com 5 tabs
-- [ ] **Embed Builder reusável com preview live**
-- [ ] **IA de Atendimento** (paywall) em Tickets
-- [ ] Admin de promo codes (gerar codigos UI)
-- [ ] **Servidor Principal conectado** card avancado
-- [ ] BIO rotativa real (paywall pago)
+- [ ] **Boas-vindas v2 — modo Embed completo** (atual é só texto):
+  - Tabs Boas-vindas / Despedida (espelhadas)
+  - Card "Variáveis disponíveis" no topo (chips):
+    {serverName} {user.name} {user} {user.username}
+  - **Toggle Modo: Texto / Embed** (pills)
+  - Modo Texto: textarea + canais + delay exclusão
+  - Modo Embed: Embed Builder esquerda + Preview live direita
+
+#### Proteção — Expansão das configs
+
+- [ ] **Anti Fake config expandida** (toggle existe, expandir):
+  - Input Dias Mínimos de Conta
+  - Textarea Status Blacklist (um por linha)
+  - Textarea Nomes Blacklist (um por linha)
+
+- [ ] **Anti Spam mega-painel** (toggle existe, expandir, ~3h):
+  - Section Configurações Gerais:
+    - Toggle "Aplicar em comandos"
+    - Toggle "Ignorar Administradores"
+    - Canal de Logs + multi-selects Canais/Cargos/Usuários Ignorados (Global)
+  - Section Ação Padrão para Violações:
+    - Toggle Apagar Mensagem + Avisar Usuário + Slider Timeout (segundos)
+  - Section Sistema de Tolerância (toggle strikes progressivos)
+  - **Sub-card Anti Flood**: toggle + Max msgs + Janela tempo + 6 dropdowns
+  - **Sub-card Anti Spam** (repetições): toggle + 3 sliders (similares/janela/
+    tamanho mín) + 6 dropdowns
+  - **Sub-card Anti Garbage**: toggle + Proporção não-alfanumérico + Max
+    repetição letra
+  - **Sub-card Anti Link / Convites**:
+    - Toggle Bloquear Todos + Permitir Discord invites
+    - Whitelist + Blacklist de domínios (textarea por linha)
+    - 6 dropdowns aplicar/ignorar
+  - **Sub-card Anti Padrão em Massa (Raids)**:
+    - 4 sliders (Janela tempo / Min users / Min msgs / Min caracteres)
+    - 6 dropdowns
+  - Dica amarela: "Lista vazia em 'Aplicar somente' = aplica em todos.
+    'Ignorar' sempre exclui."
+
+#### Convites + Permissões de Comandos — Expansões
+
+- [ ] **Cargos por Convite** (Rastreamento de Convites):
+  - Cards de Configuração múltiplos:
+    - Toggle Habilitado
+    - Toggle Persistente (não remove ao perder convites) com tooltip
+    - Input Meta de Convites
+    - Multi-select Cargos a Atribuir
+    - X remove
+  - Empty card "+ Nova Configuração"
+
+- [ ] **Permissões de Comandos — expansão**:
+  - Por comando colapsável: **Cargos Permitidos** + **Usuários Permitidos**
+    (textarea IDs por linha)
+  - Adicionar comandos: /convites, /gerar-pix
+
+- [ ] **Convites — Editor de Embed por mensagem**:
+  - Botão Abrir/Ocultar Editor em cada mensagem (entrada/saída)
+  - Layout 2 colunas: config + preview Discord live
+
+### 🔴 Pesados / Arquitetura
+
+- [ ] **Admin de Códigos Promocionais** (backend pronto, UI ainda não):
+  - Página owner pra gerar códigos (kind/value/max_uses/expires_at)
+  - Estatísticas de uso
+
+- [ ] **BIO rotativa real** (placeholder existe):
+  - Renderização real no Discord profile (rotate via cron)
+  - Paywall R$5 já mockado
+
+- [ ] **Servidor Principal conectado** card avançado:
+  - Avatar + ID + stats (membros/clientes)
+  - Botão "Adicionar [bot] a outro servidor"
+
+- [ ] **IA de Atendimento** em Tickets (paywall):
+  - AI auto-responde tickets baseado em FAQ do owner
+
+---
 
 ## 📌 Ideias deferidas (do design Claude)
 
 - [ ] Design system com tokens live (accent color, corner radius, density)
-- [ ] Redesign visual completo seguindo ref HVAC (light card-based + gauge meters)
+- [ ] Redesign visual completo seguindo ref HVAC (light card-based + gauges)
 
 ---
 
@@ -525,4 +273,5 @@ Quando o user mandar **"vai"** ou **"começar"**:
 Quando mandar mais screenshot:
 1. Extrair ideias novas
 2. Adicionar na seção apropriada (Rápida/Média/Maior)
-3. Não implementar até pedirem
+3. NÃO duplicar com items já listados
+4. Não implementar até pedirem
