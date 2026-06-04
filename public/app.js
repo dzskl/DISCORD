@@ -3212,3 +3212,142 @@ function copyBotId(e) {
 
 // Expor __activeBot pra updateBreadcrumb
 const __origLoadBotSwitcher = window.loadBotSwitcher;
+
+// ============ CARD ASSINATURA + MODULOS + WARNING BANNERS ============
+async function loadVisaoGeralExtras() {
+  try {
+    const [bills, cred, guild] = await Promise.all([
+      fetch('/api/billing/me', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/credentials', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      fetch('/api/guilds', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+    renderSubscriptionCard(bills);
+    renderConfigWarnings(cred);
+    renderMainServer(guild);
+    loadAuditMini();
+  } catch (e) { console.warn('visao geral extras', e.message); }
+}
+
+function renderSubscriptionCard(bills) {
+  if (!bills) return;
+  const status = bills.guild_subscription?.status || bills.my_subscription?.status || 'free';
+  const ends = bills.guild_subscription?.ends_at || bills.guild_subscription?.trial_ends_at
+    || bills.my_subscription?.ends_at || bills.my_subscription?.trial_ends_at;
+  const now = Math.floor(Date.now() / 1000);
+  const daysLeft = ends ? Math.max(0, Math.ceil((ends - now) / 86400)) : null;
+
+  const badge = document.getElementById('sub-status-badge');
+  const days = document.getElementById('sub-days-left');
+  const fill = document.getElementById('sub-progress-fill');
+
+  if (badge) {
+    const map = { active: ['Ativo', '#22c55e'], trialing: ['Trial', '#f5c542'], expired: ['Expirado', '#ef4444'], canceled: ['Cancelado', '#888'], past_due: ['Atrasado', '#ef4444'] };
+    const [lbl, col] = map[status] || ['—', '#888'];
+    badge.textContent = lbl;
+    badge.style.background = col + '22';
+    badge.style.color = col;
+  }
+  if (days) days.textContent = daysLeft != null ? daysLeft : '∞';
+  if (fill) {
+    const total = status === 'trialing' ? 7 : 30;
+    const pct = daysLeft != null ? Math.min(100, (daysLeft / total) * 100) : 100;
+    fill.style.width = pct + '%';
+  }
+
+  // Modulos = features do plano resumidas
+  const wrap = document.getElementById('sub-modules');
+  if (wrap) {
+    const f = bills.plan?.features || {};
+    const mods = [
+      { key: 'stripe_checkout', label: 'Módulo de Vendas' },
+      { key: 'tickets', label: 'Módulo de Ticket' },
+      { key: 'autoreply', label: 'Módulo de Automações' },
+      { key: 'custom_branding', label: 'Personalização' }
+    ];
+    wrap.innerHTML = mods.map(m => {
+      const on = f[m.key];
+      return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
+        <span style="display:flex;align-items:center;gap:6px;color:${on ? '#fff' : '#666'};">
+          <span style="width:6px;height:6px;border-radius:50%;background:${on ? '#22c55e' : '#444'};"></span>
+          ${m.label}
+        </span>
+        <span style="color:#666;">${on ? (daysLeft ?? '∞') + 'd' : '—'}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+function renderConfigWarnings(cred) {
+  const wrap = document.getElementById('config-warnings');
+  if (!wrap) return;
+  const warnings = [];
+  if (!cred.DISCORD_TOKEN) warnings.push({
+    title: 'Token Discord não configurado',
+    body: 'Cole o token do seu bot Discord pra ele aparecer online.',
+    cta: 'Configurar agora',
+    target: 'credenciais'
+  });
+  if (!cred.STRIPE_SECRET_KEY && !cred.MISTICPAY_API_KEY) warnings.push({
+    title: 'Chave API não configurada',
+    body: 'Configure sua chave API do gateway de pagamento para que as vendas funcionem.',
+    cta: 'Configurar agora',
+    target: 'credenciais'
+  });
+  wrap.innerHTML = warnings.map(w => `
+    <div style="background:linear-gradient(90deg,rgba(245,197,66,0.10),rgba(245,197,66,0.02));border:1px solid rgba(245,197,66,0.3);border-radius:11px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;">
+      <div style="display:flex;gap:11px;align-items:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <div style="font-weight:700;color:#f5c542;font-size:12.5px;">${escapeHtml(w.title)}</div>
+          <div style="font-size:11px;color:#bbb;margin-top:2px;">${escapeHtml(w.body)}</div>
+        </div>
+      </div>
+      <button onclick="sp('${w.target}',document.querySelector('[data-page=${w.target}]'))" style="background:#f5c542;color:#0a0a0a;border:0;padding:7px 12px;border-radius:7px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;flex-shrink:0;">${escapeHtml(w.cta)}</button>
+    </div>
+  `).join('');
+}
+
+function renderMainServer(guild) {
+  const wrap = document.getElementById('main-server-card');
+  if (!wrap) return;
+  const list = guild?.guilds || guild?.instances || [];
+  const active = list.find(g => g.active !== 0) || list[0];
+  if (!active) return;
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;${active.icon_url ? `background:url('${escapeAttr(active.icon_url)}') center/cover;` : ''}">${active.icon_url ? '' : (active.name || '?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="color:#fff;font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(active.name || '—')}</div>
+        <div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">ID: ${escapeHtml(String(active.id || ''))}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <span style="font-size:10.5px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:3px 8px;border-radius:10px;font-family:'IBM Plex Mono',monospace;">membros</span>
+    </div>
+  `;
+}
+
+async function loadAuditMini() {
+  try {
+    const j = await fetch('/api/audit?limit=5', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : []);
+    const wrap = document.getElementById('audit-mini-list');
+    if (!wrap) return;
+    if (!Array.isArray(j) || !j.length) return;
+    wrap.innerHTML = j.slice(0, 5).map(a => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #131313;font-size:11px;">
+        <span style="color:#aaa;font-family:'IBM Plex Mono',monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.action || '')}</span>
+        <span style="color:#666;font-family:'IBM Plex Mono',monospace;font-size:10px;">${a.created_at ? new Date(a.created_at * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+      </div>
+    `).join('');
+  } catch {}
+}
+
+// Hook na boot do visao geral
+const __origLoadOverview2 = window.loadOverview;
+if (typeof __origLoadOverview2 === 'function') {
+  window.loadOverview = async function () {
+    try { await __origLoadOverview2.apply(this, arguments); } catch {}
+    loadVisaoGeralExtras();
+  };
+}
+setTimeout(() => { if (document.getElementById('page-geral')?.classList.contains('show')) loadVisaoGeralExtras(); }, 1200);
