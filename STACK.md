@@ -157,6 +157,67 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #5 — Convites / Sorteios / Tickets / eCloud / Carteira
+
+#### 🟠 Maiores (~1-2h cada)
+- [ ] **Página "Rastreamento de Convites" estruturada**:
+  - Status do Sistema (toggle global) + Canal de Logs
+  - Mensagens do Sistema (Entrada / Saída) com:
+    - Variáveis copiáveis em chips: `{member}` `{membername}` `{inviter}` `{invitername}` `{invites}`
+    - Textarea de conteúdo + "Abrir Editor" pra embed
+  - **Cargos por Convite** — atribuição automática baseada em metas
+    (10 convites → cargo X, 50 → cargo Y, etc)
+
+- [ ] **Página "Sorteios" avançada** com tabs Geral / Requisitos / Tarefas:
+  - Geral: nome, ícone, banner (upload), descrição, **Modo de Entrega
+    Automática** (cargo / código / mensagem), monitorar toggle
+  - Requisitos: cargos exigidos, mínimo de convites, idade da conta
+  - **Tarefas** (gamificação): seguir IG, entrar em outro server, etc
+
+- [ ] **Página "Tickets — Painéis de Suporte"** estruturada:
+  - Lista de painéis com status Postado/Não postado
+  - Sincronizar + Novo Painel buttons
+  - Search
+  - Painel expandido com tabs Geral / Funções / Embed
+  - **Configurações de Funcionamento**:
+    - Horário de início/fim (opcional)
+    - Dias de funcionamento (pills Seg-Dom selecionáveis)
+  - Sticky save "Alterações não salvas | Limpar | Salvar"
+  - Card **IA de Atendimento** (paywall) — AI auto-responde tickets
+
+- [ ] **Página "eCloud" landing**:
+  - Logo grande + "Sistema de verificação OAuth2 e pull de membros"
+  - 2 CTAs: **Registrar Novo Bot** / **Vincular Chave Existente**
+
+#### 🔴 Backend pesado / nova arquitetura
+- [ ] **Página "Carteira" completa** (substitui modal de saque):
+  - **4 cards de saldo**: Disponível / Bloqueado pelo Banco / Congelado (MED) / Total
+  - Conceito de **MED** (Mecanismo Especial de Devolução — bloqueio PIX BC)
+  - **Premiações de Faturamento**: progress bar com marcos
+    R$0 / R$100k / R$500k / R$1M + placas trofeu
+  - Banner "2FA Necessária pra sacar" + botão Ativar 2FA
+  - **Solicitar Saque** card:
+    - Validar chave PIX (botão valida no gateway)
+    - **Saque Turbo** checkbox (Instantâneo R$3,50 vs Normal R$0,50)
+    - Resumo: disponível / congelado / mínimo / taxa
+    - Botão disabled até 2FA ativo
+  - **Resumo** card:
+    - Estatísticas: Total de Vendas / Volume Total / Total Sacado / MEDs Ativos
+    - Status: Aprovadas / Pendentes / Reembolsadas / Canceladas
+    - Gráfico de receita com filtros Hoje/Semanal/Mensal/Total/Período
+  - Botões topo: **Extrato por Email** + Atualizar
+
+- [ ] **2FA pro user** (TOTP):
+  - Setup QR code (Google Authenticator etc)
+  - Validação obrigatória antes de saques
+  - Recovery codes
+  - Desativar com password
+
+- [ ] **Extrato por Email**:
+  - Backend gera CSV/PDF do período
+  - Envia pro email cadastrado
+  - Async com confirmação visual
+
 ## 📌 Ideias deferidas (do design Claude)
 
 - [ ] Design system com tokens live (accent color, corner radius, density)
