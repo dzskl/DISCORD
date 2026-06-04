@@ -147,6 +147,37 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #10 — Sorteios profundos (Requisitos + Tarefas)
+
+#### 🔴 Backend pesado (~3-4h)
+- [ ] **Sorteios — aba Requisitos** (filtros de elegibilidade):
+  - Lista de toggles (Requisitos de Participação):
+    - Membro Cliente / Feedback Science / Membro Verificado
+    - Em Canal de Voz / Voz Mutada / Voz Surda
+  - Inputs numéricos:
+    - Dias de Conta Mínimos
+    - Convites Mínimos
+    - Gasto Mínimo / Gasto Máximo
+    - Primeira Compra (Dias) / Última Compra (Dias)
+  - Multi-selects:
+    - Cargos Obrigatórios
+    - Cargos Bloqueados
+    - Canais de Voz
+  - Lista "Inviters" + botão "Adicionar Inviter"
+  - Textareas (um por linha):
+    - Nicknames Customizados
+    - Status Customizados
+    - Atividades Customizadas
+    - Bios Customizadas
+
+- [ ] **Sorteios — aba Tarefas** (gamificação pra entrar):
+  - Lista de Tarefas (sidebar esquerda)
+  - Painel direito (editor da tarefa selecionada)
+  - Empty state "Crie uma tarefa para começar" com ícone calendário
+  - Botão + pra adicionar
+  - Cada tarefa: tipo (seguir Twitter, entrar Discord externo,
+    inscrever YouTube, etc) + verificação automática quando possível
+
 ### Rodada NeverMissApps #9 — Configurações da Conta (user-level) + Proteção tabs restantes
 
 #### 🟠 Maiores (~1-2h cada)
