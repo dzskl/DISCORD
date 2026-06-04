@@ -49,15 +49,16 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const inst = db.prepare('SELECT * FROM bot_instances WHERE id=?').get(req.params.id);
   if (!inst || inst.owner_user_id !== req.appUser.id) return res.status(404).json({ error: 'nao encontrado' });
-  const { name, avatar_url, discord_client_id, primary_guild_id } = req.body || {};
+  const { name, nickname, avatar_url, discord_client_id, primary_guild_id } = req.body || {};
   db.prepare(`
     UPDATE bot_instances SET
       name = COALESCE(?, name),
+      nickname = COALESCE(?, nickname),
       avatar_url = COALESCE(?, avatar_url),
       discord_client_id = COALESCE(?, discord_client_id),
       primary_guild_id = COALESCE(?, primary_guild_id)
     WHERE id = ?
-  `).run(name ?? null, avatar_url ?? null, discord_client_id ?? null, primary_guild_id ?? null, req.params.id);
+  `).run(name ?? null, nickname ?? null, avatar_url ?? null, discord_client_id ?? null, primary_guild_id ?? null, req.params.id);
   res.json(db.prepare('SELECT * FROM bot_instances WHERE id=?').get(req.params.id));
 });
 

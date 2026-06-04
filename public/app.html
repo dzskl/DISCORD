@@ -373,7 +373,13 @@ footer.appfoot a:hover{color:var(--text);}
 
 <div class="app">
   <aside class="sidebar" id="sidebar">
-    <div id="bot-switcher" style="padding:12px 14px;border-bottom:1px solid var(--border);position:relative;cursor:pointer;" onclick="toggleBotSwitcher(event)">
+    <div style="padding:10px 14px 0;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.06em;">Aplicação ativa</div>
+      <a href="#" onclick="event.stopPropagation();toggleBotSwitcher(event);return false;" style="font-size:10px;color:#888;text-decoration:none;font-family:'IBM Plex Mono',monospace;display:inline-flex;align-items:center;gap:3px;">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Meus Bots
+      </a>
+    </div>
+    <div id="bot-switcher" style="padding:8px 14px 12px;border-bottom:1px solid var(--border);position:relative;cursor:pointer;" onclick="toggleBotSwitcher(event)">
       <div style="display:flex;align-items:center;gap:10px;">
         <div id="bot-sw-avatar" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0;background-size:cover;background-position:center;"></div>
         <div style="flex:1;min-width:0;">
@@ -386,6 +392,13 @@ footer.appfoot a:hover{color:var(--text);}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div id="bot-sw-menu" style="display:none;position:absolute;top:calc(100% + 4px);left:8px;right:8px;background:#0e0e0e;border:1px solid var(--border-strong);border-radius:10px;z-index:30;max-height:340px;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5);"></div>
+    </div>
+    <div id="bot-id-row" style="padding:4px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:#555;">
+      <span>ID:</span>
+      <span id="bot-id-full" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="copiar">—</span>
+      <button onclick="copyBotId(event)" title="copiar ID" style="background:transparent;border:0;color:#555;cursor:pointer;padding:2px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
     </div>
     <div class="brand" style="position:relative;">
       <div class="brand-row">
@@ -593,6 +606,11 @@ footer.appfoot a:hover{color:var(--text);}
       <div style="display:flex;align-items:center;gap:14px;">
         <button class="mobile-burger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
         <div>
+          <div id="breadcrumb" style="display:flex;align-items:center;gap:8px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;">
+            <span id="crumb-bot" style="color:#aaa;font-weight:600;">—</span>
+            <span style="color:#444;">/</span>
+            <span id="crumb-page" style="color:#666;">visão geral</span>
+          </div>
           <div class="page-title" id="page-title">Visão geral</div>
           <div class="page-sub" id="page-sub">resumo em tempo real do seu servidor</div>
         </div>

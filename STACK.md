@@ -47,12 +47,12 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 - [ ] **Warning banner "config faltando"** reusável (ex: "Chave API não configurada" + botão "Configurar agora")
 - [x] **Renomeações empresariais**: "Aplicações" em vez de "Bots", "Automações" em vez de "Auto-respostas"
 - [x] **"Aplicação ativa" label** com dot verde no card do bot
-- [ ] **"Meus Bots" link** voltando pra listagem
-- [ ] **Apelido custom do bot** (short name editável usado no breadcrumb)
+- [x] **"Meus Bots" link** voltando pra listagem
+- [x] **Apelido custom do bot** (short name editável usado no breadcrumb)
 
 #### 🟡 Médias (~30-60min)
-- [ ] **Bot card polido na sidebar**: avatar + ID truncado + status + ID full com copy + Reiniciar (amarelo) + Desligar (vermelho) em destaque
-- [ ] **Breadcrumb na topbar** mostrando bot ativo (`9498...-TRIAL / Visão Geral`)
+- [x] **Bot card polido na sidebar**: avatar + ID truncado + status + ID full com copy + Reiniciar (amarelo) + Desligar (vermelho) em destaque
+- [x] **Breadcrumb na topbar** mostrando bot ativo (`9498...-TRIAL / Visão Geral`)
 - [ ] **Card Assinatura + Módulos na Visão Geral**: "X dias restantes" big + Renovar + lista MÓDULOS com dot colorido
 - [ ] **Cards Servidor Principal + Auditoria** lado a lado na Visão Geral (mesmo vazios)
 - [ ] **Loading modal "Preparando seu bot"** com progress bar fake (10-30s)

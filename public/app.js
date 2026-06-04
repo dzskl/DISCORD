@@ -871,6 +871,9 @@ function sp(id, el) {
     document.getElementById('page-title').textContent = meta[0];
     document.getElementById('page-sub').textContent = meta[1];
   }
+  // breadcrumb update
+  const pg = document.getElementById('crumb-page');
+  if (pg) pg.textContent = (meta?.[0] || id).toLowerCase();
   document.getElementById('sidebar')?.classList.remove('open');
 
   // Garante que o grupo do item ativo esteja aberto
@@ -2747,6 +2750,7 @@ async function loadBotSwitcher() {
     const j = await fetch('/api/bots', { credentials: 'same-origin' }).then(r => r.json());
     __botInstances = j.instances || [];
     __activeBot = __botInstances.find(b => b.id === j.active_id) || __botInstances[0];
+    window.__activeBot = __activeBot;
     renderBotSwitcher();
   } catch (e) { console.warn('bot switcher', e.message); }
 }
@@ -2765,7 +2769,11 @@ function renderBotSwitcher() {
       av.textContent = (__activeBot.name || '?').charAt(0).toUpperCase();
     }
   }
-  if (nm) nm.textContent = __activeBot.name;
+  if (nm) nm.textContent = __activeBot.nickname || __activeBot.name;
+  const idEl = document.getElementById('bot-id-full');
+  const fullId = __activeBot.discord_client_id || ('app-' + __activeBot.id);
+  if (idEl) idEl.textContent = fullId;
+  updateBreadcrumb();
   const status = document.getElementById('bot-sw-status');
   if (status) {
     const isActive = __activeBot.status === 'active' || !__activeBot.status;
@@ -3178,3 +3186,29 @@ function closeUserMenu() {
   const dd = document.getElementById('user-dropdown');
   if (dd) dd.style.display = 'none';
 }
+
+// ============ BREADCRUMB + COPY ID ============
+function updateBreadcrumb() {
+  const crumb = document.getElementById('crumb-bot');
+  if (!crumb) return;
+  if (window.__activeBot) {
+    const b = window.__activeBot;
+    const nick = b.nickname || b.name;
+    const isTrial = b.plan && b.plan.includes('trial');
+    crumb.innerHTML = nick + (isTrial ? '<span style="color:#f5c542;font-size:9.5px;margin-left:6px;">-TRIAL</span>' : '');
+  } else {
+    crumb.textContent = '—';
+  }
+  const pageEl = document.getElementById('crumb-page');
+  const titleEl = document.getElementById('page-title');
+  if (pageEl && titleEl) pageEl.textContent = (titleEl.textContent || '').toLowerCase();
+}
+
+function copyBotId(e) {
+  e.stopPropagation();
+  const id = document.getElementById('bot-id-full')?.textContent || '';
+  navigator.clipboard.writeText(id).then(() => toast('ID copiado'));
+}
+
+// Expor __activeBot pra updateBreadcrumb
+const __origLoadBotSwitcher = window.loadBotSwitcher;
