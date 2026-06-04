@@ -147,6 +147,34 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #11 — Convites detalhado + Permissões de Comandos expandidas
+
+#### 🟠 Maiores (~2h cada)
+- [ ] **Permissões de Comandos** — expansão (cada comando colapsável):
+  - Por comando ao expandir:
+    - **Cargos Permitidos** (dropdown "Todos os cargos")
+    - **Usuários Permitidos** (textarea IDs um por linha)
+  - Novos comandos a incluir:
+    - /convites — Ver convites de outros
+    - /gerar-pix — Gerar cobranças PIX manualmente
+
+- [ ] **Página Rastreamento de Convites — Cargos por Convite**:
+  - Section dedicada "Atribuição automática de cargos baseada em metas"
+  - Cards de Configuração (múltiplas):
+    - Toggle Habilitado
+    - Toggle Persistente (não remove ao perder convites) com tooltip
+    - Input numérico "Meta de Convites"
+    - Multi-select "Cargos a Atribuir"
+    - Botão X remove
+  - Empty card "+ Nova Configuração" no fim pra adicionar
+
+- [ ] **Convites — Editor de Embed por Mensagem**:
+  - Botão "Abrir Editor" / "Ocultar Editor" em cada mensagem
+  - Quando aberto:
+    - Layout 2-colunas: Config + Preview Discord
+    - Cor, autor, título, descrição, fields, imagem, rodapé
+    - Preview live com avatar bot + nome + timestamp
+
 ### Rodada NeverMissApps #10 — Sorteios profundos (Requisitos + Tarefas)
 
 #### 🔴 Backend pesado (~3-4h)
