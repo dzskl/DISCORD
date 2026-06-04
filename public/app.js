@@ -2756,6 +2756,333 @@ function renderProtTab() {
       }).join('')}
     </div>
   `;
+
+  // Expansão: Anti Fake e Anti Spam têm config adicional embaixo das regras
+  if (__protTab === 'anti_fake') loadAntiFakeExpanded();
+  if (__protTab === 'anti_spam') loadAntiSpamExpanded();
+}
+
+// ---------- Anti Fake expandido ----------
+async function loadAntiFakeExpanded() {
+  try {
+    const cfg = await fetch('/api/protection-v2/anti-fake/config', { credentials: 'same-origin' }).then(r => r.json());
+    const wrap = document.getElementById('prot-tab-body');
+    if (!wrap) return;
+    const html = `
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;">
+        <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:12px;">Configuração avançada</div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Dias Mínimos de Conta</label>
+          <input id="af-dias-min" type="number" min="0" value="${cfg.dias_minimos_conta || 0}" class="inp" style="margin-top:5px;max-width:200px;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Status Blacklist <span style="text-transform:none;color:#666;">(um por linha)</span></label>
+          <textarea id="af-status-bl" rows="4" placeholder="Digite um status por linha" class="inp" style="margin-top:5px;">${escapeHtml((cfg.status_blacklist || []).join('\n'))}</textarea>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Nomes Blacklist <span style="text-transform:none;color:#666;">(um por linha)</span></label>
+          <textarea id="af-nomes-bl" rows="4" placeholder="Digite um nome por linha" class="inp" style="margin-top:5px;">${escapeHtml((cfg.nomes_blacklist || []).join('\n'))}</textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button onclick="saveAntiFakeExpanded()" class="kyc-btn primary">Salvar configuração</button>
+        </div>
+      </div>
+    `;
+    const expanded = document.createElement('div');
+    expanded.id = 'prot-expanded';
+    expanded.innerHTML = html;
+    const old = document.getElementById('prot-expanded'); if (old) old.remove();
+    wrap.appendChild(expanded);
+  } catch (e) { console.warn('antiFakeExpanded', e.message); }
+}
+
+async function saveAntiFakeExpanded() {
+  const body = {
+    enabled: true,
+    dias_minimos_conta: parseInt(document.getElementById('af-dias-min').value) || 0,
+    status_blacklist: (document.getElementById('af-status-bl').value || '').split('\n').map(s => s.trim()).filter(Boolean),
+    nomes_blacklist: (document.getElementById('af-nomes-bl').value || '').split('\n').map(s => s.trim()).filter(Boolean)
+  };
+  try {
+    const r = await fetch('/api/protection-v2/anti-fake/config', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Configuração salva');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- Anti Spam mega-painel ----------
+let __asCfg = null;
+
+async function loadAntiSpamExpanded() {
+  try {
+    __asCfg = await fetch('/api/protection-v2/anti-spam/config', { credentials: 'same-origin' }).then(r => r.json());
+    const wrap = document.getElementById('prot-tab-body');
+    if (!wrap) return;
+    const expanded = document.createElement('div');
+    expanded.id = 'prot-expanded';
+    expanded.innerHTML = renderAntiSpamHtml();
+    const old = document.getElementById('prot-expanded'); if (old) old.remove();
+    wrap.appendChild(expanded);
+  } catch (e) { console.warn('antiSpamExpanded', e.message); }
+}
+
+function asFilterDropdowns(prefix) {
+  const c = __asCfg[prefix] || {};
+  return `
+    <div style="background:rgba(245,197,66,.06);border:1px solid rgba(245,197,66,.25);border-radius:8px;padding:9px 12px;margin:10px 0;color:#d4b860;font-size:11px;display:flex;align-items:flex-start;gap:8px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      <span><b>Dica:</b> Lista vazia em "Aplicar somente" = aplica em todos. Itens em "Ignorar" sempre excluem do filtro.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      ${[
+        ['aplicar_canais', 'Aplicar somente nos canais', 'Todos'],
+        ['ignorar_canais', 'Ignorar canais', 'Nenhum'],
+        ['aplicar_cargos', 'Aplicar somente nos cargos', 'Todos'],
+        ['ignorar_cargos', 'Ignorar cargos', 'Nenhum'],
+        ['aplicar_usuarios', 'Aplicar somente nos usuários', 'Todos'],
+        ['ignorar_usuarios', 'Ignorar usuários', 'Nenhum']
+      ].map(([k, l, ph]) => `
+        <div>
+          <label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;">${l}</label>
+          <input type="text" data-as-${prefix}="${k}" value="${escapeAttr((c[k] || []).join(', '))}" placeholder="${ph}" class="inp" style="margin-top:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;">
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderAntiSpamHtml() {
+  const c = __asCfg;
+  return `
+    <div id="prot-expanded-content" style="margin-top:14px;">
+      <!-- Configurações Gerais -->
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div style="font-weight:700;color:#fff;font-size:12.5px;margin-bottom:12px;">Configurações Gerais</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+            <input type="checkbox" id="as-geral-comandos" ${c.geral?.aplicar_comandos ? 'checked' : ''} style="accent-color:#8b6fff;">
+            <div>
+              <div style="font-size:12px;color:#fff;font-weight:600;">Aplicar em comandos</div>
+              <div style="font-size:10.5px;color:#666;">Mensagens de comandos passarem pelas regras</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+            <input type="checkbox" id="as-geral-admin" ${c.geral?.ignorar_admin ? 'checked' : ''} style="accent-color:#8b6fff;">
+            <div>
+              <div style="font-size:12px;color:#fff;font-weight:600;">Ignorar Administradores</div>
+              <div style="font-size:10.5px;color:#666;">Membros com admin não serão afetados</div>
+            </div>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+          <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal de Logs</label><input id="as-geral-canal-logs" type="text" value="${escapeAttr(c.geral?.canal_logs || '')}" placeholder="Nenhum" class="inp" style="margin-top:4px;"></div>
+          <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canais Ignorados (Global)</label><input id="as-geral-canais-ig" type="text" value="${escapeAttr((c.geral?.canais_ignorados || []).join(', '))}" placeholder="Selecione canais globais" class="inp" style="margin-top:4px;"></div>
+          <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Cargos Ignorados (Global)</label><input id="as-geral-cargos-ig" type="text" value="${escapeAttr((c.geral?.cargos_ignorados || []).join(', '))}" placeholder="Selecione cargos globais" class="inp" style="margin-top:4px;"></div>
+          <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Usuários Ignorados (Global)</label><input id="as-geral-usuarios-ig" type="text" value="${escapeAttr((c.geral?.usuarios_ignorados || []).join(', '))}" placeholder="Nenhum" class="inp" style="margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- Ação Padrão -->
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div style="font-weight:700;color:#fff;font-size:12.5px;margin-bottom:12px;">Ação Padrão para Violações</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+            <input type="checkbox" id="as-acao-apagar" ${c.acao_padrao?.apagar_mensagem ? 'checked' : ''} style="accent-color:#8b6fff;">
+            <div><div style="font-size:12px;color:#fff;font-weight:600;">Apagar Mensagem</div><div style="font-size:10.5px;color:#666;">Remove a mensagem no ato</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+            <input type="checkbox" id="as-acao-avisar" ${c.acao_padrao?.avisar_usuario ? 'checked' : ''} style="accent-color:#8b6fff;">
+            <div><div style="font-size:12px;color:#fff;font-weight:600;">Avisar Usuário</div><div style="font-size:10.5px;color:#666;">Manda o aviso configurado</div></div>
+          </label>
+          <div style="padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#fff;font-weight:600;">Timeout (Segundos)<span id="as-timeout-val" style="font-family:'IBM Plex Mono',monospace;color:#b9a8ff;">${c.acao_padrao?.timeout_segundos || 30} s</span></div>
+            <input type="range" id="as-timeout" min="0" max="3600" value="${c.acao_padrao?.timeout_segundos || 30}" oninput="document.getElementById('as-timeout-val').textContent=this.value+' s'" style="width:100%;accent-color:#8b6fff;margin-top:6px;">
+            <div style="font-size:10.5px;color:#666;margin-top:2px;">Tempo que o usuário ficará mutado</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sistema de Tolerância -->
+      <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid #8b6fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;color:#fff;font-size:12.5px;">Sistema de Tolerância</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Aplica punições progressivas baseadas em strikes</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+            <input type="checkbox" id="as-tolerancia" ${c.tolerancia_enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+            <span style="position:absolute;inset:0;background:${c.tolerancia_enabled ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:22px;"></span>
+            <span style="position:absolute;height:16px;width:16px;left:${c.tolerancia_enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;"></span>
+          </label>
+        </div>
+      </div>
+
+      ${asSubCard('Anti Flood', 'Detecta o envio de várias mensagens em curto intervalo.', 'flood', c.flood, [
+        ['max_mensagens', 'Máximo de mensagens', 1, 30],
+        ['janela', 'Janela de tempo (s)', 1, 60]
+      ])}
+      ${asSubCard('Anti Spam', 'Detecta e bloqueia o envio de mensagens repetitivas ou muito similares.', 'spam', c.spam, [
+        ['mensagens_similares', 'Mensagens similares máx.', 1, 30],
+        ['janela_analise', 'Janela de análise (s)', 1, 120],
+        ['tamanho_minimo', 'Tamanho mínimo', 1, 50]
+      ])}
+      ${asSubCard('Anti Garbage (Caracteres ou Repetição)', 'Bloqueia textos com proporção alta de caracteres estranhos ou letras excessivamente repetidas (ex: loooool).', 'garbage', c.garbage, [
+        ['proporcao_max', 'Proporção Máx. Não-Alfanumérico', 0.1, 1, 0.05],
+        ['max_repeticao', 'Máx. repetição mesma letra', 2, 50]
+      ], true)}
+      ${asLinkCard(c.link)}
+      ${asSubCard('Anti Padrão em Massa (Raids)', 'Detecta comportamento repetitivo de múltiplos usuários simultaneamente (ex: botnets atacando chat).', 'raid', c.raid, [
+        ['janela_tempo', 'Janela de tempo (s)', 1, 600],
+        ['min_usuarios', 'Mínimo de usuários', 1, 100],
+        ['min_mensagens', 'Mínimo de mensagens', 1, 200],
+        ['min_caracteres', 'Tamanho mín. caracteres', 1, 100]
+      ])}
+
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button onclick="saveAntiSpamExpanded()" class="kyc-btn primary">Salvar configuração Anti Spam</button>
+      </div>
+    </div>
+  `;
+}
+
+function asSubCard(title, desc, key, val, sliders, skipFilters) {
+  return `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid ${val?.enabled ? '#22c55e' : 'var(--border)'};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-weight:700;color:#fff;font-size:12.5px;">${escapeHtml(title)}</div>
+          <div style="font-size:11px;color:#b9a8ff;margin-top:2px;">${escapeHtml(desc)}</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+          <input type="checkbox" data-as-${key}-enabled ${val?.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;inset:0;background:${val?.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:22px;"></span>
+          <span style="position:absolute;height:16px;width:16px;left:${val?.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;"></span>
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${sliders.length},1fr);gap:10px;">
+        ${sliders.map(s => {
+          const [k, l, mn, mx, step] = s;
+          return `
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#fff;font-weight:600;">${escapeHtml(l)}<span data-as-${key}-${k}-val style="font-family:'IBM Plex Mono',monospace;color:#b9a8ff;">${val?.[k] ?? mn}</span></div>
+              <input type="range" data-as-${key}="${k}" min="${mn}" max="${mx}" ${step ? 'step="' + step + '"' : ''} value="${val?.[k] ?? mn}" oninput="document.querySelector('[data-as-${key}-${k}-val]').textContent=this.value" style="width:100%;accent-color:#8b6fff;margin-top:4px;">
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${skipFilters ? '' : asFilterDropdowns(key)}
+    </div>
+  `;
+}
+
+function asLinkCard(val) {
+  return `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid ${val?.enabled ? '#22c55e' : 'var(--border)'};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-weight:700;color:#fff;font-size:12.5px;">Anti Link / Convites</div>
+          <div style="font-size:11px;color:#b9a8ff;margin-top:2px;">Filtra URLs enviadas no chat com configurações de bloqueio e liberação.</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+          <input type="checkbox" data-as-link-enabled ${val?.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;inset:0;background:${val?.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:22px;"></span>
+          <span style="position:absolute;height:16px;width:16px;left:${val?.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;"></span>
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+          <input type="checkbox" data-as-link="bloquear_todos" ${val?.bloquear_todos ? 'checked' : ''} style="accent-color:#8b6fff;">
+          <div><div style="font-size:12px;color:#fff;font-weight:600;">Bloquear Todos</div><div style="font-size:10.5px;color:#666;">Permite qualquer domínio não liberado</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:9px;background:#0e0e0e;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+          <input type="checkbox" data-as-link="permitir_discord_invites" ${val?.permitir_discord_invites ? 'checked' : ''} style="accent-color:#8b6fff;">
+          <div><div style="font-size:12px;color:#fff;font-weight:600;">Permitir Convites Discord</div><div style="font-size:10.5px;color:#666;">discord.gg/ ignorado</div></div>
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Domínios Permitidos (um por linha)</label><textarea data-as-link-domain="dominios_permitidos" rows="3" placeholder="youtube.com&#10;github.com" class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;">${escapeHtml((val?.dominios_permitidos || []).join('\n'))}</textarea></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Domínios Bloqueados (um por linha)</label><textarea data-as-link-domain="dominios_bloqueados" rows="3" placeholder="dominioruim.com" class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;">${escapeHtml((val?.dominios_bloqueados || []).join('\n'))}</textarea></div>
+      </div>
+      ${asFilterDropdowns('link')}
+    </div>
+  `;
+}
+
+async function saveAntiSpamExpanded() {
+  const csvField = sel => {
+    const el = document.querySelector(sel);
+    return el ? (el.value || '').split(',').map(s => s.trim()).filter(Boolean) : [];
+  };
+  const collectFilters = prefix => ({
+    aplicar_canais: csvField(`[data-as-${prefix}="aplicar_canais"]`),
+    ignorar_canais: csvField(`[data-as-${prefix}="ignorar_canais"]`),
+    aplicar_cargos: csvField(`[data-as-${prefix}="aplicar_cargos"]`),
+    ignorar_cargos: csvField(`[data-as-${prefix}="ignorar_cargos"]`),
+    aplicar_usuarios: csvField(`[data-as-${prefix}="aplicar_usuarios"]`),
+    ignorar_usuarios: csvField(`[data-as-${prefix}="ignorar_usuarios"]`)
+  });
+  const num = sel => {
+    const el = document.querySelector(sel);
+    return el ? parseFloat(el.value) : null;
+  };
+  const checked = sel => !!document.querySelector(sel)?.checked;
+
+  const body = {
+    enabled: true,
+    geral: {
+      aplicar_comandos: checked('#as-geral-comandos'),
+      ignorar_admin: checked('#as-geral-admin'),
+      canal_logs: document.getElementById('as-geral-canal-logs')?.value || null,
+      canais_ignorados: csvField('#as-geral-canais-ig'),
+      cargos_ignorados: csvField('#as-geral-cargos-ig'),
+      usuarios_ignorados: csvField('#as-geral-usuarios-ig')
+    },
+    acao_padrao: {
+      apagar_mensagem: checked('#as-acao-apagar'),
+      avisar_usuario: checked('#as-acao-avisar'),
+      timeout_segundos: parseInt(document.getElementById('as-timeout').value) || 30
+    },
+    tolerancia_enabled: checked('#as-tolerancia'),
+    flood: {
+      enabled: checked('[data-as-flood-enabled]'),
+      max_mensagens: parseInt(num('[data-as-flood="max_mensagens"]')) || 6,
+      janela: parseInt(num('[data-as-flood="janela"]')) || 6,
+      ...collectFilters('flood')
+    },
+    spam: {
+      enabled: checked('[data-as-spam-enabled]'),
+      mensagens_similares: parseInt(num('[data-as-spam="mensagens_similares"]')) || 4,
+      janela_analise: parseInt(num('[data-as-spam="janela_analise"]')) || 20,
+      tamanho_minimo: parseInt(num('[data-as-spam="tamanho_minimo"]')) || 6,
+      ...collectFilters('spam')
+    },
+    garbage: {
+      enabled: checked('[data-as-garbage-enabled]'),
+      proporcao_max: parseFloat(num('[data-as-garbage="proporcao_max"]')) || 0.7,
+      max_repeticao: parseInt(num('[data-as-garbage="max_repeticao"]')) || 12
+    },
+    link: {
+      enabled: checked('[data-as-link-enabled]'),
+      bloquear_todos: checked('[data-as-link="bloquear_todos"]'),
+      permitir_discord_invites: checked('[data-as-link="permitir_discord_invites"]'),
+      dominios_permitidos: (document.querySelector('[data-as-link-domain="dominios_permitidos"]')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
+      dominios_bloqueados: (document.querySelector('[data-as-link-domain="dominios_bloqueados"]')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
+      ...collectFilters('link')
+    },
+    raid: {
+      enabled: checked('[data-as-raid-enabled]'),
+      janela_tempo: parseInt(num('[data-as-raid="janela_tempo"]')) || 60,
+      min_usuarios: parseInt(num('[data-as-raid="min_usuarios"]')) || 5,
+      min_mensagens: parseInt(num('[data-as-raid="min_mensagens"]')) || 10,
+      min_caracteres: parseInt(num('[data-as-raid="min_caracteres"]')) || 3,
+      ...collectFilters('raid')
+    }
+  };
+  try {
+    const r = await fetch('/api/protection-v2/anti-spam/config', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Anti Spam salvo');
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 function toggleProtField(key, on) {

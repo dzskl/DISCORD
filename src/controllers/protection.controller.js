@@ -129,6 +129,50 @@ router.get('/_meta', (req, res) => res.json({
   rule_types: RULE_TYPES
 }));
 
+// =================== Config expandida Anti Fake ===================
+// { enabled, dias_minimos_conta, status_blacklist:[], nomes_blacklist:[] }
+router.get('/anti-fake/config', (req, res) => {
+  const cfg = getCfg(req.guildId);
+  res.json(cfg.anti_fake_config || { enabled: false, dias_minimos_conta: 0, status_blacklist: [], nomes_blacklist: [] });
+});
+router.put('/anti-fake/config', (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  const cfg = getCfg(req.guildId);
+  cfg.anti_fake_config = {
+    enabled: !!req.body?.enabled,
+    dias_minimos_conta: parseInt(req.body?.dias_minimos_conta) || 0,
+    status_blacklist: Array.isArray(req.body?.status_blacklist) ? req.body.status_blacklist : [],
+    nomes_blacklist: Array.isArray(req.body?.nomes_blacklist) ? req.body.nomes_blacklist : []
+  };
+  setCfg(req.guildId, cfg);
+  res.json({ ok: true });
+});
+
+// =================== Config expandida Anti Spam (mega-painel) ===================
+const ANTI_SPAM_DEFAULTS = {
+  enabled: false,
+  geral: { aplicar_comandos: false, ignorar_admin: true, canal_logs: null, canais_ignorados: [], cargos_ignorados: [], usuarios_ignorados: [] },
+  acao_padrao: { apagar_mensagem: true, avisar_usuario: true, timeout_segundos: 30 },
+  tolerancia_enabled: false,
+  flood: { enabled: false, max_mensagens: 6, janela: 6, aplicar_canais: [], ignorar_canais: [], aplicar_cargos: [], ignorar_cargos: [], aplicar_usuarios: [], ignorar_usuarios: [] },
+  spam: { enabled: false, mensagens_similares: 4, janela_analise: 20, tamanho_minimo: 6, aplicar_canais: [], ignorar_canais: [], aplicar_cargos: [], ignorar_cargos: [], aplicar_usuarios: [], ignorar_usuarios: [] },
+  garbage: { enabled: false, proporcao_max: 0.7, max_repeticao: 12 },
+  link: { enabled: false, bloquear_todos: false, permitir_discord_invites: true, dominios_permitidos: [], dominios_bloqueados: [], aplicar_canais: [], ignorar_canais: [], aplicar_cargos: [], ignorar_cargos: [], aplicar_usuarios: [], ignorar_usuarios: [] },
+  raid: { enabled: false, janela_tempo: 60, min_usuarios: 5, min_mensagens: 10, min_caracteres: 3, aplicar_canais: [], ignorar_canais: [], aplicar_cargos: [], ignorar_cargos: [], aplicar_usuarios: [], ignorar_usuarios: [] }
+};
+
+router.get('/anti-spam/config', (req, res) => {
+  const cfg = getCfg(req.guildId);
+  res.json({ ...ANTI_SPAM_DEFAULTS, ...(cfg.anti_spam_config || {}) });
+});
+router.put('/anti-spam/config', (req, res) => {
+  if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
+  const cfg = getCfg(req.guildId);
+  cfg.anti_spam_config = { ...ANTI_SPAM_DEFAULTS, ...(cfg.anti_spam_config || {}), ...req.body };
+  setCfg(req.guildId, cfg);
+  res.json({ ok: true });
+});
+
 // PUT regra individual: body { rule_key, enabled?, limite?, intervalo?, punicao?, cargos_imunes?, canal_logs? }
 router.put('/:tab/rule/:ruleKey', (req, res) => {
   if (!req.guildId) return res.status(400).json({ error: 'guild_id nao definido' });
