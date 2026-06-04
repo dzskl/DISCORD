@@ -147,6 +147,45 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #9 — Configurações da Conta (user-level) + Proteção tabs restantes
+
+#### 🟠 Maiores (~1-2h cada)
+- [ ] **Página "Configurações" (user-level)** com tabs Carteira / Segurança:
+  - **Tab Carteira** (config da empresa/conta, NÃO saldo):
+    - Banner azul **2FA Necessária** → "Ative em Minha Conta para
+      gerar API Keys" + botão Ativar 2FA
+    - Card **API Key** — input com show/hide + copy + botão Gerar
+    - Card **Opções de Pagamento** — checkbox "Repassar taxa ao cliente"
+    - Card **Dados da Empresa**:
+      - Nome da Empresa
+      - Logo da Empresa (URL)
+      - Cor da Empresa (color picker hex)
+    - Card **Integrações**:
+      - Webhook URL (notificações de eventos)
+      - Callback URL (retorno pós-pagamento)
+    - Botão "💾 Salvar Configurações" no fim
+
+- [ ] **Multi-conta** (avatar dropdown):
+  - Botão "+ Adicionar conta" no dropdown do user
+  - Login com conta diferente sem deslogar a atual
+  - Switcher entre contas com check verde na ativa
+
+- [ ] **Anti Link / Convites** (Proteção):
+  - Toggle global "Filtra URLs enviadas no chat"
+  - Toggle "Bloquear Todos" (qualquer domínio não-liberado)
+  - Toggle "Permitir Convites Discord" (discord.gg/ ignorado)
+  - Textarea **Domínios Permitidos** (um por linha)
+  - Textarea **Domínios Bloqueados** (um por linha)
+  - 6 dropdowns aplicar/ignorar × canais/cargos/usuários
+
+- [ ] **Anti Padrão em Massa (Raids)** (Proteção):
+  - "Detecta comportamento repetitivo de múltiplos usuários
+    simultaneamente (ex: botnets atacando chat)"
+  - Toggle
+  - 4 sliders: Janela de tempo (60s) / Mínimo de usuários (5) /
+    Mínimo de mensagens (10) / Tamanho mín. caracteres (3)
+  - 6 dropdowns aplicar/ignorar
+
 ### Rodada NeverMissApps #8 — Ações Automáticas (Limpeza/Repostagem/Sugestões) + Proteção detalhada
 
 #### 🟠 Maiores (~1-2h cada)
