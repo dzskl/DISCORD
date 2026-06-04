@@ -863,6 +863,7 @@ const PAGE_META = {
   'canais-config': ['Canais', 'configure canais para logs e notificações'],
   'cargos-config': ['Cargos', 'cargos para administração e membros'],
   boasvindas: ['Boas-vindas', 'mensagens de entrada e saída'],
+  carteira: ['Carteira', 'saldo, saques e estatísticas'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -3881,5 +3882,165 @@ if (typeof __origSpPrs === 'function' && !window.__spHookedPrs) {
     __origSpPrs(page, el);
     if (page === 'personalizacao') loadPersonalizacaoExtra();
     if (page === 'boasvindas') loadBoasVindas();
+  };
+}
+
+// ============ CARTEIRA ============
+async function loadCarteira() {
+  try {
+    const [bal, ws] = await Promise.all([
+      fetch('/api/wallet/balance', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/wallet/withdrawals', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+    window.__balance = bal;
+    const setRS = (id, c) => { const el = document.getElementById(id); if (el) el.textContent = 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ','); };
+    setRS('ct-available', bal.available_cents);
+    setRS('ct-blocked', bal.blocked_cents);
+    setRS('ct-med', bal.med_blocked_cents);
+    setRS('ct-total', bal.total_cents);
+    setRS('ct-avail-line', bal.available_cents);
+    document.getElementById('ct-med-line').textContent = '-R$ ' + ((bal.med_blocked_cents || 0) / 100).toFixed(2).replace('.', ',');
+
+    // banner 2FA
+    const banner = document.getElementById('ct-2fa-banner');
+    if (banner) banner.style.display = bal.twofa_enabled ? 'none' : 'flex';
+    const btn = document.getElementById('ct-withdraw-btn');
+    if (btn) {
+      if (!bal.twofa_enabled) {
+        btn.innerHTML = '🔐 Ative o 2FA para Sacar';
+        btn.style.background = '#1a1a1a';
+        btn.style.color = '#666';
+        btn.style.cursor = 'not-allowed';
+        btn.disabled = true;
+      } else {
+        btn.style.background = '#22c55e';
+        btn.style.color = '#000';
+        btn.style.cursor = 'pointer';
+        btn.disabled = false;
+      }
+    }
+
+    // stats
+    const stats = computeWalletStats(ws);
+    document.getElementById('ct-stat-sales').textContent = stats.salesCount;
+    document.getElementById('ct-stat-volume').textContent = 'R$ ' + (bal.earned_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    document.getElementById('ct-stat-withdrawn').textContent = 'R$ ' + (stats.totalWithdrawn / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    document.getElementById('ct-stat-meds').textContent = stats.medCount;
+    document.getElementById('ct-cnt-approved').textContent = stats.approved;
+    document.getElementById('ct-cnt-pending').textContent = stats.pending;
+    document.getElementById('ct-cnt-refunded').textContent = stats.refunded;
+    document.getElementById('ct-cnt-canceled').textContent = stats.canceled;
+
+    updateCtPreview();
+  } catch (e) { console.warn('carteira', e.message); }
+}
+
+function computeWalletStats(ws) {
+  if (!Array.isArray(ws)) return { salesCount: 0, totalWithdrawn: 0, medCount: 0, approved: 0, pending: 0, refunded: 0, canceled: 0 };
+  let totalWithdrawn = 0, approved = 0, pending = 0, refunded = 0, canceled = 0, medCount = 0;
+  for (const w of ws) {
+    if (['paid', 'approved'].includes(w.status)) totalWithdrawn += w.net_cents || 0;
+    if (w.status === 'approved' || w.status === 'paid') approved++;
+    if (w.status === 'pending') pending++;
+    if (w.status === 'rejected') refunded++;
+    if (w.med_blocked_cents > 0) medCount++;
+  }
+  return { salesCount: ws.length, totalWithdrawn, medCount, approved, pending, refunded, canceled };
+}
+
+function updateCtPreview() {
+  const amt = parseFloat(document.getElementById('ct-amount')?.value || 0);
+  const turbo = document.getElementById('ct-turbo')?.checked;
+  const fee = turbo ? 3.50 : 0.50;
+  document.getElementById('ct-fee-line').textContent = 'R$ ' + fee.toFixed(2).replace('.', ',');
+  document.getElementById('ct-receive-line').textContent = 'R$ ' + Math.max(0, amt - fee).toFixed(2).replace('.', ',');
+}
+
+function validatePix() {
+  const k = document.getElementById('ct-pix-key').value.trim();
+  if (!k) return toast('Cole a chave PIX', 'err');
+  toast('Chave válida (modo demo)', 'ok');
+}
+
+async function submitCarteiraWithdraw() {
+  const amount = document.getElementById('ct-amount').value;
+  if (!amount || parseFloat(amount) < 10) return toast('Mínimo R$10', 'err');
+  const turbo = document.getElementById('ct-turbo').checked;
+  try {
+    const r = await fetch('/api/wallet/withdraw', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, type: turbo ? 'instant' : 'normal' })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Saque solicitado!');
+    loadCarteira();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function emailExtract() {
+  try {
+    const r = await fetch('/api/wallet/extract-email', { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Extrato enviado pro email');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ 2FA SETUP ============
+async function open2faSetup() {
+  document.getElementById('modal-2fa')?.classList.add('open');
+  const body = document.getElementById('modal-2fa-body');
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:#888;">Gerando QR code...</div>';
+  try {
+    const j = await fetch('/api/2fa/setup', { method: 'POST', credentials: 'same-origin' }).then(r => r.json());
+    if (j.error) { body.innerHTML = '<div style="color:#ff8a8a;padding:14px;">' + j.error + '</div>'; return; }
+    body.innerHTML = `
+      <div style="text-align:center;">
+        <div style="background:#fff;padding:14px;border-radius:10px;display:inline-block;"><canvas id="totp-qr"></canvas></div>
+        <div style="margin-top:14px;color:#aaa;font-size:12.5px;line-height:1.5;">Escaneie o QR no Google Authenticator, Authy ou similar.</div>
+        <div style="background:#0a0a0a;border:1px solid var(--border);padding:8px;border-radius:6px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;word-break:break-all;">${escapeHtml(j.secret)}</div>
+        <input id="totp-token" placeholder="código de 6 dígitos" maxlength="6" style="background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:18px;text-align:center;letter-spacing:.3em;width:200px;margin-top:18px;">
+        <div><button onclick="confirm2fa()" style="background:#3b82f6;color:#fff;border:0;padding:11px 22px;border-radius:8px;font-weight:800;font-family:inherit;font-size:12.5px;cursor:pointer;margin-top:14px;">Confirmar e Ativar</button></div>
+      </div>
+    `;
+    if (window.QRCode) QRCode.toCanvas(document.getElementById('totp-qr'), j.uri, { width: 220, margin: 1 });
+  } catch (e) { body.innerHTML = '<div style="color:#ff8a8a;padding:14px;">' + e.message + '</div>'; }
+}
+
+async function confirm2fa() {
+  const token = document.getElementById('totp-token').value.trim();
+  if (!/^\d{6}$/.test(token)) return toast('código deve ter 6 dígitos', 'err');
+  try {
+    const r = await fetch('/api/2fa/verify-setup', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    document.getElementById('modal-2fa-body').innerHTML = `
+      <div style="text-align:center;padding:14px 0;">
+        <div style="width:54px;height:54px;border-radius:50%;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3 style="color:#fff;margin-top:14px;">2FA ativado!</h3>
+        <p style="color:#aaa;font-size:12.5px;margin-top:6px;">Salve os códigos de recuperação abaixo num local seguro. Eles funcionam UMA vez cada se você perder o dispositivo.</p>
+        <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7dd3a4;">
+          ${j.recovery_codes.map(c => `<div>${c}</div>`).join('')}
+        </div>
+        <button onclick="closeModal('modal-2fa');loadCarteira()" style="background:#22c55e;color:#000;border:0;padding:11px 22px;border-radius:8px;font-weight:800;font-family:inherit;font-size:12.5px;cursor:pointer;margin-top:14px;">Concluir</button>
+      </div>
+    `;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+const __origSpCt = window.sp;
+if (typeof __origSpCt === 'function' && !window.__spHookedCt) {
+  window.__spHookedCt = true;
+  window.sp = function (page, el) {
+    __origSpCt(page, el);
+    if (page === 'carteira') loadCarteira();
   };
 }

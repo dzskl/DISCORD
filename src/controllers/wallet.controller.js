@@ -41,7 +41,37 @@ router.get('/balance', (req, res) => {
   const blocked = db.prepare(`
     SELECT COALESCE(SUM(amount_cents),0) AS v FROM withdrawals WHERE user_id=? AND status='approved'
   `).get(req.appUser.id).v;
-  res.json({ ...b, pending_cents: pending, blocked_cents: blocked });
+  const med = db.prepare(`
+    SELECT COALESCE(SUM(med_blocked_cents),0) AS v FROM withdrawals WHERE user_id=?
+  `).get(req.appUser.id).v;
+  // 2FA
+  const u = db.prepare('SELECT totp_enabled FROM users WHERE id=?').get(req.appUser.id);
+  res.json({
+    ...b,
+    pending_cents: pending,
+    blocked_cents: blocked,
+    med_blocked_cents: med,
+    total_cents: b.earned_cents,
+    twofa_enabled: !!(u?.totp_enabled),
+    twofa_verified: !!(req.session?.twofa_verified_at && (Math.floor(Date.now() / 1000) - req.session.twofa_verified_at < 600))
+  });
+});
+
+router.post('/extract-email', (req, res) => {
+  // placeholder: chama servico de email com extrato
+  try {
+    const email = require('../services/email.service');
+    if (!email.isConfigured()) return res.status(503).json({ error: 'SMTP nao configurado' });
+    const rows = db.prepare(`SELECT * FROM withdrawals WHERE user_id=? ORDER BY requested_at DESC LIMIT 200`).all(req.appUser.id);
+    const u = db.prepare('SELECT email FROM users WHERE id=?').get(req.appUser.id);
+    if (!u?.email) return res.status(400).json({ error: 'email do user nao definido' });
+    email.send({
+      to: u.email,
+      subject: 'Extrato BotDash',
+      html: `<h3>Seu extrato</h3><p>Total de ${rows.length} saques.</p><table border="1"><tr><th>Data</th><th>Valor</th><th>Status</th></tr>${rows.map(r => `<tr><td>${new Date(r.requested_at * 1000).toLocaleString('pt-BR')}</td><td>R$ ${(r.amount_cents / 100).toFixed(2)}</td><td>${r.status}</td></tr>`).join('')}</table>`
+    }).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/withdrawals', (req, res) => {

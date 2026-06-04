@@ -568,6 +568,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
           configurar bot
         </div>
+        <div class="ni" data-page="carteira" onclick="sp('carteira',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          carteira
+        </div>
         <div class="ni" data-page="canais-config" onclick="sp('canais-config',this)">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 9 20 9"/><polyline points="4 15 20 15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
           canais
@@ -1456,6 +1460,122 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
       </div>
 
+      <!-- CARTEIRA -->
+      <div id="page-carteira" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:#fff;margin:0;">Carteira</h2>
+            <p style="color:#888;font-size:12.5px;margin:4px 0 0;">Gerencie seu saldo e realize saques</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="emailExtract()" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:8px;padding:8px 12px;font-size:11.5px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Extrato por Email
+            </button>
+            <button onclick="loadCarteira()" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:8px;padding:8px 12px;font-size:11.5px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 cards de saldo -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;">
+          <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,rgba(34,197,94,.08),transparent);border-color:rgba(34,197,94,.25);">
+            <div style="display:flex;align-items:center;gap:6px;color:#7dd3a4;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-bottom:8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/></svg>
+              Disponível
+            </div>
+            <div id="ct-available" style="font-size:22px;font-weight:800;color:#7dd3a4;font-family:'IBM Plex Mono',monospace;">R$ 0,00</div>
+          </div>
+          <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,rgba(245,197,66,.08),transparent);border-color:rgba(245,197,66,.25);">
+            <div style="display:flex;align-items:center;gap:6px;color:#f5c542;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-bottom:8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Bloqueado
+            </div>
+            <div id="ct-blocked" style="font-size:22px;font-weight:800;color:#f5c542;font-family:'IBM Plex Mono',monospace;">R$ 0,00</div>
+          </div>
+          <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,rgba(135,206,235,.08),transparent);border-color:rgba(135,206,235,.25);">
+            <div style="display:flex;align-items:center;gap:6px;color:#87ceeb;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-bottom:8px;">❄ Congelado (MED)</div>
+            <div id="ct-med" style="font-size:22px;font-weight:800;color:#87ceeb;font-family:'IBM Plex Mono',monospace;">R$ 0,00</div>
+          </div>
+          <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,rgba(139,111,255,.08),transparent);border-color:rgba(139,111,255,.25);">
+            <div style="display:flex;align-items:center;gap:6px;color:#b9a8ff;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-bottom:8px;">★ Total</div>
+            <div id="ct-total" style="font-size:22px;font-weight:800;color:#b9a8ff;font-family:'IBM Plex Mono',monospace;">R$ 0,00</div>
+          </div>
+        </div>
+
+        <!-- Banner 2FA -->
+        <div id="ct-2fa-banner" class="card" style="padding:13px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:linear-gradient(90deg,rgba(59,130,246,.08),transparent);border-color:rgba(59,130,246,.25);">
+          <div style="display:flex;gap:11px;align-items:center;">
+            <div style="width:34px;height:34px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;color:#88c0ff;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:12.5px;">Autenticação de Dois Fatores Necessária</div>
+              <div style="color:#888;font-size:11px;margin-top:2px;">Ative o 2FA para proteger sua conta e desbloquear saques.</div>
+            </div>
+          </div>
+          <button onclick="open2faSetup()" style="background:#3b82f6;color:#fff;border:0;padding:8px 14px;border-radius:7px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Ativar 2FA
+          </button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:14px;">
+          <!-- Solicitar Saque -->
+          <div class="card" style="padding:18px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg><span style="color:#fff;font-weight:700;font-size:13.5px;">Solicitar Saque</span></div>
+            <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">Transfira seu saldo via PIX</div>
+
+            <div class="fgroup"><div class="flabel">Chave PIX de Destino</div>
+              <div style="display:flex;gap:6px;"><input id="ct-pix-key" placeholder="CPF, Email, Telefone ou Aleatória" class="inp" style="flex:1;"><button onclick="validatePix()" style="background:var(--primary);color:#fff;border:0;padding:0 14px;border-radius:7px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;">Validar</button></div>
+            </div>
+
+            <label style="display:flex;align-items:flex-start;gap:8px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:12px;cursor:pointer;">
+              <input type="checkbox" id="ct-turbo">
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:6px;color:#fff;font-weight:700;font-size:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f5c542"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Saque Turbo</div>
+                <div style="color:#888;font-size:10.5px;margin-top:2px;line-height:1.5;">Turbo: Instantâneo (R$ 3,50) • Normal: 24h (R$ 0,50)</div>
+              </div>
+            </label>
+
+            <div class="fgroup"><div class="flabel">Valor a sacar (R$)</div><input id="ct-amount" type="number" step="0.01" min="10" placeholder="0,00" oninput="updateCtPreview()" class="inp"></div>
+
+            <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:11px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Valor disponível:</span><b id="ct-avail-line" style="color:#fff;">R$ 0,00</b></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Congelado (MED):</span><b style="color:#87ceeb;" id="ct-med-line">-R$ 0,00</b></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Saque mínimo:</span><b style="color:#aaa;">R$ 10,00</b></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Taxa:</span><b style="color:#f5c542;" id="ct-fee-line">R$ 0,50</b></div>
+              <div style="border-top:1px solid var(--border);margin:6px 0;"></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:#fff;font-weight:700;">Você receberá:</span><b id="ct-receive-line" style="color:#7dd3a4;">R$ 0,00</b></div>
+            </div>
+
+            <button id="ct-withdraw-btn" onclick="submitCarteiraWithdraw()" style="background:#22c55e;color:#000;border:0;padding:12px 0;width:100%;border-radius:9px;font-weight:800;font-family:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg> Solicitar Saque
+            </button>
+          </div>
+
+          <!-- Resumo + estatisticas -->
+          <div class="card" style="padding:18px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span style="color:#fff;font-weight:700;font-size:13.5px;">Resumo</span></div>
+            <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">Estatísticas das suas transações</div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;">
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Total de Vendas</div><div id="ct-stat-sales" style="font-size:18px;font-weight:800;color:#fff;margin-top:4px;">0</div></div>
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Volume Total</div><div id="ct-stat-volume" style="font-size:18px;font-weight:800;color:#fff;margin-top:4px;">R$ 0</div></div>
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">Total Sacado</div><div id="ct-stat-withdrawn" style="font-size:18px;font-weight:800;color:#fff;margin-top:4px;">R$ 0</div></div>
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">MEDs Ativos</div><div id="ct-stat-meds" style="font-size:18px;font-weight:800;color:#fff;margin-top:4px;">0</div></div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">
+              <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:7px;text-align:center;"><div style="color:#7dd3a4;">Aprovadas</div><div id="ct-cnt-approved" style="color:#fff;font-weight:800;margin-top:2px;font-size:13px;">0</div></div>
+              <div style="background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.25);border-radius:7px;padding:7px;text-align:center;"><div style="color:#f5c542;">Pendentes</div><div id="ct-cnt-pending" style="color:#fff;font-weight:800;margin-top:2px;font-size:13px;">0</div></div>
+              <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:7px;padding:7px;text-align:center;"><div style="color:#ff8a8a;">Reembolsadas</div><div id="ct-cnt-refunded" style="color:#fff;font-weight:800;margin-top:2px;font-size:13px;">0</div></div>
+              <div style="background:rgba(136,136,136,.08);border:1px solid rgba(136,136,136,.25);border-radius:7px;padding:7px;text-align:center;"><div style="color:#aaa;">Canceladas</div><div id="ct-cnt-canceled" style="color:#fff;font-weight:800;margin-top:2px;font-size:13px;">0</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- CANAIS CONFIG -->
       <div id="page-canais-config" class="page">
         <h2 style="font-size:18px;font-weight:700;color:#fff;">Canais</h2>
@@ -2073,6 +2193,16 @@ footer.appfoot a:hover{color:var(--text);}
       <button class="modal-x" onclick="closeModal('modal-withdraw')">×</button>
     </div>
     <div class="modal-body" id="modal-withdraw-body"></div>
+  </div>
+</div>
+
+<div class="modal-back" id="modal-2fa">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <h3>Ativar 2FA</h3>
+      <button class="modal-x" onclick="closeModal('modal-2fa')">×</button>
+    </div>
+    <div class="modal-body" id="modal-2fa-body"></div>
   </div>
 </div>
 

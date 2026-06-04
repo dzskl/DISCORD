@@ -180,7 +180,7 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - 2 CTAs: **Registrar Novo Bot** / **Vincular Chave Existente**
 
 #### 🔴 Backend pesado / nova arquitetura
-- [ ] **Página "Carteira" completa** (substitui modal de saque):
+- [x] **Página "Carteira" completa** (alem do modal):
   - **4 cards de saldo**: Disponível / Bloqueado pelo Banco / Congelado (MED) / Total
   - Conceito de **MED** (Mecanismo Especial de Devolução — bloqueio PIX BC)
   - **Premiações de Faturamento**: progress bar com marcos
@@ -197,13 +197,13 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
     - Gráfico de receita com filtros Hoje/Semanal/Mensal/Total/Período
   - Botões topo: **Extrato por Email** + Atualizar
 
-- [ ] **2FA pro user** (TOTP):
+- [x] **2FA pro user** (TOTP):
   - Setup QR code (Google Authenticator etc)
   - Validação obrigatória antes de saques
   - Recovery codes
   - Desativar com password
 
-- [ ] **Extrato por Email**:
+- [x] **Extrato por Email**:
   - Backend gera CSV/PDF do período
   - Envia pro email cadastrado
   - Async com confirmação visual
