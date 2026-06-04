@@ -4369,3 +4369,270 @@ function openAddAccountFlow() {
 }
 
 setTimeout(trackCurrentAccount, 1200);
+
+// ============ PAGE LOJA (Painéis + Geral + Cupons) ============
+let __shopPanels = [];
+let __selectedShopPanel = null;
+
+function switchLojaTab(tab) {
+  document.querySelectorAll('.loja-tab').forEach(b => {
+    const on = b.dataset.lojaTab === tab;
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+  document.querySelectorAll('.loja-pane').forEach(p => p.style.display = 'none');
+  const pane = document.getElementById('loja-pane-' + tab);
+  if (pane) pane.style.display = 'block';
+  if (tab === 'geral') loadLojaCheckout();
+  if (tab === 'paineis') loadShopPanels();
+}
+
+async function loadLojaCheckout() {
+  try {
+    const c = await fetch('/api/shop/checkout-config', { credentials: 'same-origin' }).then(r => r.json());
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
+    set('lojacfg-api-key', c.api_key_masked || '');
+    document.getElementById('lojacfg-repass').checked = !!c.repass_fee;
+    set('lojacfg-currency', c.currency || 'BRL');
+    set('lojacfg-locale', c.locale || 'pt-BR');
+    set('lojacfg-color-center', c.brand_color_center || '#8B5CF6');
+    set('lojacfg-color-center-picker', c.brand_color_center || '#8B5CF6');
+    set('lojacfg-color-border', c.brand_color_border || '#6D28D9');
+    set('lojacfg-color-border-picker', c.brand_color_border || '#6D28D9');
+    set('lojacfg-logo-url', c.brand_logo_url || '');
+    set('lojacfg-zoom', c.qr_zoom || 100);
+    document.getElementById('lojacfg-zoom-val').textContent = c.qr_zoom || 100;
+    setQrPos(c.qr_position || 'main');
+    document.getElementById('lojacfg-instr-enabled').checked = !!c.instruction_enabled;
+    updateInstrToggleVisual();
+    set('lojacfg-instr-msg', c.instruction_message || '');
+    set('lojacfg-btn-name', c.instruction_button_name || '');
+    set('lojacfg-btn-url', c.instruction_button_url || '');
+    // banner warning api key
+    document.getElementById('loja-api-warning').style.display = c.api_key_present ? 'none' : 'flex';
+    updateCheckoutPreview();
+    document.getElementById('lojacfg-instr-enabled').addEventListener('change', updateInstrToggleVisual);
+  } catch (e) { console.warn('loadLojaCheckout', e.message); }
+}
+
+function updateInstrToggleVisual() {
+  const cb = document.getElementById('lojacfg-instr-enabled');
+  if (!cb) return;
+  const track = cb.parentElement.querySelector('.inst-track');
+  const knob = cb.parentElement.querySelector('.inst-knob');
+  if (track) {
+    track.style.background = cb.checked ? '#8b6fff' : '#1a1a1a';
+    track.style.borderColor = cb.checked ? '#8b6fff' : 'var(--border)';
+  }
+  if (knob) knob.style.left = cb.checked ? '19px' : '3px';
+}
+
+function setQrPos(pos) {
+  window.__qrPos = pos;
+  const m = document.getElementById('lojacfg-pos-main');
+  const t = document.getElementById('lojacfg-pos-thumb');
+  if (m) {
+    m.style.background = pos === 'main' ? 'rgba(139,111,255,.2)' : 'transparent';
+    m.style.borderColor = pos === 'main' ? 'rgba(139,111,255,.4)' : 'var(--border)';
+    m.style.color = pos === 'main' ? '#fff' : '#888';
+  }
+  if (t) {
+    t.style.background = pos === 'thumbnail' ? 'rgba(139,111,255,.2)' : 'transparent';
+    t.style.borderColor = pos === 'thumbnail' ? 'rgba(139,111,255,.4)' : 'var(--border)';
+    t.style.color = pos === 'thumbnail' ? '#fff' : '#888';
+  }
+}
+
+function updateCheckoutPreview() {
+  const center = document.getElementById('lojacfg-color-center')?.value || '#8B5CF6';
+  const logoUrl = document.getElementById('lojacfg-logo-url')?.value || '';
+  const zoom = parseInt(document.getElementById('lojacfg-zoom')?.value || 100);
+  const prev = document.getElementById('checkout-preview');
+  if (prev) prev.style.borderLeftColor = center;
+  const logo = document.getElementById('prev-qr-logo');
+  if (logo) {
+    if (logoUrl) {
+      logo.src = logoUrl;
+      logo.style.display = 'block';
+      logo.style.width = (42 * zoom / 100) + 'px';
+      logo.style.height = (42 * zoom / 100) + 'px';
+    } else logo.style.display = 'none';
+  }
+}
+
+async function saveLojaCheckout() {
+  const get = id => document.getElementById(id);
+  const keyInput = get('lojacfg-api-key');
+  const body = {
+    repass_fee: get('lojacfg-repass').checked,
+    currency: get('lojacfg-currency').value,
+    locale: get('lojacfg-locale').value,
+    brand_color_center: get('lojacfg-color-center').value,
+    brand_color_border: get('lojacfg-color-border').value,
+    brand_logo_url: get('lojacfg-logo-url').value || null,
+    qr_zoom: parseInt(get('lojacfg-zoom').value),
+    qr_position: window.__qrPos || 'main',
+    instruction_enabled: get('lojacfg-instr-enabled').checked,
+    instruction_message: get('lojacfg-instr-msg').value || null,
+    instruction_button_name: get('lojacfg-btn-name').value || null,
+    instruction_button_url: get('lojacfg-btn-url').value || null
+  };
+  // Só envia api_key se foi editada (não é o mascarado)
+  const v = keyInput.value;
+  if (v && !v.includes('••')) body.api_key = v;
+  try {
+    const r = await fetch('/api/shop/checkout-config', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Configurações salvas');
+    loadLojaCheckout();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ Painéis ============
+async function loadShopPanels() {
+  try {
+    __shopPanels = await fetch('/api/shop/panels', { credentials: 'same-origin' }).then(r => r.json());
+    renderShopPanelsList();
+  } catch (e) { console.warn('loadShopPanels', e.message); }
+}
+
+function renderShopPanelsList() {
+  const wrap = document.getElementById('loja-panel-list');
+  if (!wrap) return;
+  const q = (document.getElementById('loja-panel-search')?.value || '').toLowerCase();
+  const list = q ? __shopPanels.filter(p => p.name.toLowerCase().includes(q)) : __shopPanels;
+  if (!list.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:#666;padding:20px;font-size:11.5px;">Nenhum painel encontrado</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(p => `
+    <div onclick="selectShopPanel(${p.id})" style="background:${__selectedShopPanel === p.id ? '#1a1a1a' : '#0e0e0e'};border:1px solid ${__selectedShopPanel === p.id ? 'var(--primary)' : 'var(--border)'};border-radius:8px;padding:10px;cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:700;color:#fff;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</div>
+        <span style="font-size:9.5px;padding:2px 6px;border-radius:6px;background:${p.posted_message_id ? 'rgba(34,197,94,.15)' : '#1a1a1a'};color:${p.posted_message_id ? '#7dd3a4' : '#666'};">${p.posted_message_id ? 'postado' : 'rascunho'}</span>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:3px;">${(p.product_ids || []).length} produto(s)</div>
+    </div>
+  `).join('');
+}
+
+function newShopPanel() {
+  const name = prompt('Nome do novo painel:');
+  if (!name) return;
+  fetch('/api/shop/panels', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, embed_color: '#5865F2', embed_title: name })
+  }).then(r => r.json()).then(j => {
+    if (j.ok) { toast('Painel criado'); loadShopPanels(); }
+    else toast(j.error || 'Falha', 'err');
+  });
+}
+
+function selectShopPanel(id) {
+  __selectedShopPanel = id;
+  const p = __shopPanels.find(x => x.id === id);
+  if (!p) return;
+  renderShopPanelsList();
+  const editor = document.getElementById('loja-panel-editor');
+  editor.style.display = 'block';
+  editor.style.alignItems = 'stretch';
+  editor.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-weight:700;color:#fff;font-size:14px;">${escapeHtml(p.name)}</div>
+      <button onclick="deleteShopPanel(${p.id})" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:#ff8a8a;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:11px;">Remover</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Nome</label>
+        <input id="sp-name" type="text" value="${escapeAttr(p.name)}" class="inp" style="margin-top:5px;">
+      </div>
+      <div>
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Canal (ID)</label>
+        <input id="sp-channel" type="text" value="${escapeAttr(p.channel_id || '')}" placeholder="ID do canal" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Descrição</label>
+      <textarea id="sp-desc" rows="2" class="inp" style="margin-top:5px;">${escapeHtml(p.description || '')}</textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Cor do Embed</label>
+        <input id="sp-color" type="color" value="${p.embed_color || '#5865F2'}" style="width:100%;height:38px;margin-top:5px;border:1px solid var(--border);border-radius:7px;background:#0a0a0a;">
+      </div>
+      <div>
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Imagem do Embed (URL)</label>
+        <input id="sp-image" type="text" value="${escapeAttr(p.embed_image_url || '')}" class="inp" style="margin-top:5px;">
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Título do Embed</label>
+      <input id="sp-title" type="text" value="${escapeAttr(p.embed_title || '')}" class="inp" style="margin-top:5px;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Descrição do Embed</label>
+      <textarea id="sp-embed-desc" rows="3" class="inp" style="margin-top:5px;">${escapeHtml(p.embed_description || '')}</textarea>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Rodapé</label>
+      <input id="sp-footer" type="text" value="${escapeAttr(p.embed_footer || '')}" class="inp" style="margin-top:5px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="saveShopPanel(${p.id})" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:10px 18px;border-radius:7px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;">Salvar painel</button>
+    </div>
+  `;
+}
+
+async function saveShopPanel(id) {
+  const g = i => document.getElementById(i)?.value || '';
+  const body = {
+    name: g('sp-name'),
+    channel_id: g('sp-channel') || null,
+    description: g('sp-desc') || null,
+    embed_color: g('sp-color'),
+    embed_image_url: g('sp-image') || null,
+    embed_title: g('sp-title') || null,
+    embed_description: g('sp-embed-desc') || null,
+    embed_footer: g('sp-footer') || null
+  };
+  try {
+    const r = await fetch('/api/shop/panels/' + id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Painel salvo'); loadShopPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteShopPanel(id) {
+  if (!confirm('Remover painel?')) return;
+  try {
+    await fetch('/api/shop/panels/' + id, { method: 'DELETE', credentials: 'same-origin' });
+    toast('Removido');
+    __selectedShopPanel = null;
+    const editor = document.getElementById('loja-panel-editor');
+    editor.innerHTML = 'Selecione um painel para editar';
+    editor.style.display = 'flex';
+    editor.style.alignItems = 'center';
+    editor.style.justifyContent = 'center';
+    loadShopPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook
+const __origSpLoja = window.sp;
+if (typeof __origSpLoja === 'function' && !window.__spHookedLoja) {
+  window.__spHookedLoja = true;
+  window.sp = function (page, el) {
+    __origSpLoja(page, el);
+    if (page === 'loja-cfg') { loadShopPanels(); loadLojaCheckout(); }
+  };
+}

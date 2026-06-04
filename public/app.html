@@ -490,6 +490,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           vendas
         </div>
+        <div class="ni" data-page="loja-cfg" onclick="sp('loja-cfg',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l2-6h14l2 6"/><path d="M3 9h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+          loja
+        </div>
         <div class="ni" data-page="produtos" onclick="sp('produtos',this)">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           produtos
@@ -2074,6 +2078,204 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <!-- CONFIG -->
+      <!-- LOJA (Painéis + Geral + Cupons) -->
+      <div id="page-loja-cfg" class="page">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:22px;font-weight:800;color:#fff;">Loja</div>
+          <div style="font-size:13px;color:#888;margin-top:4px;">Configure sua loja, painéis e cupons</div>
+        </div>
+
+        <!-- Warning Chave API faltando -->
+        <div id="loja-api-warning" style="background:linear-gradient(90deg,rgba(245,197,66,.10),rgba(245,197,66,.02));border:1px solid rgba(245,197,66,.30);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;justify-content:space-between;gap:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            <div>
+              <div style="font-weight:700;color:#f5c542;font-size:13px;">Chave API não configurada</div>
+              <div style="color:#bbb;font-size:11.5px;">Sua chave API do gateway de pagamento não está configurada. As vendas não funcionarão sem ela.</div>
+            </div>
+          </div>
+          <button onclick="switchLojaTab('geral')" style="background:#f5c542;color:#0a0a0a;border:0;padding:8px 14px;border-radius:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Configurar agora</button>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;">
+          <button class="loja-tab active" data-loja-tab="paineis" onclick="switchLojaTab('paineis')" style="background:transparent;border:0;color:#fff;padding:11px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);">Painéis</button>
+          <button class="loja-tab" data-loja-tab="geral" onclick="switchLojaTab('geral')" style="background:transparent;border:0;color:#666;padding:11px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Geral</button>
+          <button class="loja-tab" data-loja-tab="cupons" onclick="switchLojaTab('cupons')" style="background:transparent;border:0;color:#666;padding:11px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Cupons</button>
+        </div>
+
+        <!-- TAB PAINÉIS -->
+        <div id="loja-pane-paineis" class="loja-pane">
+          <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;">
+            <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Lista de painéis</div>
+                <button onclick="newShopPanel()" style="background:rgba(139,111,255,.2);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">+</button>
+              </div>
+              <input id="loja-panel-search" placeholder="Pesquisar painéis..." oninput="renderShopPanelsList()" class="inp" style="margin-bottom:10px;font-size:12px;">
+              <div id="loja-panel-list" style="display:flex;flex-direction:column;gap:6px;max-height:520px;overflow-y:auto;"></div>
+            </div>
+            <div id="loja-panel-editor" style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;display:flex;align-items:center;justify-content:center;min-height:300px;color:#666;font-size:13px;">
+              Selecione um painel para editar
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB GERAL (Config Checkout) -->
+        <div id="loja-pane-geral" class="loja-pane" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 380px;gap:14px;">
+            <div>
+              <!-- Card Chave API -->
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;border-left:3px solid #8b6fff;">
+                <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:4px;">Chave API (Gateway de Pagamento)</div>
+                <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;display:block;margin-top:12px;">API Key YuvexPay</label>
+                <input id="lojacfg-api-key" type="password" placeholder="Cole sua API Key aqui..." class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+                <div style="font-size:10.5px;color:#888;margin-top:8px;display:flex;align-items:center;gap:6px;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Caso tenha dúvidas, <a href="#" style="color:#b9a8ff;">clique aqui</a> para o tutorial.
+                </div>
+              </div>
+
+              <!-- Taxa Processamento -->
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;border-left:3px solid #8b6fff;">
+                <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:14px;">Taxa de Processamento</div>
+                <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px;background:#0e0e0e;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+                  <div>
+                    <div style="font-size:12.5px;color:#fff;font-weight:600;">Repassar Taxa para o Cliente</div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;line-height:1.5;">Esta taxa é cobrada pelo <b style="color:#aaa;">gateway de pagamento</b> e será repassada ao cliente final durante o checkout. <b style="color:#f5c542;">Não é uma taxa do sistema</b>, mas sim uma cobrança padrão do processador de pagamentos.</div>
+                  </div>
+                  <input type="checkbox" id="lojacfg-repass" style="accent-color:#8b6fff;flex-shrink:0;margin-top:2px;">
+                </label>
+              </div>
+
+              <!-- Localização -->
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;border-left:3px solid #8b6fff;">
+                <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:14px;">Localização</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Moeda</label>
+                    <select id="lojacfg-currency" class="inp" style="margin-top:5px;">
+                      <option value="BRL">🇧🇷 Real (R$)</option>
+                      <option value="USD">🇺🇸 Dollar ($)</option>
+                      <option value="EUR">🇪🇺 Euro (€)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Idioma</label>
+                    <select id="lojacfg-locale" class="inp" style="margin-top:5px;">
+                      <option value="pt-BR">Português (Brasil)</option>
+                      <option value="en-US">English (US)</option>
+                      <option value="es-ES">Español</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Marca -->
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;border-left:3px solid #8b6fff;">
+                <div style="font-weight:700;color:#fff;font-size:13.5px;margin-bottom:14px;">Marca</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Cor Central</label>
+                    <div style="display:flex;gap:6px;margin-top:5px;">
+                      <input id="lojacfg-color-center-picker" type="color" value="#8B5CF6" style="width:38px;height:38px;border:1px solid var(--border);border-radius:7px;cursor:pointer;" oninput="document.getElementById('lojacfg-color-center').value=this.value.toUpperCase()">
+                      <input id="lojacfg-color-center" type="text" value="#8B5CF6" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;" oninput="document.getElementById('lojacfg-color-center-picker').value=this.value;updateCheckoutPreview()">
+                    </div>
+                  </div>
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Cor da Borda</label>
+                    <div style="display:flex;gap:6px;margin-top:5px;">
+                      <input id="lojacfg-color-border-picker" type="color" value="#6D28D9" style="width:38px;height:38px;border:1px solid var(--border);border-radius:7px;cursor:pointer;" oninput="document.getElementById('lojacfg-color-border').value=this.value.toUpperCase()">
+                      <input id="lojacfg-color-border" type="text" value="#6D28D9" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;" oninput="document.getElementById('lojacfg-color-border-picker').value=this.value;updateCheckoutPreview()">
+                    </div>
+                  </div>
+                </div>
+                <div style="margin-top:12px;">
+                  <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Logo do QR Code (URL)</label>
+                  <input id="lojacfg-logo-url" type="text" placeholder="https://..." class="inp" style="margin-top:5px;" oninput="updateCheckoutPreview()">
+                </div>
+                <div style="margin-top:12px;">
+                  <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Zoom da Logo (<span id="lojacfg-zoom-val">100</span>%)</label>
+                  <input id="lojacfg-zoom" type="range" min="90" max="140" value="100" oninput="document.getElementById('lojacfg-zoom-val').textContent=this.value;updateCheckoutPreview()" style="width:100%;margin-top:5px;accent-color:#8b6fff;">
+                </div>
+                <div style="margin-top:12px;">
+                  <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Posição do QR Code</label>
+                  <div style="display:flex;gap:6px;margin-top:5px;">
+                    <button onclick="setQrPos('main')" id="lojacfg-pos-main" class="qr-pos-btn" style="flex:1;background:rgba(139,111,255,.2);border:1px solid rgba(139,111,255,.4);color:#fff;padding:9px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;">Imagem Principal</button>
+                    <button onclick="setQrPos('thumbnail')" id="lojacfg-pos-thumb" class="qr-pos-btn" style="flex:1;background:transparent;border:1px solid var(--border);color:#888;padding:9px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;">Thumbnail</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensagem de Instruções -->
+              <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;border-left:3px solid #8b6fff;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                  <div style="font-weight:700;color:#fff;font-size:13.5px;">Mensagem de Instruções <span style="color:#666;font-size:11px;font-weight:400;">(Padrão)</span></div>
+                  <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+                    <input type="checkbox" id="lojacfg-instr-enabled" style="opacity:0;width:0;height:0;">
+                    <span class="inst-track" style="position:absolute;inset:0;background:#1a1a1a;border:1px solid var(--border);border-radius:22px;transition:.2s;"></span>
+                    <span class="inst-knob" style="position:absolute;height:16px;width:16px;left:3px;top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+                  </label>
+                </div>
+                <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Mensagem</label>
+                <textarea id="lojacfg-instr-msg" rows="3" placeholder="Mensagem de instrucoes para o cliente..." class="inp" style="margin-top:5px;"></textarea>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Nome do Botão <span style="text-transform:none;color:#666;">(Opcional)</span></label>
+                    <input id="lojacfg-btn-name" type="text" placeholder="Ex: Clique Aqui" class="inp" style="margin-top:5px;">
+                  </div>
+                  <div>
+                    <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">URL do Botão <span style="text-transform:none;color:#666;">(Opcional)</span></label>
+                    <input id="lojacfg-btn-url" type="text" placeholder="https://exemplo.com" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+                  </div>
+                </div>
+                <div style="background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.2);border-radius:7px;padding:9px 12px;margin-top:10px;font-size:11px;color:#d4b860;">
+                  💡 <b>Dica:</b> Para criar um botão clicável, preencha tanto o nome quanto a URL do botão. Se apenas um dos campos for preenchido, o botão não será exibido.
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;">
+                <button onclick="saveLojaCheckout()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:11px 22px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">Salvar Configurações</button>
+              </div>
+            </div>
+
+            <!-- Preview Live -->
+            <div style="position:sticky;top:80px;height:fit-content;">
+              <div style="font-size:10.5px;color:#666;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">Preview do Checkout</div>
+              <div id="checkout-preview" style="background:#2f3136;border-radius:8px;overflow:hidden;border-left:4px solid #8B5CF6;">
+                <div style="padding:14px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;" id="prev-bot-av">A</div>
+                    <span style="color:#fff;font-weight:600;font-size:13px;">A's</span>
+                    <span style="color:#72767d;font-size:11px;">Bot</span>
+                  </div>
+                  <div style="font-weight:700;color:#fff;font-size:14px;">💎 Pagamento via PIX Criado</div>
+                  <div style="font-size:11px;color:#dcddde;margin-top:5px;display:flex;align-items:center;gap:5px;">⏱ Expira em: <span style="background:#202225;padding:2px 8px;border-radius:4px;color:#fff;font-family:'IBM Plex Mono',monospace;">3 horas</span></div>
+                  <div style="font-size:11px;color:#b9bbbe;margin-top:10px;">📋 Código Copia e Cola:</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;background:#202225;padding:8px;border-radius:4px;color:#dcddde;margin-top:4px;word-break:break-all;line-height:1.5;">00020101021226840014br.gov.bcb.pix2562qrcodes.sejaefi.com.br/v2/...</div>
+                  <div style="background:#fff;padding:14px;border-radius:8px;margin-top:10px;display:flex;align-items:center;justify-content:center;">
+                    <div id="prev-qr" style="width:160px;height:160px;background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Cg fill='%23000'%3E%3Crect x='0' y='0' width='7' height='7'/%3E%3Crect x='25' y='0' width='7' height='7'/%3E%3Crect x='0' y='25' width='7' height='7'/%3E%3Crect x='10' y='2' width='2' height='2'/%3E%3Crect x='14' y='4' width='2' height='4'/%3E%3Crect x='12' y='10' width='4' height='2'/%3E%3Crect x='18' y='12' width='2' height='4'/%3E%3Crect x='14' y='18' width='4' height='4'/%3E%3Crect x='20' y='20' width='2' height='2'/%3E%3Crect x='24' y='14' width='4' height='2'/%3E%3Crect x='10' y='22' width='2' height='4'/%3E%3Crect x='20' y='10' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E\");background-size:contain;position:relative;">
+                      <img id="prev-qr-logo" src="" style="position:absolute;top:50%;left:50%;width:42px;height:42px;border-radius:6px;background:#fff;padding:3px;display:none;transform:translate(-50%,-50%);">
+                    </div>
+                  </div>
+                </div>
+                <div style="padding:8px 14px;background:#202225;font-size:10.5px;color:#72767d;">Servidor do A's</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB CUPONS (link rapido) -->
+        <div id="loja-pane-cupons" class="loja-pane" style="display:none;">
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:30px;text-align:center;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" style="margin-bottom:14px;"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+            <div style="font-size:14px;color:#fff;font-weight:600;margin-bottom:4px;">Gerencie seus cupons</div>
+            <div style="font-size:12.5px;color:#888;margin-bottom:18px;">Cupons de desconto têm a página dedicada com edição completa.</div>
+            <button onclick="sp('cupons',null)" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:10px 20px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;">Ir para Cupons →</button>
+          </div>
+        </div>
+      </div>
+
       <!-- CONTA (user-level: Configurações do dropdown do avatar) -->
       <div id="page-conta" class="page">
         <div style="margin-bottom:18px;">
