@@ -2640,37 +2640,138 @@ async function toggleFeature(key, enabled) {
 }
 
 // ============ PROTEÇÃO ============
+// ============ PROTECAO 7 TABS ============
+let __protMeta = null, __protCfg = null, __protTab = 'anti_fake';
+
 async function loadProtection() {
-  const wrap = document.getElementById('prot-cards');
-  if (!wrap) return;
+  if (!document.getElementById('prot-tabs')) return;
   try {
-    const j = await fetch('/api/features/protection', { credentials: 'same-origin' }).then(r => r.json());
-    wrap.innerHTML = j.rules.map(r => `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;">
-        <div><div style="color:#fff;font-weight:600;font-size:12.5px;">${escapeHtml(r.label)}</div><div style="color:#888;font-size:11px;margin-top:2px;">${escapeHtml(r.desc)}</div></div>
-        <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;flex-shrink:0;">
-          <input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleProtRule('${r.key}',this.checked)" style="opacity:0;width:0;height:0;">
-          <span style="position:absolute;inset:0;background:${r.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid ${r.enabled ? '#22c55e' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
-          <span style="position:absolute;height:16px;width:16px;left:${r.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
-        </label>
+    const [meta, cfg] = await Promise.all([
+      fetch('/api/protection-v2/_meta', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/protection-v2', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+    __protMeta = meta; __protCfg = cfg || {};
+    renderProtTabs();
+    renderProtTab();
+  } catch (e) { console.warn('protection', e.message); }
+}
+
+function renderProtTabs() {
+  const wrap = document.getElementById('prot-tabs');
+  if (!wrap || !__protMeta) return;
+  wrap.innerHTML = Object.entries(__protMeta).map(([id, g]) => `
+    <button onclick="switchProtTab('${id}')" style="background:transparent;border:0;color:${__protTab === id ? '#fff' : '#666'};padding:10px 14px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid ${__protTab === id ? 'var(--primary)' : 'transparent'};">${escapeHtml(g.label)}</button>
+  `).join('');
+}
+
+function switchProtTab(id) {
+  __protTab = id;
+  renderProtTabs();
+  renderProtTab();
+}
+
+function renderProtTab() {
+  const wrap = document.getElementById('prot-tab-body');
+  if (!wrap || !__protMeta) return;
+  const g = __protMeta[__protTab];
+  if (!g) return;
+  const tabCfg = __protCfg[__protTab] || {};
+  const isPermsTab = __protTab === 'permissoes_comandos';
+  const isGlobalToggle = ['anti_fake', 'anti_spam'].includes(__protTab);
+
+  wrap.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div style="font-size:14px;font-weight:700;color:#fff;">${escapeHtml(g.label)}</div>
       </div>
-    `).join('');
-    document.getElementById('prot-banned-words').value = (j.banned_words || []).join('\n');
-    window.__protRules = Object.fromEntries(j.rules.map(r => [r.key, r.enabled]));
-  } catch (e) { wrap.innerHTML = '<div style="color:#ff6b6b;padding:14px;">' + e.message + '</div>'; }
+      <div style="font-size:11.5px;color:#b9a8ff;margin-top:3px;margin-left:22px;">${escapeHtml(g.desc)}</div>
+    </div>
+    ${isGlobalToggle && !tabCfg.enabled ? `
+      <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px 14px;margin-bottom:12px;color:#ff8a8a;font-size:11.5px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Desativado globalmente - Ative o sistema de proteção para que as regras tenham efeito.
+      </div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${g.rules.map(r => {
+        if (isPermsTab) {
+          return `
+            <details style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+              <summary style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:30px;height:30px;border-radius:7px;background:#1a1a1a;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#666;font-family:'IBM Plex Mono',monospace;font-size:13px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                  </div>
+                  <div>
+                    <div style="color:#fff;font-weight:700;font-size:13px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(r.label)}</div>
+                    <div style="color:#888;font-size:11px;margin-top:2px;">${escapeHtml(r.desc)}</div>
+                  </div>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </summary>
+              <div style="padding:12px 14px;border-top:1px solid var(--border);background:#0e0e0e;">
+                <div style="font-size:11px;color:#888;margin-bottom:8px;">Cargos permitidos (separados por vírgula):</div>
+                <input type="text" value="${escapeAttr((tabCfg[r.key] || []).join(', '))}" data-perm="${escapeAttr(r.key)}" oninput="updateProtField('${r.key}', this.value.split(',').map(s=>s.trim()).filter(Boolean))" class="inp" placeholder="ID dos cargos">
+              </div>
+            </details>
+          `;
+        }
+        const on = !!tabCfg[r.key];
+        return `
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 14px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;">
+            <div style="display:flex;align-items:flex-start;gap:11px;flex:1;min-width:0;">
+              <div style="width:30px;height:30px;border-radius:7px;background:#1a1a1a;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#666;flex-shrink:0;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div style="color:#fff;font-weight:700;font-size:13px;">${escapeHtml(r.label)}</div>
+                <div style="color:#888;font-size:11px;margin-top:2px;">${escapeHtml(r.desc)}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+                <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleProtField('${r.key}',this.checked)" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:${on ? '#22c55e' : '#1a1a1a'};border:1px solid ${on ? '#22c55e' : 'var(--border)'};border-radius:22px;transition:.2s;"></span>
+                <span style="position:absolute;height:16px;width:16px;left:${on ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+              </label>
+              <button onclick="toast('editar em breve','info')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:7px;padding:6px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Editar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
-function toggleProtRule(key, on) {
-  window.__protRules = window.__protRules || {};
-  window.__protRules[key] = on;
-  saveProtection(true);
+function toggleProtField(key, on) {
+  if (!__protCfg[__protTab]) __protCfg[__protTab] = {};
+  __protCfg[__protTab][key] = !!on;
+  renderProtTab();
+  saveProtTab();
 }
 
-async function saveProtection(silent) {
-  const banned = document.getElementById('prot-banned-words').value.split('\n').map(s => s.trim()).filter(Boolean);
+function updateProtField(key, value) {
+  if (!__protCfg[__protTab]) __protCfg[__protTab] = {};
+  __protCfg[__protTab][key] = value;
+  saveProtTabDebounced();
+}
+
+let __protSaveTimer = null;
+function saveProtTabDebounced() {
+  clearTimeout(__protSaveTimer);
+  __protSaveTimer = setTimeout(saveProtTab, 600);
+}
+
+async function saveProtTab() {
   try {
-    await fetch('/api/features/protection', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules: window.__protRules || {}, banned_words: banned }) });
-    if (!silent) toast('Proteção salva');
+    await fetch('/api/protection-v2/' + __protTab, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(__protCfg[__protTab] || {})
+    });
   } catch (e) { toast(e.message, 'err'); }
 }
 

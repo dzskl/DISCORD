@@ -90,7 +90,7 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - Coluna direita: **renderização em tempo real** estilo Discord
   - Reusável em: anúncios, sugestões, boas-vindas, etc.
 
-- [ ] **Página "Proteção" anti-raid completa** (7 tabs, ~3h pra tudo):
+- [x] **Página "Proteção" anti-raid completa** (7 tabs):
   - **Anti Fake** (toggle global) — detecta contas fake/bots novos
   - **Anti Spam** (toggle global + warning se off) — flood, spam, links
   - **Canais** — defesas contra ataques de destruição:

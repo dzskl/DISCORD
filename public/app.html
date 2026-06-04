@@ -1340,17 +1340,8 @@ footer.appfoot a:hover{color:var(--text);}
 
       <!-- PROTEÇÃO -->
       <div id="page-protecao" class="page">
-        <div class="card" style="margin-bottom:14px;">
-          <div class="ctitle">anti-raid <span class="cbadge">automod</span></div>
-          <div id="prot-cards" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
-        </div>
-        <div class="card">
-          <div class="ctitle">palavras banidas <span class="cbadge">apaga automático</span></div>
-          <div class="fgroup" style="margin-top:10px;">
-            <textarea class="inp" id="prot-banned-words" rows="4" placeholder="uma palavra por linha"></textarea>
-          </div>
-          <button class="btn-w" onclick="saveProtection()">salvar proteção</button>
-        </div>
+        <div id="prot-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap;"></div>
+        <div id="prot-tab-body"></div>
       </div>
 
       <!-- eCLOUD -->

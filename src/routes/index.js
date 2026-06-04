@@ -19,6 +19,7 @@ function register(app) {
   app.use('/api/bot-config', require('../controllers/bot-config.controller'));
   app.use('/api/channel-config', require('../controllers/channel-config.controller'));
   app.use('/api/role-config', require('../controllers/role-config.controller'));
+  app.use('/api/protection-v2', require('../controllers/protection.controller'));
   app.use('/api/achievements', require('../controllers/achievements.controller'));
   app.use('/api/tutorials', require('../controllers/tutorials.controller'));
   app.use('/api/public-stats', require('../controllers/public-stats.controller'));
