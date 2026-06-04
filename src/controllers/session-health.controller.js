@@ -50,6 +50,27 @@ router.get('/health', (req, res) => {
     is_placeholder: secret === 'troque-isto-por-uma-string-aleatoria-longa'
   };
 
+  // Discord OAuth credentials (no DB)
+  let discord = { client_id: false, client_secret: false };
+  try {
+    const { getCredential } = require('../database/connection');
+    discord = {
+      client_id: !!getCredential('DISCORD_CLIENT_ID'),
+      client_secret: !!getCredential('DISCORD_CLIENT_SECRET'),
+      bot_token: !!getCredential('DISCORD_TOKEN') || !!getCredential('DISCORD_BOT_TOKEN')
+    };
+  } catch {}
+
+  // Detecta se o Railway tem volume
+  let volume = null;
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+    volume = { railway: true, path: process.env.RAILWAY_VOLUME_MOUNT_PATH };
+  } else if (process.env.NODE_ENV === 'production') {
+    volume = { railway: false, warning: 'Sem RAILWAY_VOLUME_MOUNT_PATH em prod — DB pode zerar a cada deploy' };
+  } else {
+    volume = { railway: false, dev: true };
+  }
+
   res.json({
     your_session: {
       authenticated: !!req.appUser,
@@ -60,24 +81,60 @@ router.get('/health', (req, res) => {
     session_storage: {
       file: sessionFile,
       total_sessions: sessionsCount,
-      will_survive_deploy: process.env.RAILWAY_VOLUME_MOUNT_PATH ? true : 'verifique se ha volume em /app/data'
+      will_survive_deploy: !!process.env.RAILWAY_VOLUME_MOUNT_PATH
     },
     main_db: { file: mainDbFile, users_active: usersCount },
     session_secret: secretInfo,
-    advice: buildAdvice(secretInfo, sessionFile)
+    discord_oauth: discord,
+    volume,
+    public_url: process.env.PUBLIC_URL || null,
+    env: process.env.NODE_ENV || 'development',
+    advice: buildAdvice(secretInfo, sessionFile, discord, usersCount)
   });
 });
 
-function buildAdvice(secretInfo, sessionFile) {
+function buildAdvice(secretInfo, sessionFile, discord, usersCount) {
   const issues = [];
-  if (!secretInfo.set) issues.push('SESSION_SECRET nao definido — sessoes morrem a cada deploy');
-  else if (secretInfo.is_placeholder) issues.push('SESSION_SECRET ainda eh o placeholder do .env.example — troque por uma string aleatoria');
-  else if (!secretInfo.strong) issues.push('SESSION_SECRET muito curto — use 32+ caracteres aleatorios');
-  if (!sessionFile.exists) issues.push('sessions.sqlite nao existe — esperado se ainda nao houve login');
-  if (!process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.NODE_ENV === 'production') {
-    issues.push('Nao detectei volume persistente do Railway. Adicione um Volume em /app/data pra sessoes sobreviverem entre deploys.');
+  if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+    issues.push({
+      level: 'critical',
+      title: 'Sem Volume persistente no Railway',
+      message: 'O DB esta em /app/data SEM volume — toda vez que voce der deploy, perde tudo (users, sessoes, credenciais).',
+      fix: 'Railway > Settings > Volumes > Add Volume > monte em /app/data'
+    });
   }
-  return issues.length ? issues : ['tudo OK'];
+  if (!secretInfo.set) {
+    issues.push({
+      level: 'critical',
+      title: 'SESSION_SECRET nao definido',
+      message: 'Sessoes morrem a cada reboot do servidor.',
+      fix: 'Railway > Variables > adicione SESSION_SECRET com string aleatoria de 32+ caracteres'
+    });
+  } else if (secretInfo.is_placeholder) {
+    issues.push({ level: 'critical', title: 'SESSION_SECRET ainda eh placeholder', fix: 'Troque por string aleatoria' });
+  } else if (!secretInfo.strong) {
+    issues.push({ level: 'warn', title: 'SESSION_SECRET muito curto', message: 'Use 32+ caracteres', fix: 'Gere com: openssl rand -hex 32' });
+  }
+  if (!discord.client_id || !discord.client_secret) {
+    issues.push({
+      level: 'warn',
+      title: 'Discord OAuth nao configurado',
+      message: 'Login com Discord nao vai funcionar sem DISCORD_CLIENT_ID/SECRET nas credenciais.',
+      fix: 'Acesse /setup.html ou /app.html#credenciais e cole os valores do Discord Developer Portal'
+    });
+  }
+  if (usersCount === 0) {
+    issues.push({
+      level: 'info',
+      title: 'Nenhum usuario cadastrado',
+      message: 'A 1a pessoa que se cadastrar vira owner. Se isso aparece pra TODO MUNDO mesmo apos cadastro, o DB esta sendo zerado.',
+      fix: 'Configure Volume no Railway (item critico acima)'
+    });
+  }
+  if (!sessionFile.exists) {
+    issues.push({ level: 'info', title: 'sessions.sqlite nao existe ainda', message: 'Esperado se nunca ninguem fez login.' });
+  }
+  return issues.length ? issues : [{ level: 'ok', title: 'Tudo OK', message: 'Configuracao saudavel.' }];
 }
 
 module.exports = router;
