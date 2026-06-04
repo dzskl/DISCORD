@@ -6589,3 +6589,190 @@ if (typeof __origSpBio === 'function' && !window.__spHookedBio) {
     if (page === 'personalizacao') loadBioRotation();
   };
 }
+
+// ============ IA DE ATENDIMENTO ============
+let __saiData = null;
+
+async function loadSupportAi() {
+  try {
+    __saiData = await fetch('/api/support-ai', { credentials: 'same-origin' }).then(r => r.json());
+    renderSupportAi();
+  } catch (e) { console.warn('support-ai', e.message); }
+}
+
+function renderSupportAi() {
+  const wrap = document.getElementById('support-ai-card');
+  if (!wrap || !__saiData) return;
+  if (!__saiData.paid) {
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div>
+            <div style="font-weight:700;color:#fff;font-size:14px;">IA de Atendimento</div>
+            <div style="font-size:11.5px;color:#888;margin-top:2px;">Configure a inteligência artificial para responder automaticamente nos tickets.</div>
+          </div>
+        </div>
+        <button onclick="purchaseSupportAi()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:9px 16px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Desbloquear (R$ 15/mês)</button>
+      </div>
+    `;
+    return;
+  }
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7dd3a4" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <div>
+          <div style="font-weight:700;color:#fff;font-size:13.5px;">IA de Atendimento <span style="font-size:9.5px;background:rgba(34,197,94,.15);color:#7dd3a4;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace;">Premium</span></div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">Responde tickets automaticamente baseado em FAQ.</div>
+        </div>
+      </div>
+      <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+        <input type="checkbox" id="sai-enabled" ${__saiData.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+        <span style="position:absolute;inset:0;background:${__saiData.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:22px;"></span>
+        <span style="position:absolute;height:16px;width:16px;left:${__saiData.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;"></span>
+      </label>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <div>
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Modelo</label>
+        <select id="sai-model" class="inp" style="margin-top:4px;">
+          <option value="simple" ${__saiData.model === 'simple' ? 'selected' : ''}>Simples (keyword match)</option>
+          <option value="gpt" ${__saiData.model === 'gpt' ? 'selected' : ''}>GPT (requer OpenAI key)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Assinatura</label>
+        <input id="sai-signature" type="text" value="${escapeAttr(__saiData.signature || '')}" placeholder="— Bot IA" class="inp" style="margin-top:4px;">
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Mensagem de boas-vindas no ticket</label>
+      <textarea id="sai-greeting" rows="2" placeholder="Olá! Como posso ajudar?" class="inp" style="margin-top:4px;">${escapeHtml(__saiData.greeting || '')}</textarea>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Palavras pra encaminhar pra humano (CSV)</label>
+      <input id="sai-keywords" type="text" value="${escapeAttr((__saiData.escalate_keywords || []).join(', '))}" placeholder="reembolso, urgente, gerente" class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;">
+    </div>
+
+    <div style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">FAQ <span style="text-transform:none;color:#666;">(${(__saiData.faq || []).length}/100)</span></label>
+        <button onclick="addFaqEntry()" style="background:rgba(139,111,255,.2);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;">+ Adicionar</button>
+      </div>
+      <div id="sai-faq-list">${renderFaqList()}</div>
+    </div>
+
+    <div style="margin-top:14px;background:#0e0e0e;border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">🧪 Testar resposta</div>
+      <div style="display:flex;gap:6px;">
+        <input id="sai-test-q" type="text" placeholder="pergunta de teste..." class="inp" style="flex:1;">
+        <button onclick="testSupportAi()" style="background:#fff;color:#000;border:0;padding:8px 14px;border-radius:6px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;">Testar</button>
+      </div>
+      <div id="sai-test-result" style="margin-top:8px;display:none;"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button onclick="saveSupportAi()" class="kyc-btn primary">Salvar IA</button>
+    </div>
+  `;
+}
+
+function renderFaqList() {
+  const faq = __saiData.faq || [];
+  if (!faq.length) return '<div style="color:#666;font-size:11.5px;padding:14px;text-align:center;background:#0e0e0e;border:1px dashed var(--border);border-radius:6px;">Nenhuma FAQ — clique + para adicionar perguntas e respostas.</div>';
+  return faq.map((f, i) => `
+    <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:7px;padding:9px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <input type="text" data-faq-q="${i}" value="${escapeAttr(f.q || '')}" placeholder="Pergunta..." class="inp" style="font-size:11.5px;">
+          <textarea data-faq-a="${i}" rows="2" placeholder="Resposta..." class="inp" style="font-size:11.5px;margin-top:5px;">${escapeHtml(f.a || '')}</textarea>
+        </div>
+        <button onclick="removeFaqEntry(${i})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;flex-shrink:0;">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addFaqEntry() {
+  if (!__saiData.faq) __saiData.faq = [];
+  if (__saiData.faq.length >= 100) return toast('Máximo 100 FAQs', 'err');
+  __saiData.faq.push({ q: '', a: '' });
+  document.getElementById('sai-faq-list').innerHTML = renderFaqList();
+}
+
+function removeFaqEntry(i) {
+  __saiData.faq.splice(i, 1);
+  document.getElementById('sai-faq-list').innerHTML = renderFaqList();
+}
+
+async function purchaseSupportAi() {
+  if (!confirm('Desbloquear IA de Atendimento?\n\n(Stripe checkout em produção)')) return;
+  try {
+    const r = await fetch('/api/support-ai/purchase', { method: 'POST', credentials: 'same-origin' });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('IA de Atendimento desbloqueada!');
+    loadSupportAi();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveSupportAi() {
+  // colhe FAQs do DOM
+  const faq = [];
+  document.querySelectorAll('[data-faq-q]').forEach(el => {
+    const i = +el.dataset.faqQ;
+    faq[i] = faq[i] || {};
+    faq[i].q = el.value;
+  });
+  document.querySelectorAll('[data-faq-a]').forEach(el => {
+    const i = +el.dataset.faqA;
+    faq[i] = faq[i] || {};
+    faq[i].a = el.value;
+  });
+  const body = {
+    enabled: document.getElementById('sai-enabled')?.checked || false,
+    model: document.getElementById('sai-model')?.value || 'simple',
+    signature: document.getElementById('sai-signature')?.value || '',
+    greeting: document.getElementById('sai-greeting')?.value || '',
+    escalate_keywords: (document.getElementById('sai-keywords')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+    faq: faq.filter(f => f.q && f.a)
+  };
+  try {
+    const r = await fetch('/api/support-ai', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('IA salva');
+    loadSupportAi();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function testSupportAi() {
+  const q = document.getElementById('sai-test-q').value;
+  if (!q) return;
+  try {
+    const r = await fetch('/api/support-ai/test', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q }) });
+    const j = await r.json();
+    const wrap = document.getElementById('sai-test-result');
+    wrap.style.display = 'block';
+    if (j.escalate) {
+      wrap.innerHTML = `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:9px;color:#ff8a8a;font-size:11.5px;">↑ Encaminhar pra humano (palavra-chave detectada)</div>`;
+    } else if (j.matched) {
+      wrap.innerHTML = `<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:6px;padding:9px;color:#7dd3a4;font-size:11.5px;"><b>Match (${j.score}):</b> ${escapeHtml(j.matched.a)}</div>`;
+    } else {
+      wrap.innerHTML = `<div style="background:#0a0a0a;border:1px solid var(--border);border-radius:6px;padding:9px;color:#888;font-size:11.5px;">Sem match no FAQ — usaria fallback do modelo selecionado.</div>`;
+    }
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook: quando entrar em support-panels carrega IA tb
+const __origSpAi = window.sp;
+if (typeof __origSpAi === 'function' && !window.__spHookedAi) {
+  window.__spHookedAi = true;
+  window.sp = function (page, el) {
+    __origSpAi(page, el);
+    if (page === 'support-panels') loadSupportAi();
+  };
+}
