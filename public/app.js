@@ -5173,3 +5173,14 @@ if (typeof __origSpSp === 'function' && !window.__spHookedSp) {
     if (page === 'support-panels') loadSupportPanels();
   };
 }
+
+// ============ eCloud landing ============
+function ecloudShowConfig() {
+  document.getElementById('ecloud-landing').style.display = 'none';
+  document.getElementById('ecloud-config').style.display = 'block';
+  if (typeof loadEcloud === 'function') loadEcloud();
+}
+function ecloudShowLanding() {
+  document.getElementById('ecloud-landing').style.display = 'block';
+  document.getElementById('ecloud-config').style.display = 'none';
+}

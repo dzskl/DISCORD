@@ -1430,23 +1430,49 @@ footer.appfoot a:hover{color:var(--text);}
 
       <!-- eCLOUD -->
       <div id="page-ecloud" class="page">
-        <div style="background:#0e1a2e;border:1px solid #1a3a5e;border-radius:8px;padding:14px 16px;margin-bottom:18px;color:#a0bfff;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;">
-          💡 <b style="color:#fff">eCloud</b> permite puxar membros do seu Discord pra outro servidor via OAuth2. Útil pra rotacionar ou migrar bases.
-        </div>
-        <div class="card" style="margin-bottom:14px;">
-          <div class="ctitle">configuração OAuth2</div>
-          <div class="frow" style="margin-top:10px;">
-            <div class="fgroup"><div class="flabel">redirect URI</div><input class="inp" id="ecloud-redirect" readonly></div>
-            <div class="fgroup"><div class="flabel">servidor destino (guild ID)</div><input class="inp" id="ecloud-target" placeholder="ID do servidor"></div>
+        <!-- Landing inicial (mostra se ainda nao configurou) -->
+        <div id="ecloud-landing" style="text-align:center;padding:40px 20px;">
+          <div style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,rgba(139,111,255,.2),rgba(95,109,255,.1));border:1px solid rgba(139,111,255,.3);margin-bottom:18px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="1.8"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
           </div>
-          <button class="btn-w" onclick="saveEcloud()">salvar</button>
+          <div style="font-size:28px;font-weight:800;color:#fff;letter-spacing:-.01em;">eCloud</div>
+          <div style="font-size:13px;color:#888;margin-top:6px;max-width:420px;margin-left:auto;margin-right:auto;">Sistema de verificação OAuth2 e pull de membros</div>
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+            <button onclick="ecloudShowConfig()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:12px 22px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+              Registrar Novo Bot
+            </button>
+            <button onclick="ecloudShowConfig()" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:12px 22px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Vincular Chave Existente
+            </button>
+          </div>
         </div>
-        <div class="card">
-          <div class="ctitle">membros capturados <span class="cbadge" id="ecloud-count">0</span></div>
-          <table class="vtable">
-            <thead><tr><th>usuário</th><th>capturado em</th><th>status</th><th></th></tr></thead>
-            <tbody id="ecloud-tbody"><tr><td colspan="4" style="color:#444;text-align:center;padding:30px;">ainda nenhum membro capturado</td></tr></tbody>
-          </table>
+
+        <!-- Config detalhada (oculta por padrao) -->
+        <div id="ecloud-config" style="display:none;">
+          <button onclick="ecloudShowLanding()" style="background:transparent;border:0;color:#888;padding:6px 0;cursor:pointer;font-family:inherit;font-size:12px;margin-bottom:14px;display:inline-flex;align-items:center;gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar
+          </button>
+          <div style="background:#0e1a2e;border:1px solid #1a3a5e;border-radius:8px;padding:14px 16px;margin-bottom:18px;color:#a0bfff;font-size:12px;font-family:'IBM Plex Mono',monospace;line-height:1.6;">
+            💡 <b style="color:#fff">eCloud</b> permite puxar membros do seu Discord pra outro servidor via OAuth2. Útil pra rotacionar ou migrar bases.
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="ctitle">configuração OAuth2</div>
+            <div class="frow" style="margin-top:10px;">
+              <div class="fgroup"><div class="flabel">redirect URI</div><input class="inp" id="ecloud-redirect" readonly></div>
+              <div class="fgroup"><div class="flabel">servidor destino (guild ID)</div><input class="inp" id="ecloud-target" placeholder="ID do servidor"></div>
+            </div>
+            <button class="btn-w" onclick="saveEcloud()">salvar</button>
+          </div>
+          <div class="card">
+            <div class="ctitle">membros capturados <span class="cbadge" id="ecloud-count">0</span></div>
+            <table class="vtable">
+              <thead><tr><th>usuário</th><th>capturado em</th><th>status</th><th></th></tr></thead>
+              <tbody id="ecloud-tbody"><tr><td colspan="4" style="color:#444;text-align:center;padding:30px;">ainda nenhum membro capturado</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
