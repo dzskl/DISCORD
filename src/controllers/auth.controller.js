@@ -267,6 +267,24 @@ router.post('/logout', (req, res) => {
   else req.session.destroy(() => res.json({ ok: true }));
 });
 
+// Encerra TODAS as sessoes do user atual (em todos os dispositivos)
+router.post('/sessions/end-all', (req, res) => {
+  if (!req.appUser) return res.status(401).json({ error: 'nao autenticado' });
+  const userId = req.appUser.id;
+  // Apaga todas as sessoes do user no store SQLite (procura por sess que tem userId/passport.user)
+  try {
+    const stmt = db.prepare(`DELETE FROM sessions WHERE sess LIKE '%"userId":' || ? || '%' OR sess LIKE '%"user":' || ? || '%'`);
+    const r = stmt.run(userId, userId);
+    audit.log({ req, action: 'user.end_all_sessions', details: { removed: r.changes } });
+    if (req.logout) req.logout(() => { req.session.destroy(() => res.json({ ok: true, removed: r.changes })); });
+    else req.session.destroy(() => res.json({ ok: true, removed: r.changes }));
+  } catch (e) {
+    require('../utils/logger').warn({ err: e.message }, 'end-all-sessions falhou');
+    if (req.session) req.session.destroy(() => res.json({ ok: true, fallback: true }));
+    else res.json({ ok: true, fallback: true });
+  }
+});
+
 // ---------- ME ----------
 router.get('/me', (req, res) => {
   if (bypassActive()) {

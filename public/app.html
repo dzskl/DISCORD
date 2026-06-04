@@ -682,7 +682,7 @@ footer.appfoot a:hover{color:var(--text);}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
               Carteira
             </a>
-            <a href="#" onclick="sp('config',document.querySelector('[data-page=config]'));closeUserMenu();return false;" class="um-item" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#aaa;text-decoration:none;font-size:12.5px;cursor:pointer;">
+            <a href="#" onclick="sp('conta',null);closeUserMenu();return false;" class="um-item" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#aaa;text-decoration:none;font-size:12.5px;cursor:pointer;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               Configurações
             </a>
@@ -2068,6 +2068,66 @@ footer.appfoot a:hover{color:var(--text);}
       </div>
 
       <!-- CONFIG -->
+      <!-- CONTA (user-level: Configurações do dropdown do avatar) -->
+      <div id="page-conta" class="page">
+        <div style="margin-bottom:18px;">
+          <div style="font-size:22px;font-weight:800;color:#fff;">Configurações</div>
+          <div style="font-size:13px;color:#888;margin-top:4px;">Gerencie sua conta, integrações e segurança</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:18px;background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:6px;width:fit-content;">
+          <button class="conta-tab active" data-conta-tab="carteira" onclick="switchContaTab('carteira')" style="background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);color:#fff;padding:8px 16px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            Carteira
+          </button>
+          <button class="conta-tab" data-conta-tab="seguranca" onclick="switchContaTab('seguranca')" style="background:transparent;border:1px solid transparent;color:#888;padding:8px 16px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Segurança
+          </button>
+        </div>
+
+        <!-- TAB CARTEIRA (placeholder — item maior na stack pendente) -->
+        <div id="conta-tab-carteira" class="conta-pane">
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;color:#888;font-size:13px;text-align:center;">
+            Configurações de empresa, API Key e integrações em breve. Use a página <a href="#" onclick="sp('carteira',null);return false;" style="color:#b9a8ff;">Carteira</a> pra saldo/saques.
+          </div>
+        </div>
+
+        <!-- TAB SEGURANÇA -->
+        <div id="conta-tab-seguranca" class="conta-pane" style="display:none;">
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <div style="flex:1;">
+                <div style="font-weight:700;color:#fff;font-size:14px;">Autenticação de Dois Fatores (2FA)</div>
+                <div style="color:#888;font-size:12px;margin-top:3px;" id="conta-2fa-status">2FA desativado — gerencie na página Minha Conta</div>
+              </div>
+            </div>
+            <button onclick="sp('conta',null);scrollTo2FA()" id="conta-2fa-btn" style="margin-top:14px;background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:10px 16px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Gerenciar 2FA no Perfil
+            </button>
+          </div>
+
+          <div style="background:#0a0a0a;border:1px solid rgba(255,107,107,.25);border-radius:12px;padding:18px;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <div style="flex:1;">
+                <div style="font-weight:700;color:#fff;font-size:14px;">Encerrar Todas as Sessões</div>
+                <div style="color:#888;font-size:12px;margin-top:3px;">Desconecte de todos os dispositivos</div>
+              </div>
+            </div>
+            <div style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:8px;padding:11px 14px;margin-top:14px;color:#ff8a8a;font-size:11.5px;display:flex;align-items:flex-start;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Isso irá deslogar todos os seus dispositivos. O próximo login deverá ser feito com Discord.</span>
+            </div>
+            <button onclick="endAllSessions()" style="margin-top:12px;background:transparent;color:#ff8a8a;border:1px solid rgba(255,107,107,.35);padding:10px 16px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Encerrar Todas as Sessões
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="page-config" class="page">
         <div class="cfgrow">
           <div>

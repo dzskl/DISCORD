@@ -4081,3 +4081,36 @@ if (typeof __origSpIt === 'function' && !window.__spHookedIt) {
     if (page === 'invite-tracker') loadInviteTracker();
   };
 }
+
+// ============ PAGE CONTA (user-level Configurações) ============
+function switchContaTab(tab) {
+  document.querySelectorAll('.conta-tab').forEach(b => {
+    const on = b.dataset.contaTab === tab;
+    b.classList.toggle('active', on);
+    b.style.background = on ? 'rgba(139,111,255,.15)' : 'transparent';
+    b.style.borderColor = on ? 'rgba(139,111,255,.3)' : 'transparent';
+    b.style.color = on ? '#fff' : '#888';
+  });
+  document.querySelectorAll('.conta-pane').forEach(p => p.style.display = 'none');
+  const pane = document.getElementById('conta-tab-' + tab);
+  if (pane) pane.style.display = 'block';
+}
+
+async function endAllSessions() {
+  if (!confirm('Encerrar todas as sessões em todos os dispositivos?\n\nVocê será deslogado agora.')) return;
+  try {
+    const r = await fetch('/auth/sessions/end-all', { method: 'POST', credentials: 'same-origin' });
+    if (r.ok) {
+      toast('Sessões encerradas. Redirecionando...');
+      setTimeout(() => location.href = '/login.html', 800);
+    } else toast('Falha', 'err');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function scrollTo2FA() {
+  // Tenta scroll ao card 2FA do app.html se existir (carteira tem o setup)
+  setTimeout(() => {
+    const el = document.getElementById('ct-2fa-banner') || document.querySelector('[id*="2fa"]');
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 200);
+}
