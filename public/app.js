@@ -3784,24 +3784,52 @@ function renderConfigWarnings(cred) {
   `).join('');
 }
 
-function renderMainServer(guild) {
+async function renderMainServer(guild) {
   const wrap = document.getElementById('main-server-card');
   if (!wrap) return;
   const list = guild?.guilds || guild?.instances || [];
   const active = list.find(g => g.active !== 0) || list[0];
   if (!active) return;
+
+  // tenta pegar stats em tempo real do bot
+  let stats = null;
+  try { stats = await fetch('/api/stats/overview', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null); } catch {}
+  const members = stats?.members_total ?? '—';
+  const clients = stats?.clients_count ?? '0';
+  const inviteUrl = await fetch('/api/onboarding/invite-url', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
+
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-      <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;${active.icon_url ? `background:url('${escapeAttr(active.icon_url)}') center/cover;` : ''}">${active.icon_url ? '' : (active.name || '?').charAt(0).toUpperCase()}</div>
+      <div style="position:relative;flex-shrink:0;">
+        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;${active.icon_url ? `background:url('${escapeAttr(active.icon_url)}') center/cover;` : ''}">${active.icon_url ? '' : (active.name || '?').charAt(0).toUpperCase()}</div>
+        <span style="position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;background:#22c55e;border:2px solid #0e0e0e;border-radius:50%;"></span>
+      </div>
       <div style="flex:1;min-width:0;">
-        <div style="color:#fff;font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(active.name || '—')}</div>
-        <div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;">ID: ${escapeHtml(String(active.id || ''))}</div>
+        <div style="color:#fff;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(active.name || '—')}</div>
+        <div style="color:#666;font-size:10px;font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;gap:6px;">
+          ID: ${escapeHtml(String(active.id || ''))}
+          <button onclick="copyMainServerId('${escapeAttr(active.id || '')}')" title="Copiar" style="background:transparent;border:0;color:#666;cursor:pointer;padding:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <span style="font-size:10.5px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:3px 8px;border-radius:10px;font-family:'IBM Plex Mono',monospace;">membros</span>
+    <div style="font-size:10.5px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Informações do Servidor</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <span style="font-size:10.5px;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:3px 9px;border-radius:10px;font-family:'IBM Plex Mono',monospace;"><b>${members}</b> membros</span>
+      <span style="font-size:10.5px;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:3px 9px;border-radius:10px;font-family:'IBM Plex Mono',monospace;"><b>${clients}</b> clientes</span>
     </div>
+    ${inviteUrl?.url ? `
+      <a href="${escapeAttr(inviteUrl.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:7px 12px;border-radius:7px;font-size:11.5px;text-decoration:none;cursor:pointer;font-family:inherit;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Adicionar <b style="color:#fff;">${escapeHtml((active.name || 'bot').slice(0, 24))}</b> a outro servidor
+      </a>
+    ` : ''}
   `;
+}
+
+function copyMainServerId(id) {
+  navigator.clipboard.writeText(id).then(() => toast('ID copiado'));
 }
 
 async function loadAuditMini() {
