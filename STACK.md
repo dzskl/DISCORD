@@ -43,10 +43,10 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 ### Rodada NeverMissApps #2 — Trial / Sidebar / Visão Geral
 
 #### 🟢 Rápidas (~15-30min)
-- [ ] **User dropdown no topbar**: avatar → menu com nome+email+último acesso, Minha Conta / Aplicações / Carteira / Configurações / Sair
+- [x] **User dropdown no topbar**: avatar → menu com nome+email+último acesso, Minha Conta / Aplicações / Carteira / Configurações / Sair
 - [ ] **Warning banner "config faltando"** reusável (ex: "Chave API não configurada" + botão "Configurar agora")
-- [ ] **Renomeações empresariais**: "Aplicações" em vez de "Bots", "Automações" em vez de "Auto-respostas"
-- [ ] **"Aplicação ativa" label** com dot verde no card do bot
+- [x] **Renomeações empresariais**: "Aplicações" em vez de "Bots", "Automações" em vez de "Auto-respostas"
+- [x] **"Aplicação ativa" label** com dot verde no card do bot
 - [ ] **"Meus Bots" link** voltando pra listagem
 - [ ] **Apelido custom do bot** (short name editável usado no breadcrumb)
 

@@ -165,6 +165,17 @@ async function bootstrap() {
   const meta = document.querySelector('.sidebar-foot .foot-meta');
   if (meta) meta.textContent = (u.role || 'admin') + ' · ' + (u.email ? u.email.split('@')[0] : '');
 
+  // Popula user dropdown no topbar
+  const av = document.getElementById('user-avatar');
+  if (av) {
+    if (avatar) { av.style.backgroundImage = `url(${avatar})`; av.textContent = ''; }
+    else { av.textContent = (name[0] || 'U').toUpperCase(); }
+  }
+  const setUm = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || '—'; };
+  setUm('user-menu-name', name);
+  setUm('user-menu-email', u.email || '');
+  setUm('user-menu-last', u.last_login_at ? new Date(u.last_login_at * 1000).toLocaleString('pt-BR') : 'agora');
+
   restoreNavGroups();
   loadBrand();
   loadOverview();
@@ -2755,7 +2766,12 @@ function renderBotSwitcher() {
     }
   }
   if (nm) nm.textContent = __activeBot.name;
-  if (id) id.textContent = __activeBot.discord_client_id || ('id ' + __activeBot.id);
+  const status = document.getElementById('bot-sw-status');
+  if (status) {
+    const isActive = __activeBot.status === 'active' || !__activeBot.status;
+    status.textContent = isActive ? 'Aplicação ativa' : 'Aplicação inativa';
+    status.previousElementSibling && (status.previousElementSibling.style.background = isActive ? '#22c55e' : '#666');
+  }
 }
 
 function toggleBotSwitcher(e) {
@@ -3147,3 +3163,18 @@ if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
 }
 setTimeout(updateAdminBadges, 1800);
 setInterval(updateAdminBadges, 90000);
+
+// ============ USER MENU ============
+function toggleUserMenu(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('user-dropdown');
+  if (!dd) return;
+  const open = dd.style.display === 'block';
+  dd.style.display = open ? 'none' : 'block';
+  if (!open) setTimeout(() => document.addEventListener('click', closeUserMenuOnce, { once: true }), 50);
+}
+function closeUserMenuOnce() { closeUserMenu(); }
+function closeUserMenu() {
+  const dd = document.getElementById('user-dropdown');
+  if (dd) dd.style.display = 'none';
+}
