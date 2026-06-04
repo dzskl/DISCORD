@@ -147,6 +147,37 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #12 — Modal "Editar" reusável para regras de Proteção
+
+#### 🟡 Médias (~1h)
+- [ ] **Modal "Editar Regra de Proteção" reusável** — cada toggle de
+  Proteção tem botão "Editar" que abre modal com campos padronizados:
+  - Header: nome da regra + "Editar configurações" + X
+  - Campos variam por contexto:
+    - **Regras de monitoramento** (Banimentos/Expulsões Massivas):
+      - Limite (numérico)
+      - Intervalo em segundos (numérico)
+      - Punição (dropdown: Banir/Kick/Mute/Tirar Cargo/Remover Perms)
+      - Cargos Imunes (multi-select)
+      - Canal de Logs (dropdown)
+    - **Regras de defesa** (Deleção/Edição/Criação Canais/Cargos,
+      Segurança Avançada):
+      - Punição
+      - Cargos Imunes
+      - Canal de Logs
+    - **Configurações Globais** (compartilhado por tab):
+      - Mesmos 3 campos (Punição + Cargos Imunes + Canal de Logs)
+      - Aplica como fallback quando regra específica não setou
+  - Footer: botão Fechar
+
+- [ ] **Editor "Editar" em todas as regras de Proteção** (substitui
+    edição inline):
+  - Cargos tab — Configurações Globais + 3 regras
+  - Canais tab — Configurações Globais + 3 regras
+  - Moderação tab — 2 regras (Banimentos/Expulsões)
+  - Segurança Avançada — 5 regras
+  - Anti Fake, Anti Spam (já têm config inline diferente)
+
 ### Rodada NeverMissApps #11 — Convites detalhado + Permissões de Comandos expandidas
 
 #### 🟠 Maiores (~2h cada)
