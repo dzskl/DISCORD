@@ -5184,3 +5184,281 @@ function ecloudShowLanding() {
   document.getElementById('ecloud-landing').style.display = 'block';
   document.getElementById('ecloud-config').style.display = 'none';
 }
+
+// ============ EMBED BUILDER reusável ============
+// mountEmbedBuilder({ container, value, onChange, showAuthor, showImage, showFooter, showFields, showButtons })
+// value: { color, author:{name,url,iconUrl}, title, url, description, fields:[{name,value,inline}], imageUrl, footer:{text,iconUrl}, buttons:[{label,url}] }
+function mountEmbedBuilder(opts = {}) {
+  const root = opts.container;
+  if (!root) return null;
+  const value = Object.assign({
+    color: '#5865F2',
+    author: { name: '', url: '', iconUrl: '' },
+    title: '',
+    url: '',
+    description: '',
+    fields: [],
+    imageUrl: '',
+    footer: { text: '', iconUrl: '' },
+    buttons: []
+  }, opts.value || {});
+  const opt = {
+    showAuthor: true, showImage: true, showFooter: true, showFields: true, showButtons: false,
+    botName: 'Bot', botAvatar: '',
+    ...opts
+  };
+
+  function emit() { if (typeof opts.onChange === 'function') opts.onChange(getValue()); renderPreview(); }
+  function getValue() { return JSON.parse(JSON.stringify(value)); }
+  function setValue(v) { Object.assign(value, v); render(); }
+
+  function render() {
+    root.innerHTML = `
+      <div class="eb-wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="eb-left" style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;border-left:3px solid ${value.color};">
+          <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Cor da Embed</div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;">
+            <input type="color" class="eb-color" value="${value.color}" style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="text" class="eb-color-hex" value="${value.color}" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:7px 10px;border-radius:6px;">
+          </div>
+
+          ${opt.showAuthor ? `
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Autor <span style="text-transform:none;color:#666;">(${(value.author.name || '').length}/256)</span></div>
+            <div style="display:flex;gap:6px;margin-bottom:12px;">
+              <div style="width:32px;height:32px;background:#0e0e0e;border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+                <input class="eb-author-name" placeholder="Nome" value="${escapeAttr(value.author.name || '')}" maxlength="256" class="inp" style="background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:6px 9px;border-radius:6px;font-size:11.5px;">
+                <input class="eb-author-icon" placeholder="URL do ícone" value="${escapeAttr(value.author.iconUrl || '')}" class="inp" style="background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:6px 9px;border-radius:6px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Título <span style="text-transform:none;color:#666;">(${(value.title || '').length}/256)</span></div>
+          <input class="eb-title" value="${escapeAttr(value.title || '')}" placeholder="Escreva um título..." maxlength="256" style="width:100%;background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:8px 10px;border-radius:6px;font-size:12.5px;margin-bottom:12px;">
+
+          <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Descrição <span style="text-transform:none;color:#666;">(${(value.description || '').length}/4096)</span></div>
+          <textarea class="eb-desc" rows="4" placeholder="Escreva uma descrição..." maxlength="4096" style="width:100%;background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:8px 10px;border-radius:6px;font-size:12.5px;margin-bottom:12px;font-family:inherit;">${escapeHtml(value.description || '')}</textarea>
+
+          ${opt.showFields ? `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Fields ( Campos )</div>
+              <button class="eb-add-field" style="background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">+</button>
+            </div>
+            <div class="eb-fields-wrap" style="margin-bottom:12px;">
+              ${(value.fields || []).map((f, i) => `
+                <div class="eb-field" style="background:#0e0e0e;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
+                  <div style="display:flex;gap:6px;margin-bottom:4px;">
+                    <input class="eb-field-name" data-i="${i}" value="${escapeAttr(f.name || '')}" placeholder="Nome do campo" style="flex:1;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:5px 8px;border-radius:5px;font-size:11.5px;">
+                    <button class="eb-field-rm" data-i="${i}" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+                  </div>
+                  <input class="eb-field-value" data-i="${i}" value="${escapeAttr(f.value || '')}" placeholder="Valor" style="width:100%;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:5px 8px;border-radius:5px;font-size:11.5px;">
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${opt.showImage ? `
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Imagem</div>
+            <div style="background:#0e0e0e;border:1px dashed var(--border);border-radius:6px;padding:18px;text-align:center;margin-bottom:12px;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" style="margin-bottom:6px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <input class="eb-image" type="text" value="${escapeAttr(value.imageUrl || '')}" placeholder="URL da imagem (PNG/JPG/GIF até 10MB)" style="width:100%;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;">
+            </div>
+          ` : ''}
+
+          ${opt.showFooter ? `
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">Rodapé <span style="text-transform:none;color:#666;">(${(value.footer.text || '').length}/2048)</span></div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <div style="width:32px;height:32px;background:#0e0e0e;border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <input class="eb-footer-text" placeholder="Digite um rodapé..." value="${escapeAttr(value.footer.text || '')}" maxlength="2048" style="flex:1;background:#0e0e0e;border:1px solid var(--border);color:#fff;padding:7px 9px;border-radius:6px;font-size:11.5px;">
+            </div>
+          ` : ''}
+
+          ${opt.showButtons ? `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px;">
+              <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Botões <span style="text-transform:none;color:#666;">(${(value.buttons || []).length}/4)</span></div>
+              <button class="eb-add-btn" ${(value.buttons || []).length >= 4 ? 'disabled' : ''} style="background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Adicionar Botão</button>
+            </div>
+            <div class="eb-buttons-wrap">
+              ${(value.buttons || []).map((b, i) => `
+                <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;display:flex;gap:6px;">
+                  <input class="eb-btn-label" data-i="${i}" value="${escapeAttr(b.label || '')}" placeholder="Texto" style="flex:1;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:5px 8px;border-radius:5px;font-size:11.5px;">
+                  <input class="eb-btn-url" data-i="${i}" value="${escapeAttr(b.url || '')}" placeholder="URL" style="flex:1;background:#1a1a1a;border:1px solid var(--border);color:#fff;padding:5px 8px;border-radius:5px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
+                  <button class="eb-btn-rm" data-i="${i}" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;">×</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="eb-right">
+          <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">Preview em tempo real</div>
+          <div class="eb-preview" style="background:#36393F;border-radius:8px;overflow:hidden;border-left:4px solid ${value.color};padding:14px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;${opt.botAvatar ? `background:url('${escapeAttr(opt.botAvatar)}') center/cover;` : ''}">${opt.botAvatar ? '' : (opt.botName || 'B').charAt(0)}</div>
+              <span style="color:#fff;font-weight:600;font-size:13px;">${escapeHtml(opt.botName || 'Bot')}</span>
+              <span style="color:#72767d;font-size:10.5px;">${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            ${value.author.name ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">${value.author.iconUrl ? `<img src="${escapeAttr(value.author.iconUrl)}" style="width:18px;height:18px;border-radius:50%;">` : ''}<span style="color:#fff;font-size:11.5px;">${escapeHtml(value.author.name)}</span></div>` : ''}
+            ${value.title ? `<div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:6px;">${escapeHtml(value.title)}</div>` : ''}
+            ${value.description ? `<div style="color:#dcddde;font-size:12.5px;line-height:1.45;white-space:pre-wrap;">${escapeHtml(value.description)}</div>` : ''}
+            ${value.fields && value.fields.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">${value.fields.map(f => `<div style="flex:1;min-width:140px;"><div style="color:#fff;font-weight:700;font-size:11.5px;">${escapeHtml(f.name || '')}</div><div style="color:#dcddde;font-size:11px;">${escapeHtml(f.value || '')}</div></div>`).join('')}</div>` : ''}
+            ${value.imageUrl ? `<img src="${escapeAttr(value.imageUrl)}" style="max-width:100%;border-radius:5px;margin-top:10px;">` : ''}
+            ${value.footer.text ? `<div style="color:#72767d;font-size:11px;margin-top:8px;display:flex;align-items:center;gap:6px;">${value.footer.iconUrl ? `<img src="${escapeAttr(value.footer.iconUrl)}" style="width:16px;height:16px;border-radius:50%;">` : ''}${escapeHtml(value.footer.text)}</div>` : ''}
+            ${value.buttons && value.buttons.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${value.buttons.map(b => `<div style="background:#4f545c;color:#fff;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:600;">${escapeHtml(b.label || 'Botão')}</div>`).join('')}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    wireEvents();
+  }
+
+  function wireEvents() {
+    root.querySelector('.eb-color')?.addEventListener('input', e => { value.color = e.target.value; root.querySelector('.eb-color-hex').value = e.target.value; root.querySelector('.eb-left').style.borderLeftColor = e.target.value; renderPreview(); emit(); });
+    root.querySelector('.eb-color-hex')?.addEventListener('input', e => { value.color = e.target.value; root.querySelector('.eb-color').value = e.target.value; renderPreview(); emit(); });
+    root.querySelector('.eb-author-name')?.addEventListener('input', e => { value.author.name = e.target.value; emit(); });
+    root.querySelector('.eb-author-icon')?.addEventListener('input', e => { value.author.iconUrl = e.target.value; emit(); });
+    root.querySelector('.eb-title')?.addEventListener('input', e => { value.title = e.target.value; emit(); });
+    root.querySelector('.eb-desc')?.addEventListener('input', e => { value.description = e.target.value; emit(); });
+    root.querySelector('.eb-image')?.addEventListener('input', e => { value.imageUrl = e.target.value; emit(); });
+    root.querySelector('.eb-footer-text')?.addEventListener('input', e => { value.footer.text = e.target.value; emit(); });
+    root.querySelector('.eb-add-field')?.addEventListener('click', e => { e.preventDefault(); value.fields = value.fields || []; value.fields.push({ name: '', value: '' }); render(); emit(); });
+    root.querySelectorAll('.eb-field-name').forEach(el => el.addEventListener('input', e => { value.fields[+e.target.dataset.i].name = e.target.value; emit(); }));
+    root.querySelectorAll('.eb-field-value').forEach(el => el.addEventListener('input', e => { value.fields[+e.target.dataset.i].value = e.target.value; emit(); }));
+    root.querySelectorAll('.eb-field-rm').forEach(el => el.addEventListener('click', e => { value.fields.splice(+e.target.dataset.i, 1); render(); emit(); }));
+    root.querySelector('.eb-add-btn')?.addEventListener('click', e => { e.preventDefault(); value.buttons = value.buttons || []; if (value.buttons.length < 4) { value.buttons.push({ label: '', url: '' }); render(); emit(); } });
+    root.querySelectorAll('.eb-btn-label').forEach(el => el.addEventListener('input', e => { value.buttons[+e.target.dataset.i].label = e.target.value; emit(); }));
+    root.querySelectorAll('.eb-btn-url').forEach(el => el.addEventListener('input', e => { value.buttons[+e.target.dataset.i].url = e.target.value; emit(); }));
+    root.querySelectorAll('.eb-btn-rm').forEach(el => el.addEventListener('click', e => { value.buttons.splice(+e.target.dataset.i, 1); render(); emit(); }));
+  }
+
+  function renderPreview() {
+    const prev = root.querySelector('.eb-preview');
+    if (!prev) return;
+    prev.style.borderLeftColor = value.color;
+  }
+
+  render();
+  return { getValue, setValue };
+}
+
+// ============ MENSAGEM AUTOMATICA — Modal (usa Embed Builder) ============
+let __amCurrent = null;     // { id?, ... } sendo editado
+let __amBuilder = null;     // referencia do builder mountado
+
+function openAutoMessageModal(initial) {
+  __amCurrent = Object.assign({
+    id: null,
+    channel_id: '',
+    content: '',
+    mode: 'embed',
+    interval_minutes: 60,
+    embed: { color: '#5865F2', author: { name: '', iconUrl: '' }, title: '', description: '', fields: [], imageUrl: '', footer: { text: '', iconUrl: '' }, buttons: [] }
+  }, initial || {});
+
+  document.getElementById('modal-am-title').textContent = __amCurrent.id
+    ? 'Editar Mensagem Automática'
+    : 'Adicionar Mensagem Automática';
+
+  const body = document.getElementById('modal-am-body');
+  body.innerHTML = `
+    <div style="font-size:13px;color:#888;margin-bottom:14px;">Configure os detalhes da mensagem que será enviada automaticamente.</div>
+
+    <div style="margin-bottom:12px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Canal</label>
+      <input id="am-channel" type="text" value="${escapeAttr(__amCurrent.channel_id || '')}" placeholder="ID do canal de texto" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Conteúdo <span style="text-transform:none;color:#666;">(texto acima da embed)</span></label>
+      <textarea id="am-content" rows="2" placeholder="Digite o conteúdo da mensagem..." class="inp" style="margin-top:5px;">${escapeHtml(__amCurrent.content || '')}</textarea>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Modo de Envio</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:5px;">
+        ${[
+          { v: 'embed', l: 'Embed (Padrão)' },
+          { v: 'components_v2', l: 'Components V2' },
+          { v: 'legacy', l: 'Legacy (Texto)' }
+        ].map(o => `
+          <button class="am-mode-btn" data-mode="${o.v}" onclick="amSetMode('${o.v}')" style="background:${__amCurrent.mode === o.v ? 'linear-gradient(90deg,#8b6fff,#7758ff)' : '#0e0e0e'};border:1px solid ${__amCurrent.mode === o.v ? 'transparent' : 'var(--border)'};color:${__amCurrent.mode === o.v ? '#fff' : '#888'};padding:9px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:600;">${o.l}</button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Intervalo (minutos)</label>
+      <input id="am-interval" type="number" min="1" value="${__amCurrent.interval_minutes || 60}" class="inp" style="margin-top:5px;">
+    </div>
+
+    <div id="am-builder-wrap" style="margin-bottom:14px;"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:14px;border-top:1px solid var(--border);position:sticky;bottom:-22px;background:#0e0e0e;margin:0 -22px -22px;padding:14px 22px;">
+      <button onclick="closeModal('modal-auto-msg')" class="kyc-btn secondary">Cancelar</button>
+      <button onclick="saveAutoMessage()" class="kyc-btn primary">Salvar</button>
+    </div>
+  `;
+
+  amRenderBuilder();
+  document.getElementById('modal-auto-msg').classList.add('open');
+}
+
+function amSetMode(mode) {
+  __amCurrent.mode = mode;
+  document.querySelectorAll('.am-mode-btn').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.style.background = on ? 'linear-gradient(90deg,#8b6fff,#7758ff)' : '#0e0e0e';
+    b.style.borderColor = on ? 'transparent' : 'var(--border)';
+    b.style.color = on ? '#fff' : '#888';
+  });
+  amRenderBuilder();
+}
+
+function amRenderBuilder() {
+  const wrap = document.getElementById('am-builder-wrap');
+  if (!wrap) return;
+  if (__amCurrent.mode === 'legacy') {
+    wrap.innerHTML = '<div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:18px;color:#888;font-size:12.5px;text-align:center;">Modo Legacy: somente o texto do campo "Conteúdo" será enviado.</div>';
+    __amBuilder = null;
+    return;
+  }
+  wrap.innerHTML = '';
+  __amBuilder = mountEmbedBuilder({
+    container: wrap,
+    value: __amCurrent.embed,
+    showAuthor: true, showImage: true, showFooter: true, showFields: true,
+    showButtons: __amCurrent.mode === 'components_v2',
+    onChange: v => { __amCurrent.embed = v; }
+  });
+}
+
+async function saveAutoMessage() {
+  if (!__amCurrent) return;
+  const channel = document.getElementById('am-channel').value.trim();
+  if (!channel) return toast('Canal obrigatório', 'err');
+  const body = {
+    channel_id: channel,
+    content: document.getElementById('am-content').value || null,
+    mode: __amCurrent.mode,
+    interval_minutes: parseInt(document.getElementById('am-interval').value) || 60,
+    embed: __amBuilder ? __amBuilder.getValue() : __amCurrent.embed
+  };
+  try {
+    const url = __amCurrent.id ? '/api/auto-messages/' + __amCurrent.id : '/api/auto-messages';
+    const method = __amCurrent.id ? 'PUT' : 'POST';
+    const r = await fetch(url, {
+      method, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast(__amCurrent.id ? 'Atualizada' : 'Criada');
+    closeModal('modal-auto-msg');
+    if (typeof loadAutoMessages === 'function') loadAutoMessages();
+  } catch (e) { toast(e.message, 'err'); }
+}
