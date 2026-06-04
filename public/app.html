@@ -1381,11 +1381,23 @@ footer.appfoot a:hover{color:var(--text);}
               ${'{member} {membername} {inviter} {invitername} {invites}'.split(' ').map(v => `<button onclick="navigator.clipboard.writeText('${v}');toast('${v} copiado')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;border-radius:5px;padding:3px 8px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;cursor:pointer;">${v}</button>`).join('')}
             </div>
             <textarea id="it-entry-msg" class="inp" rows="2" placeholder="Ex: Bem-vindo {member}! Convidado por {inviter} ({invites} convites)" oninput="saveItDebounced()"></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+              <button onclick="openItEmbedEditor('entry')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Abrir Editor de Embed
+              </button>
+            </div>
           </div>
 
           <div>
             <div style="font-size:11.5px;color:#ff8a8a;font-weight:600;margin-bottom:6px;">× Mensagem de Saída</div>
             <textarea id="it-leave-msg" class="inp" rows="2" placeholder="Ex: {membername} saiu do servidor. Convidado por {invitername}" oninput="saveItDebounced()"></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+              <button onclick="openItEmbedEditor('leave')" style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Abrir Editor de Embed
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2727,6 +2739,17 @@ footer.appfoot a:hover{color:var(--text);}
         <div style="color:#666;font-size:12.5px;text-align:center;padding:24px;">Digite para pesquisar usuários</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Modal Editor de Embed para Invite Tracker (entry/leave) -->
+<div class="modal-back" id="modal-it-embed">
+  <div class="modal" style="max-width:900px;max-height:92vh;display:flex;flex-direction:column;">
+    <div class="modal-head">
+      <h3 id="modal-it-title">Editor de Embed</h3>
+      <button class="modal-x" onclick="closeModal('modal-it-embed')">×</button>
+    </div>
+    <div class="modal-body" id="modal-it-body" style="flex:1;overflow-y:auto;"></div>
   </div>
 </div>
 

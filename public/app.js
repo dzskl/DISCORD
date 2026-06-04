@@ -2721,10 +2721,7 @@ function renderProtTab() {
                 </div>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </summary>
-              <div style="padding:12px 14px;border-top:1px solid var(--border);background:#0e0e0e;">
-                <div style="font-size:11px;color:#888;margin-bottom:8px;">Cargos permitidos (separados por vírgula):</div>
-                <input type="text" value="${escapeAttr((tabCfg[r.key] || []).join(', '))}" data-perm="${escapeAttr(r.key)}" oninput="updateProtField('${r.key}', this.value.split(',').map(s=>s.trim()).filter(Boolean))" class="inp" placeholder="ID dos cargos">
-              </div>
+              ${renderCmdPermContent(r.key, tabCfg)}
             </details>
           `;
         }
@@ -4584,22 +4581,88 @@ function renderItRewards() {
   const wrap = document.getElementById('it-rewards');
   if (!wrap || !__itData) return;
   const rewards = __itData.role_rewards || [];
-  wrap.innerHTML = rewards.length ? rewards.map((r, i) => `
-    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;">
-      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#aaa;">A partir de</div>
-      <input type="number" min="1" value="${r.invites || 0}" oninput="__itData.role_rewards[${i}].invites=parseInt(this.value)||0;saveItDebounced()" class="inp" style="width:80px;font-family:'IBM Plex Mono',monospace;">
-      <div style="font-size:11px;color:#aaa;">convites →</div>
-      <input value="${escapeAttr(r.role_id || '')}" oninput="__itData.role_rewards[${i}].role_id=this.value;saveItDebounced()" placeholder="ID do cargo" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;">
-      <button onclick="__itData.role_rewards.splice(${i},1);renderItRewards();saveIt()" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+  wrap.innerHTML = (rewards.length ? rewards.map((r, i) => {
+    // Normaliza legado role_id -> role_ids[]
+    const roleIds = r.role_ids || (r.role_id ? [r.role_id] : []);
+    const enabled = r.enabled !== false;
+    const persistent = !!r.persistent;
+    const meta = r.invites || r.meta_invites || 0;
+    return `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px;border-left:3px solid ${enabled ? 'var(--primary)' : 'var(--border)'};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-weight:700;color:#fff;font-size:12.5px;font-family:'IBM Plex Mono',monospace;">${i + 1}. Configuração</div>
+        <button onclick="__itData.role_rewards.splice(${i},1);renderItRewards();saveIt()" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:#0e0e0e;border:1px solid var(--border);border-radius:6px;">
+          <input type="checkbox" ${enabled ? 'checked' : ''} onchange="__itData.role_rewards[${i}].enabled=this.checked;saveItDebounced();renderItRewards()" style="accent-color:#22c55e;">
+          <span style="font-size:11.5px;color:#fff;font-weight:600;">Habilitado</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;background:#0e0e0e;border:1px solid var(--border);border-radius:6px;" title="Não remove o cargo se o usuário perder convites">
+          <input type="checkbox" ${persistent ? 'checked' : ''} onchange="__itData.role_rewards[${i}].persistent=this.checked;saveItDebounced()" style="accent-color:#8b6fff;">
+          <span style="font-size:11.5px;color:#fff;font-weight:600;">Persistente <span style="color:#888;font-weight:400;">(?)</span></span>
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 1fr;gap:8px;">
+        <div>
+          <label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;">Meta de Convites</label>
+          <input type="number" min="1" value="${meta}" oninput="__itData.role_rewards[${i}].meta_invites=parseInt(this.value)||0;__itData.role_rewards[${i}].invites=parseInt(this.value)||0;saveItDebounced()" class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;">Cargos a Atribuir (IDs, vírgula)</label>
+          <input type="text" value="${escapeAttr(roleIds.join(', '))}" oninput="__itData.role_rewards[${i}].role_ids=this.value.split(',').map(s=>s.trim()).filter(Boolean);__itData.role_rewards[${i}].role_id=__itData.role_rewards[${i}].role_ids[0]||null;saveItDebounced()" placeholder="Selecione os cargos" class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+        </div>
+      </div>
     </div>
-  `).join('') : '<div style="color:#666;font-size:11.5px;text-align:center;padding:14px;">Nenhuma meta configurada</div>';
+  `;
+  }).join('') : '') + `
+    <div onclick="addItReward()" style="background:#0a0a0a;border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;cursor:pointer;color:#888;font-size:12px;transition:.15s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nova Configuração
+    </div>
+  `;
 }
 
 function addItReward() {
   if (!__itData.role_rewards) __itData.role_rewards = [];
-  __itData.role_rewards.push({ invites: 10, role_id: '' });
+  __itData.role_rewards.push({ enabled: true, persistent: false, meta_invites: 10, invites: 10, role_ids: [], role_id: null });
   renderItRewards();
   saveIt();
+}
+
+// ============ Editor de Embed para Invite Tracker ============
+let __itEbBuilder = null;
+let __itEbKind = null;
+
+function openItEmbedEditor(kind) {
+  __itEbKind = kind;
+  document.getElementById('modal-it-title').textContent = kind === 'entry'
+    ? 'Editor de Embed — Entrada'
+    : 'Editor de Embed — Saída';
+  const body = document.getElementById('modal-it-body');
+  body.innerHTML = `
+    <div id="it-eb-wrap" style="margin-bottom:12px;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--border);">
+      <button onclick="closeModal('modal-it-embed')" class="kyc-btn secondary">Cancelar</button>
+      <button onclick="saveItEmbed()" class="kyc-btn primary">Salvar Embed</button>
+    </div>
+  `;
+  const cur = (kind === 'entry' ? __itData.entry_embed : __itData.leave_embed) || { color: '#5865F2', title: '', description: '' };
+  __itEbBuilder = mountEmbedBuilder({
+    container: document.getElementById('it-eb-wrap'),
+    value: cur,
+    showAuthor: true, showImage: true, showFooter: true, showFields: true
+  });
+  document.getElementById('modal-it-embed').classList.add('open');
+}
+
+async function saveItEmbed() {
+  if (!__itEbBuilder || !__itEbKind || !__itData) return;
+  if (__itEbKind === 'entry') __itData.entry_embed = __itEbBuilder.getValue();
+  else __itData.leave_embed = __itEbBuilder.getValue();
+  await saveIt();
+  closeModal('modal-it-embed');
+  toast('Embed salvo');
 }
 
 let __itSaveTimer = null;
@@ -6249,4 +6312,39 @@ if (typeof __origSpAa === 'function' && !window.__spHookedAa) {
     __origSpAa(page, el);
     if (page === 'acoes-automaticas') { __aaTab = 'mensagens'; renderAaTab(); }
   };
+}
+
+// ============ Permissoes Comandos — atualizacao por sub-campo ============
+function getCmdPermArrays(tabCfg, key) {
+  const v = tabCfg[key];
+  if (!v) return { cargos: [], usuarios: [] };
+  if (Array.isArray(v)) return { cargos: v, usuarios: [] }; // legado
+  return { cargos: v.cargos || [], usuarios: v.usuarios || [] };
+}
+
+function renderCmdPermContent(key, tabCfg) {
+  const a = getCmdPermArrays(tabCfg, key);
+  return `
+    <div style="padding:12px 14px;border-top:1px solid var(--border);background:#0e0e0e;">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Cargos Permitidos <span style="text-transform:none;color:#666;">(IDs separados por vírgula)</span></label>
+        <input type="text" value="${escapeAttr(a.cargos.join(', '))}" oninput="updateCmdPerm('${key}','cargos', this.value.split(',').map(s=>s.trim()).filter(Boolean))" class="inp" placeholder="Todos os cargos" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+      <div>
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Usuários Permitidos <span style="text-transform:none;color:#666;">(IDs, um por linha)</span></label>
+        <textarea oninput="updateCmdPerm('${key}','usuarios', this.value.split('\\n').map(s=>s.trim()).filter(Boolean))" rows="3" placeholder="Cole IDs de usuários, um por linha" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">${escapeHtml(a.usuarios.join('\n'))}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function updateCmdPerm(cmdKey, field, value) {
+  if (!__protCfg[__protTab]) __protCfg[__protTab] = {};
+  if (!__protCfg[__protTab][cmdKey] || Array.isArray(__protCfg[__protTab][cmdKey])) {
+    // legado: era array de cargos. Migrar pra objeto.
+    const legacy = Array.isArray(__protCfg[__protTab][cmdKey]) ? __protCfg[__protTab][cmdKey] : [];
+    __protCfg[__protTab][cmdKey] = { cargos: legacy, usuarios: [] };
+  }
+  __protCfg[__protTab][cmdKey][field] = value;
+  saveProtTabDebounced();
 }

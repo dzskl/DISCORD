@@ -74,7 +74,9 @@ const STRUCTURE = {
       { key: 'cleardm', label: '/cleardm', desc: 'Limpar DMs do bot' },
       { key: 'nuke',    label: '/nuke',    desc: 'Recriar canais' },
       { key: 'say',     label: '/say',     desc: 'Enviar mensagens como bot' },
-      { key: 'dm',      label: '/dm',      desc: 'Enviar DM para usuários' }
+      { key: 'dm',      label: '/dm',      desc: 'Enviar DM para usuários' },
+      { key: 'convites', label: '/convites', desc: 'Ver convites de outros' },
+      { key: 'gerar-pix', label: '/gerar-pix', desc: 'Gerar cobranças PIX manualmente' }
     ]
   }
 };

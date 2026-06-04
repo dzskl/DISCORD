@@ -29,7 +29,9 @@ router.get('/invite-tracker', (req, res) => {
     enabled: false, log_channel: '',
     entry_message: 'Bem-vindo {member}! Convidado por {inviter} ({invites} convites)',
     leave_message: '{membername} saiu. Convidado por {invitername}',
-    role_rewards: []   // [{ invites: 10, role_id: '...' }]
+    entry_embed: null,
+    leave_embed: null,
+    role_rewards: []   // [{ enabled, persistent, meta_invites, role_ids:[] }]
   }));
 });
 router.put('/invite-tracker', (req, res) => {
