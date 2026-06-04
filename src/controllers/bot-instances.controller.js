@@ -8,16 +8,21 @@ const router = express.Router();
 router.use(requireAuth);
 
 function ensureDefaultBot(userId) {
-  const c = db.prepare('SELECT COUNT(*) AS c FROM bot_instances WHERE owner_user_id=?').get(userId).c;
-  if (c > 0) return;
-  // pega a primeira guild que o user gerencia, se houver
-  const ug = db.prepare(`SELECT g.id, g.name FROM user_guilds ug JOIN guilds g ON g.id=ug.guild_id WHERE ug.user_id=? LIMIT 1`).get(userId);
-  const user = db.prepare('SELECT display_name, email FROM users WHERE id=?').get(userId);
-  const name = (user?.display_name || user?.email || 'Meu Bot').toString().slice(0, 60);
-  db.prepare(`
-    INSERT INTO bot_instances (owner_user_id, name, primary_guild_id, plan, trial_ends_at)
-    VALUES (?, ?, ?, 'pro', ?)
-  `).run(userId, name + ' Bot', ug?.id || null, Math.floor(Date.now() / 1000) + 7 * 86400);
+  try {
+    // Confirma que o user existe na tabela users (evita FK fail em DEV bypass)
+    const userRow = db.prepare('SELECT id, display_name, email FROM users WHERE id=?').get(userId);
+    if (!userRow) return;
+    const c = db.prepare('SELECT COUNT(*) AS c FROM bot_instances WHERE owner_user_id=?').get(userId).c;
+    if (c > 0) return;
+    const ug = db.prepare(`SELECT g.id, g.name FROM user_guilds ug JOIN guilds g ON g.id=ug.guild_id WHERE ug.user_id=? LIMIT 1`).get(userId);
+    const name = (userRow.display_name || userRow.email || 'Meu Bot').toString().slice(0, 60);
+    db.prepare(`
+      INSERT INTO bot_instances (owner_user_id, name, primary_guild_id, plan, trial_ends_at)
+      VALUES (?, ?, ?, 'pro', ?)
+    `).run(userId, name + ' Bot', ug?.id || null, Math.floor(Date.now() / 1000) + 7 * 86400);
+  } catch (e) {
+    require('../utils/logger').warn({ err: e.message, userId }, 'ensureDefaultBot falhou');
+  }
 }
 
 router.get('/', (req, res) => {

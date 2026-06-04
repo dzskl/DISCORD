@@ -3268,11 +3268,11 @@ async function updateAdminBadges() {
   } catch {}
 }
 
-const __origSp6 = window.sp;
-if (typeof __origSp6 === 'function' && !window.__spHookedV6) {
-  window.__spHookedV6 = true;
+const __origSpAdmin = window.sp;
+if (typeof __origSpAdmin === 'function' && !window.__spHookedAdmin) {
+  window.__spHookedAdmin = true;
   window.sp = function (page, el) {
-    __origSp6(page, el);
+    __origSpAdmin(page, el);
     if (page === 'saques-admin') loadAdminWithdrawals('pending', document.querySelector('.sq-tab[data-sq="pending"]'));
     if (page === 'fraude') loadFraudPage();
   };
