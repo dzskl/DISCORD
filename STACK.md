@@ -147,6 +147,70 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #8 — Ações Automáticas (Limpeza/Repostagem/Sugestões) + Proteção detalhada
+
+#### 🟠 Maiores (~1-2h cada)
+- [ ] **Aba "Limpeza Automática"** (Ações Automáticas):
+  - Toggle global "Ativar limpeza automática"
+  - Lista de "Canais para Limpeza" + "Adicionar Canal"
+  - Por canal:
+    - Dropdown canal
+    - Toggle "Limpar mensagens ao trancar" Sim/Não
+    - Time picker "Horario para Trancar" (default 22:00)
+    - Time picker "Horario para Destrancar" (default 08:00)
+    - X vermelho remove
+
+- [ ] **Aba "Repostagem Automática"**:
+  - Toggle global
+  - Time picker "Horario da Repostagem"
+  - **Time picker custom componente**: dropdown 2 colunas (HORA/MIN)
+    com valores rolling + botão Confirmar (reusável em outras telas)
+
+- [ ] **Aba "Sugestões"** com builder + preview live (já mencionado
+    rodada #4, agora detalhado):
+  - Coluna esquerda:
+    - Canal de Sugestões + Canal para enviar painel (com botão Enviar)
+    - Cor da Embed
+    - Autor (avatar + Nome + Link) - 0/256
+    - Título (Central de Sugestões) - 20/256
+    - Descrição (Clique no botao abaixo...) - 48/4096
+    - Fields (Campos) +
+    - Imagem placeholder
+    - Rodapé (avatar + texto) - 0/2048
+  - Coluna direita: **VISUALIZAÇÃO EM TEMPO REAL** estilo Discord
+    com botão roxo "🔵 Enviar Sugestão"
+
+#### 🔴 Backend pesado — Proteção CADA TAB com config profunda
+- [ ] **Anti Fake** config expandida (já existe toggle, expandir):
+  - Input "Dias Mínimos de Conta" (idade mínima do user pra entrar)
+  - Textarea **Status Blacklist** (palavras no status que bloqueiam)
+  - Textarea **Nomes Blacklist** (nomes/padrões que bloqueiam)
+
+- [ ] **Anti Spam** config expandida (mega-painel, ~3h):
+  - Section **Configurações Gerais**:
+    - Toggle "Aplicar em comandos"
+    - Toggle "Ignorar Administradores"
+    - Dropdown Canal de Logs
+    - Multi-select Canais Ignorados (Global)
+    - Multi-select Cargos Ignorados (Global)
+    - Multi-select Usuários Ignorados (Global)
+  - Section **Ação Padrão para Violações**:
+    - Toggle Apagar Mensagem
+    - Toggle Avisar Usuário
+    - Slider Timeout (segundos)
+  - Section **Sistema de Tolerância** (toggle):
+    - "Aplica punições progressivas baseadas em strikes"
+  - Sub-card **Anti Flood** (separado):
+    - Toggle + Slider Máximo de mensagens + Janela de tempo
+    - 6 dropdowns: Aplicar somente / Ignorar × canais/cargos/usuários
+  - Sub-card **Anti Spam** (repetições):
+    - Toggle + 3 sliders (Mensagens similares max / Janela análise / Tamanho mínimo)
+    - 6 dropdowns iguais ao Anti Flood
+  - Sub-card **Anti Garbage**:
+    - Toggle + Sliders (Proporção Max não-alfanumérico / Max repetição mesma letra)
+  - Dica amarela explicando "Lista vazia em Aplicar somente = aplica
+    em todos. Itens em Ignorar sempre excluem do filtro."
+
 ### Rodada NeverMissApps #7 — Loja Geral / Ações Automáticas detalhadas
 
 #### 🟠 Maiores (~2h cada)
