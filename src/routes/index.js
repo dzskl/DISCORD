@@ -26,6 +26,7 @@ function register(app) {
   app.use('/api/support-panels', require('../controllers/support-panels.controller'));
   app.use('/api/auto-messages', require('../controllers/auto-messages.controller'));
   app.use('/api/auto-actions', require('../controllers/auto-actions.controller'));
+  app.use('/api/bio-rotation', require('../controllers/bio-rotation.controller'));
   app.use('/api/2fa', require('../controllers/twofa.controller').router);
   app.use('/api/extras', require('../controllers/extras.controller'));
   app.use('/api/achievements', require('../controllers/achievements.controller'));

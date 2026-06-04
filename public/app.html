@@ -1286,13 +1286,8 @@ footer.appfoot a:hover{color:var(--text);}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <!-- Esquerda: BIO paywall + aparencia -->
             <div>
-              <div class="card" style="padding:18px;text-align:center;margin-bottom:14px;background:linear-gradient(180deg,rgba(139,111,255,.06),transparent);">
-                <div style="width:42px;height:42px;border-radius:50%;background:rgba(139,111,255,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                </div>
-                <div style="font-weight:800;color:#fff;font-size:14px;">BIO Personalizada</div>
-                <div style="font-size:11.5px;color:#888;margin-top:4px;line-height:1.5;">Configure o status do seu bot com textos rotativos e intervalo personalizado.</div>
-                <button onclick="toast('feature paga em breve','info')" style="background:#8b6fff;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer;margin-top:14px;">Adquirir por R$ 5,00</button>
+              <div id="bio-rotation-card" class="card" style="padding:18px;margin-bottom:14px;background:linear-gradient(180deg,rgba(139,111,255,.06),transparent);">
+                <div id="bio-rotation-body"></div>
               </div>
               <div class="card" style="padding:14px 16px;">
                 <div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:10px;">Aparência da loja</div>

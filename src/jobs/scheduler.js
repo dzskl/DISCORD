@@ -12,7 +12,35 @@ function start() {
   cron.schedule('15 * * * *', checkTrials);
   cron.schedule('20 * * * *', checkGuildTrials);
   cron.schedule('*/15 * * * *', followUpAbandonedCarts);
+  cron.schedule('* * * * *', rotateBotBios);
   logger.info('scheduler iniciado');
+}
+
+async function rotateBotBios() {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const rows = db.prepare(`
+      SELECT * FROM bot_bio_rotation
+      WHERE enabled = 1 AND paid = 1
+        AND (last_rotated_at IS NULL OR last_rotated_at + interval_seconds <= ?)
+    `).all(now);
+    for (const r of rows) {
+      let statuses = [];
+      try { statuses = JSON.parse(r.statuses_json || '[]'); } catch {}
+      if (!statuses.length) continue;
+      const next = (r.current_index + 1) % statuses.length;
+      const status = statuses[next];
+      try {
+        if (bot.setStatus) await bot.setStatus(status, r.guild_id);
+      } catch (e) {
+        logger.warn({ err: e.message, guild_id: r.guild_id }, 'rotateBotBios setStatus falhou');
+      }
+      db.prepare('UPDATE bot_bio_rotation SET current_index=?, last_rotated_at=? WHERE guild_id=?')
+        .run(next, now, r.guild_id);
+    }
+  } catch (e) {
+    logger.error({ err: e.message }, 'rotateBotBios falhou');
+  }
 }
 
 // Follow-up de carrinhos abandonados.

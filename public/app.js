@@ -6439,3 +6439,125 @@ if (typeof __origSpPc === 'function' && !window.__spHookedPc) {
   };
 }
 setTimeout(() => loadPromoCodes(), 1500);
+
+// ============ BIO ROTATIVA ============
+let __bioData = null;
+
+async function loadBioRotation() {
+  try {
+    __bioData = await fetch('/api/bio-rotation', { credentials: 'same-origin' }).then(r => r.json());
+    renderBioRotation();
+  } catch (e) { console.warn('bio rotation', e.message); }
+}
+
+function renderBioRotation() {
+  const wrap = document.getElementById('bio-rotation-body');
+  if (!wrap || !__bioData) return;
+  if (!__bioData.paid) {
+    wrap.innerHTML = `
+      <div style="text-align:center;">
+        <div style="width:42px;height:42px;border-radius:50%;background:rgba(139,111,255,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div style="font-weight:800;color:#fff;font-size:14px;">BIO Personalizada</div>
+        <div style="font-size:11.5px;color:#888;margin-top:4px;line-height:1.5;">Configure o status do seu bot com textos rotativos e intervalo personalizado.</div>
+        <button onclick="purchaseBioRotation()" style="background:#8b6fff;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer;margin-top:14px;">Adquirir por R$ 5,00</button>
+      </div>
+    `;
+    return;
+  }
+  // desbloqueado
+  const statuses = __bioData.statuses || [];
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div>
+        <div style="font-weight:700;color:#fff;font-size:14px;display:flex;align-items:center;gap:6px;">
+          🔮 BIO Rotativa <span style="font-size:10px;background:rgba(34,197,94,.15);color:#7dd3a4;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace;">Premium</span>
+        </div>
+        <div style="font-size:11.5px;color:#888;margin-top:3px;">Status rotativos com intervalo personalizado.</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+        <input type="checkbox" id="bio-enabled" ${__bioData.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+        <span style="position:absolute;inset:0;background:${__bioData.enabled ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:22px;"></span>
+        <span style="position:absolute;height:16px;width:16px;left:${__bioData.enabled ? '19px' : '3px'};top:2px;background:#fff;border-radius:50%;"></span>
+      </label>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Intervalo (segundos)</label>
+      <input id="bio-interval" type="number" min="10" max="3600" value="${__bioData.interval_seconds || 30}" class="inp" style="margin-top:5px;max-width:160px;">
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Status rotativos <span style="text-transform:none;color:#666;">(máx. 20)</span></label>
+        <button onclick="addBioStatus()" style="background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">+</button>
+      </div>
+      <div id="bio-statuses-wrap" style="display:flex;flex-direction:column;gap:6px;">
+        ${statuses.length ? statuses.map((s, i) => `
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="background:#1a1a1a;color:#666;padding:6px 9px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;width:32px;text-align:center;">${i + 1}</span>
+            <input type="text" data-bio-i="${i}" value="${escapeAttr(s)}" maxlength="100" class="inp" placeholder="texto do status">
+            <button onclick="removeBioStatus(${i})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;padding:4px 8px;">×</button>
+          </div>
+        `).join('') : '<div style="color:#666;font-size:11.5px;padding:10px;text-align:center;background:#0e0e0e;border:1px dashed var(--border);border-radius:6px;">Nenhum status — clique em + pra adicionar</div>'}
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;">
+      <button onclick="saveBioRotation()" class="kyc-btn primary">Salvar</button>
+    </div>
+  `;
+}
+
+async function purchaseBioRotation() {
+  if (!confirm('Adquirir BIO Personalizada por R$ 5,00?\n\n(Stripe checkout em produção)')) return;
+  try {
+    const r = await fetch('/api/bio-rotation/purchase', { method: 'POST', credentials: 'same-origin' });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('BIO Personalizada desbloqueada!');
+    loadBioRotation();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function addBioStatus() {
+  if (!__bioData.statuses) __bioData.statuses = [];
+  if (__bioData.statuses.length >= 20) return toast('Máximo 20 status', 'err');
+  __bioData.statuses.push('');
+  renderBioRotation();
+}
+
+function removeBioStatus(i) {
+  __bioData.statuses.splice(i, 1);
+  renderBioRotation();
+}
+
+async function saveBioRotation() {
+  const statuses = [];
+  document.querySelectorAll('[data-bio-i]').forEach(el => {
+    const v = el.value.trim();
+    if (v) statuses[+el.dataset.bioI] = v;
+  });
+  const body = {
+    enabled: document.getElementById('bio-enabled')?.checked || false,
+    interval_seconds: parseInt(document.getElementById('bio-interval')?.value) || 30,
+    statuses: statuses.filter(Boolean)
+  };
+  try {
+    const r = await fetch('/api/bio-rotation', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('BIO rotativa salva');
+    loadBioRotation();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook: carrega quando entrar em Personalizacao
+const __origSpBio = window.sp;
+if (typeof __origSpBio === 'function' && !window.__spHookedBio) {
+  window.__spHookedBio = true;
+  window.sp = function (page, el) {
+    __origSpBio(page, el);
+    if (page === 'personalizacao') loadBioRotation();
+  };
+}
