@@ -4179,6 +4179,98 @@ function switchContaTab(tab) {
   document.querySelectorAll('.conta-pane').forEach(p => p.style.display = 'none');
   const pane = document.getElementById('conta-tab-' + tab);
   if (pane) pane.style.display = 'block';
+  if (tab === 'carteira') loadConta();
+}
+
+async function loadConta() {
+  try {
+    const j = await fetch('/api/conta', { credentials: 'same-origin' }).then(r => r.json());
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
+    set('conta-company-name', j.company_name);
+    set('conta-company-logo', j.company_logo_url);
+    set('conta-company-color', j.company_color || '#8B5CF6');
+    set('conta-company-color-picker', j.company_color || '#8B5CF6');
+    set('conta-webhook-url', j.webhook_url);
+    set('conta-callback-url', j.callback_url);
+    const repassChk = document.getElementById('conta-repass-fee');
+    if (repassChk) repassChk.checked = !!j.repass_fee_to_customer;
+    // API Key
+    const keyInput = document.getElementById('conta-api-key');
+    const createdLbl = document.getElementById('conta-api-created');
+    if (keyInput) keyInput.value = j.api_key_masked || '';
+    if (createdLbl) createdLbl.textContent = j.api_key_created_at
+      ? 'Criada em ' + new Date(j.api_key_created_at * 1000).toLocaleString('pt-BR')
+      : '';
+    // Banner 2FA
+    const banner = document.getElementById('conta-2fa-required');
+    if (banner) banner.style.display = j.twofa_enabled ? 'none' : 'flex';
+    const genBtn = document.getElementById('conta-api-gen');
+    if (genBtn) {
+      genBtn.disabled = !j.twofa_enabled;
+      genBtn.style.opacity = j.twofa_enabled ? '1' : '.5';
+      genBtn.style.cursor = j.twofa_enabled ? 'pointer' : 'not-allowed';
+    }
+  } catch (e) { console.warn('loadConta', e.message); }
+}
+
+async function saveConta() {
+  const get = id => document.getElementById(id)?.value || '';
+  const body = {
+    company_name: get('conta-company-name').trim(),
+    company_logo_url: get('conta-company-logo').trim() || null,
+    company_color: get('conta-company-color').trim() || '#8B5CF6',
+    webhook_url: get('conta-webhook-url').trim() || null,
+    callback_url: get('conta-callback-url').trim() || null,
+    repass_fee_to_customer: document.getElementById('conta-repass-fee')?.checked || false
+  };
+  try {
+    const r = await fetch('/api/conta', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha ao salvar', 'err');
+    toast('Configurações salvas');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function generateApiKey() {
+  if (!confirm('Gerar nova API Key?\n\nIsso REVOGA a anterior. Você só verá a key inteira uma vez — copie agora.')) return;
+  try {
+    const r = await fetch('/api/conta/api-key/generate', { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) {
+      if (j.twofa_required) toast('Ative 2FA antes de gerar API Key', 'err');
+      else toast(j.error || 'Falha', 'err');
+      return;
+    }
+    const input = document.getElementById('conta-api-key');
+    if (input) {
+      input.value = j.api_key;
+      input.type = 'text';
+      input.style.color = '#7dd3a4';
+    }
+    toast('API Key gerada — copie agora!');
+    setTimeout(loadConta, 200);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function copyApiKey() {
+  const v = document.getElementById('conta-api-key')?.value || '';
+  if (!v) return toast('Nenhuma key — gere uma primeiro', 'err');
+  try { await navigator.clipboard.writeText(v); toast('API Key copiada'); }
+  catch { toast('Falha ao copiar', 'err'); }
+}
+
+// Hook na nav sp
+const __origSpConta = window.sp;
+if (typeof __origSpConta === 'function' && !window.__spHookedConta) {
+  window.__spHookedConta = true;
+  window.sp = function (page, el) {
+    __origSpConta(page, el);
+    if (page === 'conta') loadConta();
+  };
 }
 
 async function endAllSessions() {

@@ -2091,10 +2091,116 @@ footer.appfoot a:hover{color:var(--text);}
           </button>
         </div>
 
-        <!-- TAB CARTEIRA (placeholder — item maior na stack pendente) -->
+        <!-- TAB CARTEIRA (config da empresa / integracoes) -->
         <div id="conta-tab-carteira" class="conta-pane">
-          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;color:#888;font-size:13px;text-align:center;">
-            Configurações de empresa, API Key e integrações em breve. Use a página <a href="#" onclick="sp('carteira',null);return false;" style="color:#b9a8ff;">Carteira</a> pra saldo/saques.
+          <!-- Banner 2FA (oculto se ja ativo) -->
+          <div id="conta-2fa-required" style="background:linear-gradient(90deg,rgba(139,111,255,.12),rgba(139,111,255,.04));border:1px solid rgba(139,111,255,.35);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none;align-items:center;justify-content:space-between;gap:14px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:13px;">Autenticação de Dois Fatores Necessária</div>
+                <div style="color:#aaa;font-size:11.5px;margin-top:2px;">Ative o 2FA em "Minha Conta" para gerar API Keys.</div>
+              </div>
+            </div>
+            <button onclick="sp('carteira',null)" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:9px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Ativar 2FA</button>
+          </div>
+
+          <!-- Card API Key -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:14px;">API Key</div>
+                <div style="color:#888;font-size:11.5px;">Gerencie sua chave de API para integração</div>
+              </div>
+            </div>
+            <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Sua API Key</label>
+            <div style="display:flex;gap:6px;margin-top:5px;">
+              <input id="conta-api-key" type="text" readonly placeholder="Clique em Gerar para criar uma chave" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+              <button onclick="copyApiKey()" id="conta-api-copy" style="background:#1a1a1a;border:1px solid var(--border);color:#888;border-radius:7px;padding:0 12px;cursor:pointer;" title="Copiar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button onclick="generateApiKey()" id="conta-api-gen" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:0 16px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Gerar
+              </button>
+            </div>
+            <div id="conta-api-created" style="margin-top:6px;font-size:10.5px;color:#666;font-family:'IBM Plex Mono',monospace;"></div>
+          </div>
+
+          <!-- Card Opções de Pagamento -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7dd3a4" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:14px;">Opções de Pagamento</div>
+                <div style="color:#888;font-size:11.5px;">Configure como as taxas são aplicadas</div>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px;background:#0e0e0e;border:1px solid var(--border);border-radius:8px;">
+              <input type="checkbox" id="conta-repass-fee" style="accent-color:#8b6fff;width:16px;height:16px;">
+              <div>
+                <div style="font-size:12.5px;color:#fff;font-weight:600;">Repassar taxa ao cliente</div>
+                <div style="font-size:11px;color:#888;margin-top:2px;">A taxa de plataforma será adicionada ao valor do pagamento do cliente</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Card Dados da Empresa -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#88c0ff" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:14px;">Dados da Empresa</div>
+                <div style="color:#888;font-size:11.5px;">Personalize as informações da sua empresa para os links de pagamento</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Nome da Empresa</label>
+                <input id="conta-company-name" type="text" placeholder="Digite o nome da sua empresa" class="inp" style="margin-top:5px;">
+              </div>
+              <div>
+                <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Logo da Empresa (URL)</label>
+                <input id="conta-company-logo" type="text" placeholder="https://exemplo.com/logo.png" class="inp" style="margin-top:5px;">
+              </div>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Cor da Empresa</label>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:5px;">
+                <input id="conta-company-color-picker" type="color" value="#8B5CF6" style="width:38px;height:38px;padding:0;border:1px solid var(--border);border-radius:8px;background:#0a0a0a;cursor:pointer;" oninput="document.getElementById('conta-company-color').value=this.value.toUpperCase()">
+                <input id="conta-company-color" type="text" value="#8B5CF6" class="inp" style="flex:1;font-family:'IBM Plex Mono',monospace;" oninput="document.getElementById('conta-company-color-picker').value=this.value">
+              </div>
+              <div style="font-size:10.5px;color:#666;margin-top:4px;">Cor principal em hexadecimal (ex: #8B5CF6)</div>
+            </div>
+          </div>
+
+          <!-- Card Integrações -->
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M11 6h5a2 2 0 0 1 2 2v7"/><polyline points="16 19 18 21 22 17"/></svg>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:14px;">Integrações</div>
+                <div style="color:#888;font-size:11.5px;">Configure URLs para webhooks e callbacks</div>
+              </div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Webhook URL</label>
+              <input id="conta-webhook-url" type="text" placeholder="https://exemplo.com/webhook" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+              <div style="font-size:10.5px;color:#666;margin-top:4px;">URL para receber notificações de eventos</div>
+            </div>
+            <div>
+              <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Callback URL</label>
+              <input id="conta-callback-url" type="text" placeholder="https://exemplo.com/callback" class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+              <div style="font-size:10.5px;color:#666;margin-top:4px;">URL de retorno após processo de pagamento</div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;">
+            <button onclick="saveConta()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:11px 22px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Salvar Configurações
+            </button>
           </div>
         </div>
 
