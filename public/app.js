@@ -4897,3 +4897,279 @@ async function deleteGvTask(taskId) {
     openGiveawayAdvanced(__gv.id);
   } catch (e) { toast(e.message, 'err'); }
 }
+
+// ============ TICKETS — Paineis de Suporte ============
+let __supportPanels = [];
+
+async function loadSupportPanels() {
+  try {
+    __supportPanels = await fetch('/api/support-panels', { credentials: 'same-origin' }).then(r => r.json());
+    renderSupportPanelsList();
+  } catch (e) { console.warn('loadSupportPanels', e.message); }
+}
+
+function renderSupportPanelsList() {
+  const wrap = document.getElementById('sp-list-wrap');
+  if (!wrap) return;
+  const q = (document.getElementById('sp-search')?.value || '').toLowerCase();
+  const list = q ? __supportPanels.filter(p => (p.name + ' ' + (p.description || '')).toLowerCase().includes(q)) : __supportPanels;
+  if (!list.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:#666;padding:30px;background:#0a0a0a;border:1px solid var(--border);border-radius:10px;">Nenhum painel ainda. Clique em "Novo Painel" pra criar.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(p => `
+    <details style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;border-left:3px solid var(--primary);">
+      <summary style="padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-weight:700;color:#fff;font-size:14px;">${escapeHtml(p.name)}</div>
+            <span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${p.posted_message_id ? 'rgba(34,197,94,.15)' : '#1a1a1a'};color:${p.posted_message_id ? '#7dd3a4' : '#666'};">${p.posted_message_id ? 'postado' : 'nao postado'}</span>
+          </div>
+          <div style="font-size:11.5px;color:#888;margin-top:3px;">${escapeHtml(p.description || 'sem descricao')}</div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <span style="font-size:10px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:2px 8px;border-radius:10px;font-family:'IBM Plex Mono',monospace;">${(p.functions || []).length} funções</span>
+            <span style="font-size:10px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:2px 8px;border-radius:10px;font-family:'IBM Plex Mono',monospace;">${(p.functions || []).filter(f => f.role_required).length} cargos</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="event.stopPropagation();postSupportPanel(${p.id})" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#7dd3a4;padding:6px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;">Postar Painel</button>
+          <button onclick="event.stopPropagation();deleteSupportPanel(${p.id})" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:#ff8a8a;padding:6px 10px;border-radius:7px;font-size:11px;cursor:pointer;">×</button>
+        </div>
+      </summary>
+      <div style="padding:0 16px 16px;">
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;">
+          <button onclick="event.preventDefault();switchSpTab(${p.id},'geral')" class="sp-pane-tab" data-sp-tab-${p.id}="geral" style="background:transparent;border:0;color:#fff;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);">Geral</button>
+          <button onclick="event.preventDefault();switchSpTab(${p.id},'funcoes')" class="sp-pane-tab" data-sp-tab-${p.id}="funcoes" style="background:transparent;border:0;color:#666;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Funções</button>
+          <button onclick="event.preventDefault();switchSpTab(${p.id},'embed')" class="sp-pane-tab" data-sp-tab-${p.id}="embed" style="background:transparent;border:0;color:#666;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Embed</button>
+        </div>
+        <div id="sp-pane-${p.id}">
+          ${renderSupportPanelTab(p, 'geral')}
+        </div>
+      </div>
+    </details>
+  `).join('');
+}
+
+function switchSpTab(id, tab) {
+  document.querySelectorAll(`[data-sp-tab-${id}]`).forEach(b => {
+    const on = b.getAttribute(`data-sp-tab-${id}`) === tab;
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+  const p = __supportPanels.find(x => x.id === id);
+  if (!p) return;
+  const pane = document.getElementById('sp-pane-' + id);
+  if (pane) pane.innerHTML = renderSupportPanelTab(p, tab);
+}
+
+function renderSupportPanelTab(p, tab) {
+  if (tab === 'geral') {
+    const days = ['seg','ter','qua','qui','sex','sab','dom'];
+    const selected = new Set(p.schedule_days || []);
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-weight:600;font-size:12.5px;color:#fff;">Status</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" data-sp-active="${p.id}" ${p.active ? 'checked' : ''} style="accent-color:#22c55e;">
+          <span style="color:${p.active ? '#7dd3a4' : '#888'};font-size:12px;font-weight:600;">${p.active ? 'Ativo' : 'Inativo'}</span>
+        </label>
+      </div>
+      <div style="font-weight:600;font-size:12.5px;color:#fff;margin-bottom:10px;">Configurações de Funcionamento</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Início <span style="text-transform:none;color:#666;">(Opcional)</span></label>
+          <input id="sp-start-${p.id}" type="time" value="${escapeAttr(p.schedule_start || '')}" class="inp" style="margin-top:5px;">
+        </div>
+        <div>
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Fim <span style="text-transform:none;color:#666;">(Opcional)</span></label>
+          <input id="sp-end-${p.id}" type="time" value="${escapeAttr(p.schedule_end || '')}" class="inp" style="margin-top:5px;">
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Dias de Funcionamento</label>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          ${days.map(d => {
+            const on = selected.has(d);
+            return `<button onclick="event.preventDefault();toggleSpDay(${p.id},'${d}')" data-sp-day-${p.id}="${d}" style="background:${on ? 'rgba(139,111,255,.25)' : 'transparent'};border:1px solid ${on ? 'rgba(139,111,255,.4)' : 'var(--border)'};color:${on ? '#fff' : '#888'};padding:6px 12px;border-radius:6px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;text-transform:capitalize;">${d}</button>`;
+          }).join('')}
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button onclick="saveSupportPanel(${p.id})" style="background:#fff;color:#000;border:0;padding:9px 18px;border-radius:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Salvar</button>
+      </div>
+    `;
+  }
+  if (tab === 'funcoes') {
+    const fns = p.functions || [];
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-weight:600;color:#fff;font-size:12.5px;">Funções do painel</div>
+        <button onclick="addSpFunction(${p.id})" style="background:rgba(139,111,255,.2);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;">+ Nova Função</button>
+      </div>
+      ${fns.length ? fns.map((f, i) => `
+        <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:16px;">${escapeHtml(f.emoji || '🎫')}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:#fff;font-size:12.5px;">${escapeHtml(f.label || 'sem nome')}</div>
+            <div style="font-size:11px;color:#888;">${escapeHtml(f.category || 'sem categoria')}${f.role_required ? ' • cargo: ' + f.role_required : ''}</div>
+          </div>
+          <button onclick="rmSpFunction(${p.id},${i})" style="background:transparent;border:0;color:#ff8a8a;font-size:11px;cursor:pointer;">×</button>
+        </div>
+      `).join('') : '<div style="color:#666;font-size:11.5px;padding:14px;text-align:center;">Nenhuma função ainda</div>'}
+    `;
+  }
+  if (tab === 'embed') {
+    return `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Cor</label>
+          <input id="sp-color-${p.id}" type="color" value="${p.embed_color || '#5865F2'}" style="width:100%;height:36px;margin-top:5px;border:1px solid var(--border);border-radius:7px;background:#0a0a0a;">
+        </div>
+        <div>
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Imagem URL</label>
+          <input id="sp-img-${p.id}" type="text" value="${escapeAttr(p.embed_image_url || '')}" class="inp" style="margin-top:5px;">
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Título</label>
+        <input id="sp-title-${p.id}" type="text" value="${escapeAttr(p.embed_title || '')}" class="inp" style="margin-top:5px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Descrição</label>
+        <textarea id="sp-desc-${p.id}" rows="3" class="inp" style="margin-top:5px;">${escapeHtml(p.embed_description || '')}</textarea>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Rodapé</label>
+        <input id="sp-footer-${p.id}" type="text" value="${escapeAttr(p.embed_footer || '')}" class="inp" style="margin-top:5px;">
+      </div>
+      <div style="display:flex;justify-content:flex-end;">
+        <button onclick="saveSupportEmbed(${p.id})" style="background:#fff;color:#000;border:0;padding:9px 18px;border-radius:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Salvar Embed</button>
+      </div>
+    `;
+  }
+  return '';
+}
+
+function toggleSpDay(id, day) {
+  const p = __supportPanels.find(x => x.id === id);
+  if (!p) return;
+  p.schedule_days = p.schedule_days || [];
+  const idx = p.schedule_days.indexOf(day);
+  if (idx >= 0) p.schedule_days.splice(idx, 1);
+  else p.schedule_days.push(day);
+  switchSpTab(id, 'geral');
+}
+
+async function newSupportPanel() {
+  const name = prompt('Nome do painel:');
+  if (!name) return;
+  try {
+    const r = await fetch('/api/support-panels', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Painel criado'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveSupportPanel(id) {
+  const p = __supportPanels.find(x => x.id === id);
+  if (!p) return;
+  const get = i => document.getElementById(i)?.value || '';
+  const body = {
+    schedule_start: get('sp-start-' + id) || null,
+    schedule_end: get('sp-end-' + id) || null,
+    schedule_days: p.schedule_days || [],
+    active: document.querySelector(`[data-sp-active="${id}"]`)?.checked
+  };
+  try {
+    await fetch('/api/support-panels/' + id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    toast('Salvo'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveSupportEmbed(id) {
+  const get = i => document.getElementById(i)?.value || '';
+  const body = {
+    embed_color: get('sp-color-' + id),
+    embed_image_url: get('sp-img-' + id) || null,
+    embed_title: get('sp-title-' + id) || null,
+    embed_description: get('sp-desc-' + id) || null,
+    embed_footer: get('sp-footer-' + id) || null
+  };
+  try {
+    await fetch('/api/support-panels/' + id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    toast('Embed salvo'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function addSpFunction(id) {
+  const label = prompt('Nome da função:');
+  if (!label) return;
+  const emoji = prompt('Emoji (opcional):') || '🎫';
+  const category = prompt('Categoria (opcional):') || null;
+  const role_required = prompt('Cargo exigido (opcional):') || null;
+  const p = __supportPanels.find(x => x.id === id);
+  if (!p) return;
+  p.functions = p.functions || [];
+  p.functions.push({ label, emoji, category, role_required });
+  try {
+    await fetch('/api/support-panels/' + id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ functions: p.functions })
+    });
+    toast('Função adicionada'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function rmSpFunction(id, idx) {
+  const p = __supportPanels.find(x => x.id === id);
+  if (!p) return;
+  p.functions.splice(idx, 1);
+  try {
+    await fetch('/api/support-panels/' + id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ functions: p.functions })
+    });
+    toast('Removida'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function postSupportPanel(id) {
+  if (!confirm('Postar painel no Discord?\n(Em breve com integração ao bot.service)')) return;
+  try {
+    await fetch('/api/support-panels/' + id + '/post', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    toast('Painel marcado como postado');
+    loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteSupportPanel(id) {
+  if (!confirm('Remover painel?')) return;
+  try {
+    await fetch('/api/support-panels/' + id, { method: 'DELETE', credentials: 'same-origin' });
+    toast('Removido'); loadSupportPanels();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook
+const __origSpSp = window.sp;
+if (typeof __origSpSp === 'function' && !window.__spHookedSp) {
+  window.__spHookedSp = true;
+  window.sp = function (page, el) {
+    __origSpSp(page, el);
+    if (page === 'support-panels') loadSupportPanels();
+  };
+}
