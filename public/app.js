@@ -858,6 +858,7 @@ const PAGE_META = {
   credenciais: ['Credenciais', 'tokens e chaves API — encriptadas no banco'],
   equipe: ['Equipe', 'usuários com acesso ao painel'],
   plano: ['Plano', 'sua assinatura e limites de uso'],
+  trial: ['Trial Gratuito', '24 horas com tudo liberado'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -3351,3 +3352,86 @@ if (typeof __origLoadOverview2 === 'function') {
   };
 }
 setTimeout(() => { if (document.getElementById('page-geral')?.classList.contains('show')) loadVisaoGeralExtras(); }, 1200);
+
+// ============ TRIAL 24H ATIVAR ============
+async function activateTrial24h() {
+  const btn = document.getElementById('btn-activate-trial');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = 'Ativando...'; }
+  // Mostra modal de loading
+  document.getElementById('modal-loading-bot')?.classList.add('open');
+  fakeProgress();
+  try {
+    const r = await fetch('/api/billing/trial-24h', { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) {
+      document.getElementById('modal-loading-bot')?.classList.remove('open');
+      toast(j.error || 'Falha', 'err');
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '🎁 Ativar Trial Gratuito'; }
+      return;
+    }
+    // Simula finish após chegar a 100%
+    setTimeout(() => {
+      document.getElementById('modal-loading-bot')?.classList.remove('open');
+      toast('Trial Pro ativado por 24h!');
+      setTimeout(() => location.reload(), 800);
+    }, 3200);
+  } catch (e) {
+    document.getElementById('modal-loading-bot')?.classList.remove('open');
+    toast(e.message, 'err');
+  }
+}
+
+function fakeProgress() {
+  const fill = document.getElementById('loading-bot-progress');
+  const pct = document.getElementById('loading-bot-pct');
+  const step = document.getElementById('loading-bot-step');
+  if (!fill) return;
+  fill.style.width = '0%';
+  const steps = [
+    { pct: 20, msg: 'Instalando dependências...' },
+    { pct: 45, msg: 'Configurando ambiente...' },
+    { pct: 70, msg: 'Inicializando módulos...' },
+    { pct: 92, msg: 'Quase lá...' },
+    { pct: 100, msg: 'Pronto!' }
+  ];
+  steps.forEach((s, i) => setTimeout(() => {
+    fill.style.width = s.pct + '%';
+    if (pct) pct.textContent = s.pct + '%';
+    if (step) step.textContent = s.msg;
+  }, 500 + i * 600));
+}
+
+// Helper banner "Precisa de ajuda?" — pode ser embutido em qualquer page
+function renderHelpBanner(containerId) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div style="background:linear-gradient(90deg,rgba(139,111,255,.08),rgba(139,111,255,.02));border:1px solid rgba(139,111,255,.25);border-radius:11px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;">
+      <div style="display:flex;gap:11px;align-items:center;">
+        <div style="width:34px;height:34px;border-radius:8px;background:rgba(139,111,255,.15);display:flex;align-items:center;justify-content:center;color:#b9a8ff;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <div>
+          <div style="color:#fff;font-weight:700;font-size:12.5px;">Precisa de ajuda para configurar?</div>
+          <div style="color:#888;font-size:11px;margin-top:2px;">Tutoriais passo a passo, do básico ao avançado.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="sp('tutoriais',document.querySelector('[data-page=tutoriais]'))" style="background:#8b6fff;color:#fff;border:0;padding:7px 14px;border-radius:7px;font-weight:700;font-family:inherit;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Ver Tutoriais</button>
+        <button onclick="window.open('https://discord.gg/','_blank')" style="background:#1a1a1a;color:#aaa;border:1px solid var(--border);padding:7px 14px;border-radius:7px;font-weight:600;font-family:inherit;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Suporte</button>
+      </div>
+    </div>
+  `;
+}
+
+// Hook page trial
+const __origSpTrial = window.sp;
+if (typeof __origSpTrial === 'function' && !window.__spHookedTrial) {
+  window.__spHookedTrial = true;
+  window.sp = function (page, el) {
+    __origSpTrial(page, el);
+    if (page === 'trial') {
+      // poderia carregar status do trial aqui
+    }
+  };
+}

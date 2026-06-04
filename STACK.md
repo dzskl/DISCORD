@@ -55,9 +55,9 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 - [x] **Breadcrumb na topbar** mostrando bot ativo (`9498...-TRIAL / Visão Geral`)
 - [x] **Card Assinatura + Módulos na Visão Geral**: "X dias restantes" big + Renovar + lista MÓDULOS com dot colorido
 - [x] **Cards Servidor Principal + Auditoria** lado a lado na Visão Geral (mesmo vazios)
-- [ ] **Loading modal "Preparando seu bot"** com progress bar fake (10-30s)
-- [ ] **Banner "Precisa de ajuda?"** embedável no topo das pages config (botões Ver Tutoriais + Suporte)
-- [ ] **Página Trial Gratuito dedicada**: 2 cards (features + status elegibilidade com checks)
+- [x] **Loading modal "Preparando seu bot"** com progress bar fake (10-30s)
+- [x] **Banner "Precisa de ajuda?"** embedável no topo das pages config (botões Ver Tutoriais + Suporte)
+- [x] **Página Trial Gratuito dedicada**: 2 cards (features + status elegibilidade com checks)
 
 ### Rodada NeverMissApps #4 — Boas-vindas / Loja / Automações / Proteção
 
