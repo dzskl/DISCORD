@@ -62,10 +62,8 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 ### Rodada NeverMissApps #4 — Boas-vindas / Loja / Automações / Proteção
 
 #### 🟡 Médias (~30-60min)
-- [ ] **Página "Boas-vindas"** com tabs Boas-vindas / Despedida
-  - Lista de mensagens configuradas (canal alvo, template)
-  - Botão "+ Adicionar Mensagem"
-  - Template com placeholders ({user}, {server}, {count})
+- [x] **Página "Boas-vindas"** com tabs Boas-vindas / Despedida
+  (Lista + + Adicionar + autosave debounce)
 
 #### 🟠 Maiores (~1-2h cada)
 - [ ] **Página "Loja"** estruturada:
@@ -125,12 +123,12 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - [x] Card Token do Bot (input + show/hide + Atualizar)
   - [x] Card Resgatar Código de Presente (`NEVER-XXXX-XXXX-XXXX`)
   - [x] Card Transferência de Posse (input Discord ID + warning irreversível + botão vermelho)
-- [ ] **Página "Personalização" estruturada**:
-  - [ ] Banner header customizável (image upload)
-  - [ ] Tabs Geral / Embeds
-  - [ ] Card BIO Personalizada com paywall R$5 (status rotativo)
-  - [ ] Card Informações readonly (Nome, ID, Status)
-  - [ ] Card Prefixo do bot Discord
+- [x] **Página "Personalização" estruturada**:
+  - [x] Banner header customizável (URL input)
+  - [x] Tabs Geral / Embeds
+  - [x] Card BIO Personalizada com paywall R$5 (placeholder)
+  - [x] Card Informações readonly (Nome, ID, Status)
+  - [x] Card Prefixo do bot Discord
 - [x] **Página "Canais" agrupada** por contexto (6 grupos)
 - [x] **Página "Cargos" agrupada** (Administração / Membros)
 

@@ -576,6 +576,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           cargos
         </div>
+        <div class="ni" data-page="boasvindas" onclick="sp('boasvindas',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-6 0v4"/><path d="M5 9h14l1 12H4l1-12z"/></svg>
+          boas-vindas
+        </div>
         <div class="ni" data-page="verificacoes" onclick="sp('verificacoes',this)" id="nav-verif" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -1222,25 +1226,107 @@ footer.appfoot a:hover{color:var(--text);}
       <!-- PLANO -->
       <!-- PERSONALIZAÇÃO -->
       <div id="page-personalizacao" class="page">
-        <div class="card" style="margin-bottom:14px;">
-          <div class="ctitle">aparência do bot <span class="cbadge">visível no Discord</span></div>
-          <div class="frow" style="margin-top:10px;">
-            <div class="fgroup"><div class="flabel">nome do bot</div><input class="inp" id="brand-bot-name" placeholder="ex: MinhaLoja Bot"></div>
-            <div class="fgroup"><div class="flabel">URL do avatar (png)</div><input class="inp" id="brand-bot-avatar" placeholder="https://..."></div>
+        <!-- Header com banner customizavel -->
+        <div class="card" style="padding:0;margin-bottom:18px;overflow:hidden;">
+          <div id="prs-banner" style="height:130px;background:linear-gradient(135deg,#1a1a3e,#0a0a1f);position:relative;">
+            <button onclick="document.getElementById('prs-banner-url').focus()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.5);border:1px solid var(--border);color:#aaa;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar
+            </button>
           </div>
-          <div class="frow">
-            <div class="fgroup"><div class="flabel">cor primária da loja</div><input class="inp" id="brand-color" type="color" value="#5865f2" style="height:38px;padding:4px;"></div>
-            <div class="fgroup"><div class="flabel">subtítulo da loja</div><input class="inp" id="brand-tagline" placeholder="ex: A melhor loja do servidor!"></div>
+          <div style="padding:0 22px 18px;position:relative;margin-top:-32px;">
+            <div style="display:flex;align-items:flex-end;gap:14px;">
+              <div id="prs-avatar" style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:32px;border:4px solid #0e0e0e;flex-shrink:0;position:relative;">B
+                <span style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:3px solid #0e0e0e;"></span>
+              </div>
+              <div style="flex:1;padding-bottom:6px;min-width:0;">
+                <div id="prs-bot-name" style="font-size:18px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+                <div style="font-size:10.5px;color:#666;font-family:'IBM Plex Mono',monospace;margin-top:2px;">Bot ID: <span id="prs-bot-id">—</span></div>
+              </div>
+            </div>
           </div>
-          <button class="btn-w" onclick="saveBranding()">salvar aparência</button>
         </div>
 
-        <div class="card" style="margin-bottom:14px;">
-          <div class="ctitle">mensagens automáticas <span class="cbadge">customizar</span></div>
-          <div class="fgroup" style="margin-top:10px;"><div class="flabel">mensagem de boas-vindas</div><textarea class="inp" id="brand-welcome" rows="3" placeholder="Bem-vindo {user} ao {server}!"></textarea></div>
-          <div class="fgroup"><div class="flabel">mensagem de despedida</div><textarea class="inp" id="brand-goodbye" rows="2" placeholder="{user} saiu do servidor"></textarea></div>
-          <div class="fgroup"><div class="flabel">DM de venda confirmada</div><textarea class="inp" id="brand-sale-dm" rows="2" placeholder="🎉 Obrigado pela compra de {produto}!"></textarea></div>
-          <button class="btn-w" onclick="saveBrandingMessages()">salvar mensagens</button>
+        <!-- Tabs Geral / Embeds -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;">
+          <button class="prs-tab active" data-prs="geral" onclick="switchPrsTab('geral')" style="background:transparent;border:0;color:#fff;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);">Geral</button>
+          <button class="prs-tab" data-prs="embeds" onclick="switchPrsTab('embeds')" style="background:transparent;border:0;color:#666;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Embeds</button>
+        </div>
+
+        <div id="prs-pane-geral">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <!-- Esquerda: BIO paywall + aparencia -->
+            <div>
+              <div class="card" style="padding:18px;text-align:center;margin-bottom:14px;background:linear-gradient(180deg,rgba(139,111,255,.06),transparent);">
+                <div style="width:42px;height:42px;border-radius:50%;background:rgba(139,111,255,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div style="font-weight:800;color:#fff;font-size:14px;">BIO Personalizada</div>
+                <div style="font-size:11.5px;color:#888;margin-top:4px;line-height:1.5;">Configure o status do seu bot com textos rotativos e intervalo personalizado.</div>
+                <button onclick="toast('feature paga em breve','info')" style="background:#8b6fff;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer;margin-top:14px;">Adquirir por R$ 5,00</button>
+              </div>
+              <div class="card" style="padding:14px 16px;">
+                <div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:10px;">Aparência da loja</div>
+                <div class="fgroup"><div class="flabel">nome do bot</div><input class="inp" id="brand-bot-name" placeholder="ex: MinhaLoja Bot"></div>
+                <div class="fgroup"><div class="flabel">URL do banner</div><input class="inp" id="prs-banner-url" placeholder="https://..."></div>
+                <div class="fgroup"><div class="flabel">URL do avatar</div><input class="inp" id="brand-bot-avatar" placeholder="https://..."></div>
+                <div class="frow">
+                  <div class="fgroup"><div class="flabel">cor primária</div><input class="inp" id="brand-color" type="color" value="#5865f2" style="height:38px;padding:4px;"></div>
+                  <div class="fgroup"><div class="flabel">subtítulo</div><input class="inp" id="brand-tagline" placeholder="A melhor loja!"></div>
+                </div>
+                <button class="btn-w" onclick="saveBranding()" style="margin-top:6px;">salvar aparência</button>
+              </div>
+            </div>
+            <!-- Direita: Informacoes + Prefixo -->
+            <div>
+              <div class="card" style="padding:14px 16px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:#fff;font-size:13px;margin-bottom:12px;"><span style="width:3px;height:14px;background:#3b82f6;border-radius:2px;"></span>Informações</div>
+                <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">Dados da aplicação</div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:11.5px;">
+                  <span style="color:#888;">Nome da Aplicação</span><b style="color:#fff;font-family:'IBM Plex Mono',monospace;" id="prs-app-name">—</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:11.5px;">
+                  <span style="color:#888;">ID da Aplicação</span><b style="color:#fff;font-family:'IBM Plex Mono',monospace;" id="prs-app-id">—</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:11.5px;">
+                  <span style="color:#888;">Status</span><b style="color:#7dd3a4;font-family:'IBM Plex Mono',monospace;">Online</b>
+                </div>
+              </div>
+              <div class="card" style="padding:14px 16px;">
+                <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:#fff;font-size:13px;margin-bottom:4px;"><span style="width:3px;height:14px;background:#3b82f6;border-radius:2px;"></span>Prefixo</div>
+                <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">Prefixo para comandos do bot</div>
+                <input id="prs-prefix" class="inp" maxlength="5" placeholder="!" style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f5c542;">
+                <button class="btn-w" onclick="savePrefix()" style="margin-top:10px;">salvar prefixo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="prs-pane-embeds" style="display:none;">
+          <div class="card" style="padding:16px;">
+            <div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:10px;">Mensagens customizadas</div>
+            <div class="fgroup"><div class="flabel">mensagem de boas-vindas</div><textarea class="inp" id="brand-welcome" rows="3" placeholder="Bem-vindo {user} ao {server}!"></textarea></div>
+            <div class="fgroup"><div class="flabel">mensagem de despedida</div><textarea class="inp" id="brand-goodbye" rows="2" placeholder="{user} saiu do servidor"></textarea></div>
+            <div class="fgroup"><div class="flabel">DM de venda confirmada</div><textarea class="inp" id="brand-sale-dm" rows="2" placeholder="🎉 Obrigado pela compra de {produto}!"></textarea></div>
+            <button class="btn-w" onclick="saveBrandingMessages()">salvar mensagens</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOAS-VINDAS -->
+      <div id="page-boasvindas" class="page">
+        <h2 style="font-size:18px;font-weight:700;color:#fff;">Boas-vindas</h2>
+        <p style="color:#888;font-size:12.5px;margin-top:4px;margin-bottom:18px;">Configure mensagens de boas-vindas e despedida</p>
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;">
+          <button class="bv-tab active" data-bv="boas_vindas" onclick="switchBvTab('boas_vindas')" style="background:rgba(139,111,255,.15);border:0;color:#b9a8ff;padding:10px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:6px 6px 0 0;">Boas-vindas</button>
+          <button class="bv-tab" data-bv="despedida" onclick="switchBvTab('despedida')" style="background:transparent;border:0;color:#888;padding:10px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;">Despedida</button>
+        </div>
+        <div class="card" style="padding:24px;">
+          <div id="bv-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+          <div id="bv-empty" style="text-align:center;color:#666;font-size:12.5px;padding:30px 0;">Nenhuma mensagem configurada</div>
+          <button onclick="addBvMessage()" style="background:#8b6fff;color:#fff;border:0;padding:9px 16px;border-radius:8px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer;margin-top:14px;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar Mensagem
+          </button>
         </div>
       </div>
 

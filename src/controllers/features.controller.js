@@ -116,4 +116,23 @@ router.put('/vips', (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ BOAS-VINDAS (lista de mensagens custom por canal) ============
+router.get('/welcome-messages', (req, res) => {
+  res.json(getCfg(req.guildId, 'welcome_messages', { boas_vindas: [], despedida: [] }));
+});
+router.put('/welcome-messages', (req, res) => {
+  setCfg(req.guildId, 'welcome_messages', req.body || { boas_vindas: [], despedida: [] });
+  res.json({ ok: true });
+});
+
+// ============ PREFIXO DO BOT ============
+router.get('/prefix', (req, res) => {
+  res.json({ prefix: getCfg(req.guildId, 'bot_prefix', '!') });
+});
+router.put('/prefix', (req, res) => {
+  const p = (req.body?.prefix || '!').toString().slice(0, 5);
+  setCfg(req.guildId, 'bot_prefix', p);
+  res.json({ ok: true });
+});
+
 module.exports = router;

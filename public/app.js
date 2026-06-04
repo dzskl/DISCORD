@@ -862,6 +862,7 @@ const PAGE_META = {
   'configurar-bot': ['Configurar Bot', 'token, códigos e transferência de posse'],
   'canais-config': ['Canais', 'configure canais para logs e notificações'],
   'cargos-config': ['Cargos', 'cargos para administração e membros'],
+  boasvindas: ['Boas-vindas', 'mensagens de entrada e saída'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -3648,5 +3649,136 @@ if (typeof __origSpCc === 'function' && !window.__spHookedCc) {
     __origSpCc(page, el);
     if (page === 'canais-config') loadCanaisConfig();
     if (page === 'cargos-config') loadCargosConfig();
+  };
+}
+
+// ============ PERSONALIZACAO (estendido) ============
+function switchPrsTab(tab) {
+  document.querySelectorAll('.prs-tab').forEach(b => {
+    const on = b.dataset.prs === tab;
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+  document.getElementById('prs-pane-geral').style.display = tab === 'geral' ? 'block' : 'none';
+  document.getElementById('prs-pane-embeds').style.display = tab === 'embeds' ? 'block' : 'none';
+}
+
+async function loadPersonalizacaoExtra() {
+  // Atualiza header com info do bot ativo
+  const b = window.__activeBot;
+  if (b) {
+    const nm = document.getElementById('prs-bot-name');
+    const id = document.getElementById('prs-bot-id');
+    const an = document.getElementById('prs-app-name');
+    const ai = document.getElementById('prs-app-id');
+    if (nm) nm.textContent = b.nickname || b.name || '—';
+    if (id) id.textContent = b.discord_client_id || ('app-' + b.id);
+    if (an) an.textContent = b.name || '—';
+    if (ai) ai.textContent = b.discord_client_id || ('app-' + b.id);
+  }
+  // Prefixo
+  try {
+    const j = await fetch('/api/features/prefix', { credentials: 'same-origin' }).then(r => r.json());
+    const p = document.getElementById('prs-prefix');
+    if (p) p.value = j.prefix || '!';
+  } catch {}
+  // Banner URL
+  try {
+    const j = await fetch('/api/features/branding', { credentials: 'same-origin' }).then(r => r.json());
+    const inp = document.getElementById('prs-banner-url');
+    if (inp && j.banner_url) inp.value = j.banner_url;
+    const banner = document.getElementById('prs-banner');
+    if (banner && j.banner_url) banner.style.backgroundImage = `linear-gradient(135deg,rgba(0,0,0,.3),rgba(0,0,0,.5)), url('${j.banner_url}')`;
+    banner && (banner.style.backgroundSize = 'cover');
+    banner && (banner.style.backgroundPosition = 'center');
+  } catch {}
+}
+
+async function savePrefix() {
+  const p = document.getElementById('prs-prefix').value.trim() || '!';
+  try {
+    await fetch('/api/features/prefix', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: p })
+    });
+    toast('Prefixo salvo');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ============ BOAS-VINDAS ============
+let __bvData = { boas_vindas: [], despedida: [] };
+let __bvTab = 'boas_vindas';
+
+async function loadBoasVindas() {
+  try {
+    __bvData = await fetch('/api/features/welcome-messages', { credentials: 'same-origin' }).then(r => r.json());
+    if (!__bvData.boas_vindas) __bvData.boas_vindas = [];
+    if (!__bvData.despedida) __bvData.despedida = [];
+    renderBvList();
+  } catch {}
+}
+
+function switchBvTab(tab) {
+  __bvTab = tab;
+  document.querySelectorAll('.bv-tab').forEach(b => {
+    const on = b.dataset.bv === tab;
+    b.style.background = on ? 'rgba(139,111,255,.15)' : 'transparent';
+    b.style.color = on ? '#b9a8ff' : '#888';
+  });
+  renderBvList();
+}
+
+function renderBvList() {
+  const list = __bvData[__bvTab] || [];
+  const wrap = document.getElementById('bv-list');
+  const empty = document.getElementById('bv-empty');
+  if (!wrap) return;
+  empty.style.display = list.length ? 'none' : 'block';
+  wrap.innerHTML = list.map((m, i) => `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal: #${escapeHtml(m.channel || 'qualquer')}</div>
+        <button onclick="removeBvMessage(${i})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+      </div>
+      <input value="${escapeAttr(m.channel || '')}" oninput="__bvData['${__bvTab}'][${i}].channel=this.value" placeholder="nome do canal" class="inp" style="margin-bottom:6px;">
+      <textarea oninput="__bvData['${__bvTab}'][${i}].message=this.value" placeholder="Mensagem com {user} {server} {count}" rows="2" class="inp">${escapeHtml(m.message || '')}</textarea>
+    </div>
+  `).join('');
+}
+
+function addBvMessage() {
+  __bvData[__bvTab].push({ channel: '', message: '' });
+  renderBvList();
+  saveBvDebounced();
+}
+
+function removeBvMessage(i) {
+  __bvData[__bvTab].splice(i, 1);
+  renderBvList();
+  saveBvDebounced();
+}
+
+let __bvSaveTimer = null;
+function saveBvDebounced() {
+  clearTimeout(__bvSaveTimer);
+  __bvSaveTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/features/welcome-messages', {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(__bvData)
+      });
+    } catch {}
+  }, 800);
+}
+
+const __origSpPrs = window.sp;
+if (typeof __origSpPrs === 'function' && !window.__spHookedPrs) {
+  window.__spHookedPrs = true;
+  window.sp = function (page, el) {
+    __origSpPrs(page, el);
+    if (page === 'personalizacao') loadPersonalizacaoExtra();
+    if (page === 'boasvindas') loadBoasVindas();
   };
 }
