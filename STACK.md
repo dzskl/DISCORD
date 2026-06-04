@@ -147,6 +147,62 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 
 ---
 
+### Rodada NeverMissApps #7 — Loja Geral / Ações Automáticas detalhadas
+
+#### 🟠 Maiores (~2h cada)
+- [ ] **Página "Loja" aba Geral** completa (config da experiência de venda):
+  - Section **Chave API (Gateway YuvexPay)** com input + link tutorial
+  - Section **Taxa de Processamento** — toggle "Repassar Taxa para
+    o Cliente" + explicação que NÃO é taxa do sistema
+  - Section **Localização**:
+    - Dropdown Moeda (BRL/USD/EUR)
+    - Dropdown Idioma (PT-BR/EN/ES)
+    - Card "Configurações Atuais" mostrando formatação (R$ 29,90)
+  - Section **Posições** — Posição 1/2/3 default de produtos
+    - Dropdown produto + input ordem por slot
+  - Section **Marca** do checkout:
+    - Cor Central (color picker #8B5CF6)
+    - Cor da Borda (color picker #6D28D9)
+    - Logo do QR Code (drop zone)
+    - Zoom da Logo (slider 90%-140%)
+    - Posição do QR Code (pills Imagem Principal / Thumbnail)
+  - Section **Mensagem de Instruções** (padrão do checkout):
+    - Toggle habilitar
+    - Textarea mensagem
+    - Nome do Botão (Opcional) + URL do Botão (Opcional)
+    - Dica: "Se apenas um dos campos for preenchido, o botão não
+      será exibido"
+  - **Preview live à direita** renderizando o embed PIX que o
+    cliente recebe (avatar do bot + Pagamento via PIX + Expira em
+    + Código Copia e Cola + QR Code com logo no centro)
+
+- [ ] **Modal "Adicionar Mensagem Automática"** (reusável):
+  - Campo Canal (dropdown)
+  - Campo Conteúdo (texto acima da embed)
+  - **Modo de Envio** com 3 pills:
+    - **Embed (Padrão)** — embed builder normal
+    - **Components V2** — Discord components (botões/menus modernos)
+    - **Legacy (Texto)** — texto puro sem embed
+  - Intervalo em minutos (default 60)
+  - Embed builder esquerda + Preview live direita
+  - Section **BOTÕES (0/4)** com botão "Adicionar Botão" — até 4
+    botões clicáveis no embed
+
+- [ ] **Página "Ações Automáticas"** com 5 sub-tabs:
+  - **Mensagens Automáticas**:
+    - Toggle global "Ativar mensagens automáticas"
+    - Lista de mensagens configuradas + "+ Adicionar Mensagem"
+    - Search por canal
+    - Cada mensagem usa o modal acima
+  - **Reações Automáticas**:
+    - Toggle "Ativar reações automáticas"
+    - Card "Canais com Reações" + "Adicionar Canal"
+    - Por canal: dropdown canal + input emoji picker
+    - Botão X vermelho remove canal
+  - **Repostagem Automática** — repostar produtos/anúncios fresh
+  - **Limpeza Automática** — auto-delete msgs antigas por canal
+  - **Sugestões** — sistema de suggestion box com canal
+
 ### Rodada NeverMissApps #6 — Configurações / Boas-vindas avançada
 
 #### 🟡 Médias (~30-60min)
