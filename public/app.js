@@ -859,6 +859,7 @@ const PAGE_META = {
   equipe: ['Equipe', 'usuários com acesso ao painel'],
   plano: ['Plano', 'sua assinatura e limites de uso'],
   trial: ['Trial Gratuito', '24 horas com tudo liberado'],
+  'configurar-bot': ['Configurar Bot', 'token, códigos e transferência de posse'],
   config: ['Configurações', 'preferências do bot e canais']
 };
 
@@ -3433,5 +3434,99 @@ if (typeof __origSpTrial === 'function' && !window.__spHookedTrial) {
     if (page === 'trial') {
       // poderia carregar status do trial aqui
     }
+  };
+}
+
+// ============ CONFIGURAR BOT ============
+async function loadConfigurarBot() {
+  renderHelpBanner('cb-help-banner');
+  try {
+    const j = await fetch('/api/bot-config/token-status', { credentials: 'same-origin' }).then(r => r.json());
+    const badge = document.getElementById('cb-token-status');
+    if (badge) {
+      if (j.configured) {
+        badge.textContent = 'configurado';
+        badge.style.background = 'rgba(34,197,94,.15)';
+        badge.style.color = '#7dd3a4';
+      } else {
+        badge.textContent = 'não configurado';
+        badge.style.background = 'rgba(245,197,66,.15)';
+        badge.style.color = '#f5c542';
+      }
+    }
+    const inp = document.getElementById('cb-token');
+    if (inp && j.masked) inp.placeholder = j.masked;
+  } catch {}
+}
+
+function toggleCbTokenVis() {
+  const inp = document.getElementById('cb-token');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function updateBotToken() {
+  const token = document.getElementById('cb-token').value.trim();
+  if (!token) return toast('Cole o token primeiro', 'err');
+  if (token.length < 50) return toast('Token parece inválido', 'err');
+  try {
+    const r = await fetch('/api/bot-config/token', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Token atualizado! Bot reiniciando.');
+    document.getElementById('cb-token').value = '';
+    loadConfigurarBot();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function redeemPromo() {
+  const code = document.getElementById('cb-promo').value.trim().toUpperCase();
+  if (!code) return toast('Cole o código', 'err');
+  try {
+    const r = await fetch('/api/bot-config/redeem', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    const msg = j.kind === 'trial_extend' ? `Trial estendido por ${j.value}!`
+      : j.kind === 'credit' ? `Crédito de R$ ${(parseInt(j.value) / 100).toFixed(2)} adicionado!`
+      : j.kind === 'module_unlock' ? `Módulo "${j.value}" desbloqueado!`
+      : 'Código resgatado!';
+    toast(msg);
+    document.getElementById('cb-promo').value = '';
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function transferBot() {
+  const target = document.getElementById('cb-transfer').value.trim();
+  if (!target || !/^\d{16,20}$/.test(target)) return toast('Discord ID inválido', 'err');
+  if (!confirm('Tem CERTEZA? Esta ação é IRREVERSÍVEL. Você perderá acesso ao bot.')) return;
+  const botId = window.__activeBot?.id;
+  if (!botId) return toast('Bot ativo não detectado', 'err');
+  try {
+    const r = await fetch('/api/bot-config/transfer', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bot_instance_id: botId, target_discord_id: target, confirm: 'IRREVERSIVEL' })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'Falha', 'err');
+    toast('Bot transferido. Você foi desvinculado.');
+    setTimeout(() => location.href = '/login.html', 2000);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+const __origSpCb = window.sp;
+if (typeof __origSpCb === 'function' && !window.__spHookedCb) {
+  window.__spHookedCb = true;
+  window.sp = function (page, el) {
+    __origSpCb(page, el);
+    if (page === 'configurar-bot') loadConfigurarBot();
   };
 }

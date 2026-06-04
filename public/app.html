@@ -564,6 +564,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           credenciais
         </div>
+        <div class="ni" data-page="configurar-bot" onclick="sp('configurar-bot',this)">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+          configurar bot
+        </div>
         <div class="ni" data-page="verificacoes" onclick="sp('verificacoes',this)" id="nav-verif" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           verificações <span id="verif-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -1364,6 +1368,70 @@ footer.appfoot a:hover{color:var(--text);}
         <div class="card">
           <div class="ctitle">próximas conquistas <span class="cbadge">em progresso</span></div>
           <div id="ach-locked" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <!-- CONFIGURAR BOT -->
+      <div id="page-configurar-bot" class="page">
+        <div id="cb-help-banner"></div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,111,255,.15);display:flex;align-items:center;justify-content:center;color:#b9a8ff;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:13.5px;">Token do Bot</div>
+              <div style="color:#888;font-size:11px;">Cole o token do seu bot Discord para ativá-lo</div>
+            </div>
+            <span id="cb-token-status" style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-weight:700;background:rgba(245,197,66,.15);color:#f5c542;">não configurado</span>
+          </div>
+          <div style="position:relative;">
+            <input id="cb-token" type="password" placeholder="Cole o token do bot aqui" style="width:100%;background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:11px 40px 11px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <button onclick="toggleCbTokenVis()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#666;cursor:pointer;padding:6px;">
+              <svg id="cb-token-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button onclick="updateBotToken()" style="background:#8b6fff;color:#fff;border:0;padding:9px 14px;border-radius:8px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer;margin-top:10px;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Atualizar Token
+          </button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;color:#7dd3a4;">🎁</div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:13.5px;">Resgatar Código de Presente</div>
+              <div style="color:#888;font-size:11px;">Ative benefícios usando códigos promocionais</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input id="cb-promo" placeholder="NEVER-XXXX-XXXX-XXXX" style="flex:1;background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:11px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;">
+            <button onclick="redeemPromo()" style="background:#22c55e;color:#000;border:0;padding:9px 18px;border-radius:8px;font-weight:800;font-family:inherit;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Resgatar
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;color:#ff8a8a;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:13.5px;">Transferência de Posse</div>
+              <div style="color:#888;font-size:11px;">Transfira a propriedade do bot para outro usuário</div>
+            </div>
+          </div>
+          <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:11px;margin-bottom:10px;color:#ff8a8a;font-size:11.5px;line-height:1.5;">
+            <b>Atenção:</b> Ao transferir a posse do bot, você perderá todos os direitos administrativos sobre ele. Esta ação é <b>irreversível</b>.
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input id="cb-transfer" placeholder="ID do Discord do novo dono" style="flex:1;background:#0a0a0a;border:1px solid var(--border);color:#fff;border-radius:8px;padding:11px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <button onclick="transferBot()" style="background:#ef4444;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-weight:800;font-family:inherit;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg> Transferir Posse
+            </button>
+          </div>
         </div>
       </div>
 

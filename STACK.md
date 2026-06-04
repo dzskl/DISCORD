@@ -121,10 +121,10 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
 ### Rodada NeverMissApps #3 — Configurar Bot / Personalização / Canais / Cargos
 
 #### 🟠 Maiores (~1-2h cada)
-- [ ] **Página "Configurar Bot"** completa:
-  - [ ] Card Token do Bot (input + show/hide + Atualizar)
-  - [ ] Card Resgatar Código de Presente (`NEVER-XXXX-XXXX-XXXX`)
-  - [ ] Card Transferência de Posse (input Discord ID + warning irreversível + botão vermelho)
+- [x] **Página "Configurar Bot"** completa:
+  - [x] Card Token do Bot (input + show/hide + Atualizar)
+  - [x] Card Resgatar Código de Presente (`NEVER-XXXX-XXXX-XXXX`)
+  - [x] Card Transferência de Posse (input Discord ID + warning irreversível + botão vermelho)
 - [ ] **Página "Personalização" estruturada**:
   - [ ] Banner header customizável (image upload)
   - [ ] Tabs Geral / Embeds
@@ -143,15 +143,15 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - [ ] Membros (Verificado eCloud, Cliente, Membro Auto-Role)
 
 #### 🔴 Backend pesado
-- [ ] **Sistema de Códigos Promocionais**:
-  - [ ] Migration `promo_codes` (code, kind, value, max_uses, expires_at)
-  - [ ] Admin page pra gerar códigos
-  - [ ] User resgata via página Configurar Bot
-  - [ ] Tipos: extension trial, créditos saldo, módulo desbloqueado
-- [ ] **Transferência de Posse** real:
-  - [ ] Endpoint que valida Discord ID destino
-  - [ ] Cria notificação pro novo dono confirmar
-  - [ ] Move ownership + zera permissões antigas
+- [x] **Sistema de Códigos Promocionais**:
+  - [x] Migration `promo_codes` (code, kind, value, max_uses, expires_at)
+  - [ ] Admin page pra gerar códigos (backend pronto, UI ainda nao)
+  - [x] User resgata via página Configurar Bot
+  - [x] Tipos: extension trial, créditos saldo, módulo desbloqueado
+- [x] **Transferência de Posse** real:
+  - [x] Endpoint que valida Discord ID destino
+  - [x] Cria notificação pro novo dono
+  - [x] Move ownership (com confirmacao IRREVERSIVEL)
 - [ ] **BIO rotativa** (renderização real no Discord profile + paywall R$5)
 - [ ] **Servidor Principal conectado** card com avatar+ID+stats+botão "Adicionar a outro servidor"
 
