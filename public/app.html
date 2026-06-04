@@ -2639,6 +2639,22 @@ footer.appfoot a:hover{color:var(--text);}
   </div>
 </div>
 
+<!-- Modal Sorteio Avançado (tabs Geral / Requisitos / Tarefas) -->
+<div class="modal-back" id="modal-gv-adv">
+  <div class="modal" style="max-width:700px;max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-head">
+      <h3 id="modal-gv-title">Configurar sorteio</h3>
+      <button class="modal-x" onclick="closeModal('modal-gv-adv')">×</button>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border);padding:0 22px;">
+      <button class="gv-tab" data-gv-tab="geral" onclick="switchGvTab('geral')" style="background:transparent;border:0;color:#fff;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);">Geral</button>
+      <button class="gv-tab" data-gv-tab="requisitos" onclick="switchGvTab('requisitos')" style="background:transparent;border:0;color:#666;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Requisitos</button>
+      <button class="gv-tab" data-gv-tab="tarefas" onclick="switchGvTab('tarefas')" style="background:transparent;border:0;color:#666;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;">Tarefas</button>
+    </div>
+    <div class="modal-body" id="modal-gv-body" style="flex:1;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <!-- Modal "Editar Regra de Proteção" reusável -->
 <div class="modal-back" id="modal-prot-rule">
   <div class="modal" style="max-width:460px;">

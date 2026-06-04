@@ -1349,7 +1349,10 @@ async function loadSorteios() {
       const status = g.ended
         ? '<span class="badge" style="background:#1a1a1a;color:#666;border:1px solid #2a2a2a">encerrado</span>'
         : (g.ends_at < Math.floor(Date.now() / 1000) ? '<span class="badge kick">pendente</span>' : '<span class="badge" style="background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a">ativo</span>');
-      const actions = g.ended ? '' : `<button class="btn-sm" onclick="encerrarSorteio(${g.id})">encerrar agora</button>`;
+      const actions = `
+        <button class="btn-sm" onclick="openGiveawayAdvanced(${g.id})" style="margin-right:4px;background:rgba(139,111,255,.15);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;">configurar</button>
+        ${g.ended ? '' : `<button class="btn-sm" onclick="encerrarSorteio(${g.id})">encerrar agora</button>`}
+      `;
       return `<tr>
         <td class="hi">${escapeHtml(g.prize)}</td>
         <td>${g.winners_count}</td>
@@ -4635,4 +4638,262 @@ if (typeof __origSpLoja === 'function' && !window.__spHookedLoja) {
     __origSpLoja(page, el);
     if (page === 'loja-cfg') { loadShopPanels(); loadLojaCheckout(); }
   };
+}
+
+// ============ SORTEIOS — Modal Avançado ============
+let __gv = null;       // sorteio carregado
+let __gvTab = 'geral';
+
+async function openGiveawayAdvanced(id) {
+  try {
+    __gv = await fetch('/api/giveaway-advanced/' + id, { credentials: 'same-origin' }).then(r => r.json());
+    document.getElementById('modal-gv-title').textContent = 'Configurar: ' + (__gv.prize || 'sorteio');
+    __gvTab = 'geral';
+    renderGvTabs();
+    renderGvTab();
+    document.getElementById('modal-gv-adv').classList.add('open');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function switchGvTab(tab) {
+  __gvTab = tab;
+  renderGvTabs();
+  renderGvTab();
+}
+
+function renderGvTabs() {
+  document.querySelectorAll('.gv-tab').forEach(b => {
+    const on = b.dataset.gvTab === __gvTab;
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+}
+
+function renderGvTab() {
+  const body = document.getElementById('modal-gv-body');
+  if (!__gv || !body) return;
+
+  if (__gvTab === 'geral') {
+    body.innerHTML = `
+      <div style="border-left:3px solid var(--primary);padding-left:12px;margin-bottom:14px;">
+        <div style="font-weight:700;color:#fff;font-size:13.5px;">Informações Básicas</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Nome do Sorteio</label>
+        <input id="gv-adv-name" type="text" value="${escapeAttr(__gv.prize || '')}" class="inp" style="margin-top:5px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Ícone (URL)</label>
+          <input id="gv-adv-icon" type="text" value="${escapeAttr(__gv.icon_url || '')}" placeholder="https://..." class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+        </div>
+        <div>
+          <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Banner (URL)</label>
+          <input id="gv-adv-banner" type="text" value="${escapeAttr(__gv.banner_url || '')}" placeholder="https://..." class="inp" style="margin-top:5px;font-family:'IBM Plex Mono',monospace;">
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Descrição</label>
+        <textarea id="gv-adv-desc" rows="3" class="inp" style="margin-top:5px;">${escapeHtml(__gv.description || '')}</textarea>
+      </div>
+
+      <div style="border-left:3px solid var(--primary);padding-left:12px;margin:18px 0 12px;">
+        <div style="font-weight:700;color:#fff;font-size:13.5px;">Modo de Entrega Automática</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Tipo de Entrega</label>
+        <select id="gv-adv-delivery" class="inp" style="margin-top:5px;" onchange="document.getElementById('gv-adv-payload-wrap').style.display=this.value==='none'?'none':'block'">
+          <option value="none" ${__gv.delivery_type === 'none' ? 'selected' : ''}>Sem entrega automática</option>
+          <option value="cargo" ${__gv.delivery_type === 'cargo' ? 'selected' : ''}>Cargo Discord</option>
+          <option value="codigo" ${__gv.delivery_type === 'codigo' ? 'selected' : ''}>Código de resgate</option>
+          <option value="mensagem" ${__gv.delivery_type === 'mensagem' ? 'selected' : ''}>Mensagem DM</option>
+        </select>
+      </div>
+      <div id="gv-adv-payload-wrap" style="margin-bottom:14px;display:${__gv.delivery_type && __gv.delivery_type !== 'none' ? 'block' : 'none'};">
+        <label style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;">Payload</label>
+        <input id="gv-adv-payload" type="text" value="${escapeAttr(__gv.delivery_payload || '')}" placeholder="role_id, código, ou mensagem" class="inp" style="margin-top:5px;">
+      </div>
+
+      <label style="display:flex;align-items:center;gap:10px;padding:11px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" id="gv-adv-monitor" ${__gv.monitor ? 'checked' : ''} style="accent-color:#8b6fff;">
+        <div>
+          <div style="font-size:12.5px;color:#fff;font-weight:600;">Monitorar</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">Notifica owner quando há novos participantes</div>
+        </div>
+      </label>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+        <button onclick="saveGvGeneral()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;">Salvar</button>
+      </div>
+    `;
+  } else if (__gvTab === 'requisitos') {
+    const r = __gv.requirements || {};
+    const toggles = r.toggles || {};
+    body.innerHTML = `
+      <div style="border-left:3px solid var(--primary);padding-left:12px;margin-bottom:14px;">
+        <div style="font-weight:700;color:#fff;font-size:13.5px;">Requisitos de Participação</div>
+        <div style="font-size:11.5px;color:#888;margin-top:3px;">Filtros pra quem pode entrar no sorteio</div>
+      </div>
+      ${[
+        { k: 'membro_cliente', l: 'Membro Cliente' },
+        { k: 'feedback', l: 'Feedback Science' },
+        { k: 'verificado', l: 'Membro Verificado' },
+        { k: 'em_voz', l: 'Em Canal de Voz' },
+        { k: 'voz_mutada', l: 'Voz Mutada' },
+        { k: 'voz_surda', l: 'Voz Surda' }
+      ].map(t => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;">
+          <span style="font-size:12.5px;color:#fff;">${t.l}</span>
+          <label style="position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;">
+            <input type="checkbox" data-gv-toggle="${t.k}" ${toggles[t.k] ? 'checked' : ''} style="opacity:0;width:0;height:0;" onchange="this.parentElement.querySelector('.tk').style.background=this.checked?'#22c55e':'#1a1a1a';this.parentElement.querySelector('.kb').style.left=this.checked?'17px':'3px'">
+            <span class="tk" style="position:absolute;inset:0;background:${toggles[t.k] ? '#22c55e' : '#1a1a1a'};border:1px solid var(--border);border-radius:20px;transition:.2s;"></span>
+            <span class="kb" style="position:absolute;height:14px;width:14px;left:${toggles[t.k] ? '17px' : '3px'};top:2px;background:#fff;border-radius:50%;transition:.2s;"></span>
+          </label>
+        </div>
+      `).join('')}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Dias de Conta Mín.</label><input id="gv-req-dias-conta" type="number" min="0" value="${r.dias_conta_min || 0}" class="inp" style="margin-top:4px;"></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Convites Mínimos</label><input id="gv-req-convites" type="number" min="0" value="${r.convites_min || 0}" class="inp" style="margin-top:4px;"></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Gasto Mínimo (R$)</label><input id="gv-req-gasto-min" type="number" min="0" step="0.01" value="${(r.gasto_min || 0) / 100}" class="inp" style="margin-top:4px;"></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Gasto Máximo (R$)</label><input id="gv-req-gasto-max" type="number" min="0" step="0.01" value="${(r.gasto_max || 0) / 100}" class="inp" style="margin-top:4px;"></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Primeira Compra (Dias)</label><input id="gv-req-primeira" type="number" min="0" value="${r.primeira_compra_dias || 0}" class="inp" style="margin-top:4px;"></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Última Compra (Dias)</label><input id="gv-req-ultima" type="number" min="0" value="${r.ultima_compra_dias || 0}" class="inp" style="margin-top:4px;"></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Cargos Obrigatórios (IDs, vírgula)</label>
+        <input id="gv-req-cargos-ob" type="text" value="${escapeAttr((r.cargos_obrigatorios || []).join(', '))}" placeholder="Selecione cargos..." class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+      <div style="margin-top:10px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Cargos Bloqueados (IDs, vírgula)</label>
+        <input id="gv-req-cargos-bl" type="text" value="${escapeAttr((r.cargos_bloqueados || []).join(', '))}" placeholder="Selecione cargos..." class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+      <div style="margin-top:10px;">
+        <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canais de Voz (IDs, vírgula)</label>
+        <input id="gv-req-canais-voz" type="text" value="${escapeAttr((r.canais_voz || []).join(', '))}" placeholder="Selecione canais..." class="inp" style="margin-top:4px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Nicknames (um por linha)</label><textarea id="gv-req-nicks" rows="3" class="inp" style="margin-top:4px;">${escapeHtml((r.nicknames || []).join('\n'))}</textarea></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Status (um por linha)</label><textarea id="gv-req-status" rows="3" class="inp" style="margin-top:4px;">${escapeHtml((r.status || []).join('\n'))}</textarea></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Atividades (um por linha)</label><textarea id="gv-req-ativ" rows="3" class="inp" style="margin-top:4px;">${escapeHtml((r.atividades || []).join('\n'))}</textarea></div>
+        <div><label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Bios (um por linha)</label><textarea id="gv-req-bios" rows="3" class="inp" style="margin-top:4px;">${escapeHtml((r.bios || []).join('\n'))}</textarea></div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+        <button onclick="saveGvRequirements()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;">Salvar Requisitos</button>
+      </div>
+    `;
+  } else if (__gvTab === 'tarefas') {
+    const tasks = __gv.tasks || [];
+    body.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="font-weight:700;color:#fff;font-size:13.5px;">Tarefas</div>
+          <div style="font-size:11.5px;color:#888;margin-top:3px;">Gamificação — usuário tem que cumprir antes de entrar</div>
+        </div>
+        <button onclick="addGvTask()" style="background:rgba(139,111,255,.2);border:1px solid rgba(139,111,255,.3);color:#b9a8ff;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;">+ Nova Tarefa</button>
+      </div>
+      ${tasks.length ? tasks.map(t => `
+        <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:10px;background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;font-family:'IBM Plex Mono',monospace;">${escapeHtml(t.type)}</span>
+            <button onclick="deleteGvTask(${t.id})" style="background:transparent;border:0;color:#ff8a8a;font-size:11px;cursor:pointer;">remover</button>
+          </div>
+          <div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:6px;">${escapeHtml(t.title)}</div>
+          ${t.url ? `<div style="font-size:11px;color:#88c0ff;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(t.url)}</div>` : ''}
+        </div>
+      `).join('') : `
+        <div style="text-align:center;padding:40px 20px;color:#666;">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div style="font-size:13px;">Crie uma tarefa para começar</div>
+        </div>
+      `}
+    `;
+  }
+}
+
+async function saveGvGeneral() {
+  if (!__gv) return;
+  const get = id => document.getElementById(id)?.value || '';
+  const body = {
+    name: get('gv-adv-name'),
+    icon_url: get('gv-adv-icon') || null,
+    banner_url: get('gv-adv-banner') || null,
+    description: get('gv-adv-desc') || null,
+    delivery_type: get('gv-adv-delivery'),
+    delivery_payload: get('gv-adv-payload') || null,
+    monitor: document.getElementById('gv-adv-monitor')?.checked || false
+  };
+  try {
+    const r = await fetch('/api/giveaway-advanced/' + __gv.id + '/general', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Salvo'); openGiveawayAdvanced(__gv.id);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveGvRequirements() {
+  if (!__gv) return;
+  const toggles = {};
+  document.querySelectorAll('[data-gv-toggle]').forEach(el => { toggles[el.dataset.gvToggle] = el.checked; });
+  const g = id => document.getElementById(id)?.value || '';
+  const lines = id => g(id).split('\n').map(s => s.trim()).filter(Boolean);
+  const list = id => g(id).split(',').map(s => s.trim()).filter(Boolean);
+  const body = {
+    toggles,
+    dias_conta_min: parseInt(g('gv-req-dias-conta')) || 0,
+    convites_min: parseInt(g('gv-req-convites')) || 0,
+    gasto_min: Math.round(parseFloat(g('gv-req-gasto-min')) * 100) || 0,
+    gasto_max: Math.round(parseFloat(g('gv-req-gasto-max')) * 100) || 0,
+    primeira_compra_dias: parseInt(g('gv-req-primeira')) || 0,
+    ultima_compra_dias: parseInt(g('gv-req-ultima')) || 0,
+    cargos_obrigatorios: list('gv-req-cargos-ob'),
+    cargos_bloqueados: list('gv-req-cargos-bl'),
+    canais_voz: list('gv-req-canais-voz'),
+    nicknames: lines('gv-req-nicks'),
+    status: lines('gv-req-status'),
+    atividades: lines('gv-req-ativ'),
+    bios: lines('gv-req-bios')
+  };
+  try {
+    const r = await fetch('/api/giveaway-advanced/' + __gv.id + '/requirements', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Requisitos salvos');
+    __gv.requirements = body;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function addGvTask() {
+  const title = prompt('Título da tarefa:');
+  if (!title) return;
+  const type = prompt('Tipo (twitter_follow / discord_join / youtube_sub / url_visit / custom):', 'url_visit') || 'url_visit';
+  const url = prompt('URL (opcional):') || null;
+  try {
+    const r = await fetch('/api/giveaway-advanced/' + __gv.id + '/tasks', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, type, url })
+    });
+    if (!r.ok) return toast('Falha', 'err');
+    toast('Tarefa criada');
+    openGiveawayAdvanced(__gv.id);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteGvTask(taskId) {
+  if (!confirm('Remover tarefa?')) return;
+  try {
+    await fetch('/api/giveaway-advanced/' + __gv.id + '/tasks/' + taskId, { method: 'DELETE', credentials: 'same-origin' });
+    toast('Removida');
+    openGiveawayAdvanced(__gv.id);
+  } catch (e) { toast(e.message, 'err'); }
 }

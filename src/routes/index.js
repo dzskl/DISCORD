@@ -22,6 +22,7 @@ function register(app) {
   app.use('/api/protection-v2', require('../controllers/protection.controller'));
   app.use('/api/conta', require('../controllers/conta.controller'));
   app.use('/api/shop', require('../controllers/shop-panels.controller'));
+  app.use('/api/giveaway-advanced', require('../controllers/giveaway-advanced.controller'));
   app.use('/api/2fa', require('../controllers/twofa.controller').router);
   app.use('/api/extras', require('../controllers/extras.controller'));
   app.use('/api/achievements', require('../controllers/achievements.controller'));
