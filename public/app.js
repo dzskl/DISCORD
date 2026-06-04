@@ -4114,3 +4114,81 @@ function scrollTo2FA() {
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }, 200);
 }
+
+// ============ MULTI-CONTA (browser-side, localStorage) ============
+// Mantem lista de contas conhecidas pra trocar sem refazer login.
+// Cada conta salva: { id, email, display_name, avatar, last_seen }
+// A sessao real ainda eh server-side (cookie por dominio).
+
+const MULTI_ACC_KEY = 'botdash:accounts';
+
+function loadKnownAccounts() {
+  try { return JSON.parse(localStorage.getItem(MULTI_ACC_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveKnownAccounts(list) {
+  try { localStorage.setItem(MULTI_ACC_KEY, JSON.stringify(list.slice(0, 5))); } catch {}
+}
+
+function trackCurrentAccount() {
+  // Captura o user atual e adiciona/atualiza no storage local
+  fetch('/auth/me', { credentials: 'same-origin' }).then(r => r.json()).then(me => {
+    if (!me?.authenticated || !me.user) return;
+    const u = me.user;
+    const list = loadKnownAccounts();
+    const idx = list.findIndex(a => a.id == u.id || a.email === u.email);
+    const entry = {
+      id: u.id, email: u.email,
+      display_name: u.display_name || u.username || u.email,
+      avatar: u.discord_avatar || null,
+      last_seen: Date.now(),
+      active: true
+    };
+    if (idx >= 0) list[idx] = { ...list[idx], ...entry };
+    else list.unshift(entry);
+    // marca outras como inativas
+    for (const a of list) if (a.id != entry.id) a.active = false;
+    saveKnownAccounts(list);
+    renderMultiAccountList();
+  }).catch(() => {});
+}
+
+function renderMultiAccountList() {
+  const wrap = document.getElementById('multi-accounts-list');
+  if (!wrap) return;
+  const list = loadKnownAccounts();
+  const others = list.filter(a => !a.active);
+  if (others.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  wrap.innerHTML = `
+    <div style="padding:4px 16px;font-size:9.5px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-family:'IBM Plex Mono',monospace;">Outras contas</div>
+    ${others.map(a => `
+      <a href="#" onclick="switchAccount('${escapeAttr(a.email)}');return false;" class="um-item" style="display:flex;align-items:center;gap:10px;padding:8px 16px;color:#aaa;text-decoration:none;font-size:12.5px;cursor:pointer;">
+        <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8b6fff,#5865f2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;${a.avatar ? `background:url('${escapeAttr(a.avatar)}') center/cover;` : ''}">${a.avatar ? '' : (a.display_name || a.email || '?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:#fff;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.display_name)}</div>
+          <div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.email)}</div>
+        </div>
+      </a>
+    `).join('')}
+  `;
+}
+
+function switchAccount(email) {
+  // Desloga atual e redireciona pro login com email pre-preenchido
+  if (!confirm('Trocar pra conta ' + email + '?\n\nVocê será deslogado e levado ao login.')) return;
+  fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(() => {
+    location.href = '/login.html?email=' + encodeURIComponent(email);
+  });
+}
+
+function openAddAccountFlow() {
+  closeUserMenu();
+  if (!confirm('Adicionar outra conta?\n\nVocê será deslogado e levado ao login. A conta atual permanece salva.')) return;
+  fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(() => {
+    location.href = '/login.html?add=1';
+  });
+}
+
+setTimeout(trackCurrentAccount, 1200);

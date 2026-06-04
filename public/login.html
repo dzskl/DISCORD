@@ -132,6 +132,16 @@ async function doLogin(e) {
     btn.disabled = false; btn.textContent = 'entrar →';
   }
 }
+
+// Pre-preenche email se vier de switch de conta (?email=)
+const _p = new URLSearchParams(location.search);
+const _qEmail = _p.get('email');
+if (_qEmail) document.getElementById('email').value = _qEmail;
+if (_p.get('add')) {
+  const al = document.getElementById('alert');
+  al.className = 'alert ok';
+  al.textContent = 'Adicione outra conta — você poderá trocar entre elas no menu do avatar.';
+}
 </script>
 </body>
 </html>
