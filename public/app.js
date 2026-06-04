@@ -5462,3 +5462,322 @@ async function saveAutoMessage() {
     if (typeof loadAutoMessages === 'function') loadAutoMessages();
   } catch (e) { toast(e.message, 'err'); }
 }
+
+// ============ PAGE ACOES AUTOMATICAS — 5 sub-tabs ============
+let __aaTab = 'mensagens';
+let __autoMessagesList = [];
+let __autoReactions = null;
+let __autoRepost = null;
+let __autoCleanup = null;
+let __autoSuggestions = null;
+
+function switchAaTab(tab) {
+  __aaTab = tab;
+  document.querySelectorAll('.aa-tab').forEach(b => {
+    const on = b.dataset.aaTab === tab;
+    b.style.color = on ? '#fff' : '#666';
+    b.style.borderBottomColor = on ? 'var(--primary)' : 'transparent';
+  });
+  renderAaTab();
+}
+
+async function renderAaTab() {
+  const body = document.getElementById('aa-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:#666;padding:30px;text-align:center;">carregando...</div>';
+  try {
+    if (__aaTab === 'mensagens') return renderAaMensagens();
+    if (__aaTab === 'reacoes') return renderAaReacoes();
+    if (__aaTab === 'repostagem') return renderAaRepostagem();
+    if (__aaTab === 'limpeza') return renderAaLimpeza();
+    if (__aaTab === 'sugestoes') return renderAaSugestoes();
+  } catch (e) { body.innerHTML = '<div style="color:#ff6b6b;padding:20px;">' + escapeHtml(e.message) + '</div>'; }
+}
+
+// --- MENSAGENS AUTOMATICAS ---
+async function loadAutoMessages() {
+  const q = document.getElementById('am-search')?.value || '';
+  __autoMessagesList = await fetch('/api/auto-messages?q=' + encodeURIComponent(q), { credentials: 'same-origin' }).then(r => r.json());
+  renderAaMensagensList();
+}
+
+async function renderAaMensagens() {
+  const body = document.getElementById('aa-body');
+  __autoMessagesList = await fetch('/api/auto-messages', { credentials: 'same-origin' }).then(r => r.json());
+  body.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="am-master-enabled" checked style="accent-color:#22c55e;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">Ativar mensagens automáticas</span>
+        </label>
+        <button onclick="openAutoMessageModal()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:8px 14px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Adicionar Mensagem
+        </button>
+      </div>
+      <div style="font-size:10.5px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">Mensagens configuradas</div>
+      <input id="am-search" placeholder="Pesquisar por canal..." class="inp" oninput="loadAutoMessages()" style="margin-bottom:12px;">
+      <div id="am-list"></div>
+    </div>
+  `;
+  renderAaMensagensList();
+}
+
+function renderAaMensagensList() {
+  const wrap = document.getElementById('am-list');
+  if (!wrap) return;
+  if (!__autoMessagesList.length) {
+    wrap.innerHTML = `<div style="text-align:center;color:#666;padding:30px;background:#0e0e0e;border:1px solid var(--border);border-radius:8px;">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div style="font-size:12.5px;">Nenhuma mensagem configurada</div>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = __autoMessagesList.map(m => `
+    <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;color:#fff;font-size:12.5px;display:flex;align-items:center;gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace;">#${escapeHtml(m.channel_id)}</span>
+          <span style="font-size:9.5px;padding:2px 7px;border-radius:8px;background:#1a1a1a;color:#aaa;text-transform:uppercase;letter-spacing:.04em;">${m.mode}</span>
+          <span style="font-size:10.5px;color:#666;">${m.interval_minutes} min</span>
+        </div>
+        ${m.embed?.title ? `<div style="font-size:11.5px;color:#aaa;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(m.embed.title)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button onclick='openAutoMessageModal(${JSON.stringify(m).replace(/'/g,"\\'")})' style="background:#1a1a1a;border:1px solid var(--border);color:#aaa;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Editar</button>
+        <button onclick="deleteAutoMessage(${m.id})" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:#ff8a8a;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteAutoMessage(id) {
+  if (!confirm('Remover esta mensagem automática?')) return;
+  try {
+    await fetch('/api/auto-messages/' + id, { method: 'DELETE', credentials: 'same-origin' });
+    toast('Removida');
+    loadAutoMessages();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// --- REACOES ---
+async function renderAaReacoes() {
+  const body = document.getElementById('aa-body');
+  __autoReactions = await fetch('/api/auto-actions/reactions', { credentials: 'same-origin' }).then(r => r.json());
+  body.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="ar-enabled" ${__autoReactions.enabled ? 'checked' : ''} onchange="saveArEnabled(this.checked)" style="accent-color:#22c55e;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">Ativar reações automáticas</span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:12.5px;color:#fff;font-weight:600;">Canais com Reações</div>
+        <button onclick="addAutoReaction()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;">Adicionar Canal</button>
+      </div>
+      ${(__autoReactions.items || []).map(r => `
+        <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:600;color:#fff;font-size:12px;">Canal #${escapeHtml(r.channel_id)}</div>
+            <button onclick="deleteAutoReaction(${r.id})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+          </div>
+          <div style="margin-bottom:6px;">
+            <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal (ID)</label>
+            <input type="text" value="${escapeAttr(r.channel_id)}" data-ar-channel="${r.id}" placeholder="Selecione um canal" class="inp" style="margin-top:4px;">
+          </div>
+          <div>
+            <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Reações (emojis, separados por vírgula)</label>
+            <input type="text" value="${escapeAttr((r.emojis || []).join(', '))}" data-ar-emojis="${r.id}" placeholder="👍, ❤️, 🔥" class="inp" style="margin-top:4px;">
+          </div>
+          <button onclick="saveAutoReaction(${r.id})" style="margin-top:8px;background:#fff;color:#000;border:0;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;">Salvar</button>
+        </div>
+      `).join('') || '<div style="text-align:center;color:#666;padding:24px;font-size:12px;">Nenhum canal configurado</div>'}
+    </div>
+  `;
+}
+
+async function saveArEnabled(on) {
+  await fetch('/api/auto-actions/reactions/_enabled', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+  toast(on ? 'Ativado' : 'Desativado');
+}
+
+async function addAutoReaction() {
+  const ch = prompt('ID do canal:');
+  if (!ch) return;
+  await fetch('/api/auto-actions/reactions', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: ch, emojis: [] }) });
+  renderAaReacoes();
+}
+
+async function saveAutoReaction(id) {
+  const ch = document.querySelector(`[data-ar-channel="${id}"]`)?.value || '';
+  const ems = (document.querySelector(`[data-ar-emojis="${id}"]`)?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+  await fetch('/api/auto-actions/reactions/' + id, { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: ch, emojis: ems }) });
+  toast('Salvo');
+}
+
+async function deleteAutoReaction(id) {
+  if (!confirm('Remover?')) return;
+  await fetch('/api/auto-actions/reactions/' + id, { method: 'DELETE', credentials: 'same-origin' });
+  renderAaReacoes();
+}
+
+// --- REPOSTAGEM ---
+async function renderAaRepostagem() {
+  const body = document.getElementById('aa-body');
+  __autoRepost = await fetch('/api/auto-actions/repost', { credentials: 'same-origin' }).then(r => r.json());
+  body.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <input type="checkbox" id="rp-enabled" ${__autoRepost.enabled ? 'checked' : ''} style="accent-color:#22c55e;">
+        <span style="font-size:13px;color:#fff;font-weight:600;">Ativar repostagem automática</span>
+      </div>
+      <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Horário da Repostagem</label>
+      <input id="rp-time" type="time" value="${escapeAttr(__autoRepost.time || '12:00')}" class="inp" style="margin-top:5px;max-width:160px;">
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button onclick="saveAutoRepost()" class="kyc-btn primary">Salvar</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveAutoRepost() {
+  await fetch('/api/auto-actions/repost', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    enabled: document.getElementById('rp-enabled').checked,
+    time: document.getElementById('rp-time').value
+  }) });
+  toast('Salvo');
+}
+
+// --- LIMPEZA ---
+async function renderAaLimpeza() {
+  const body = document.getElementById('aa-body');
+  __autoCleanup = await fetch('/api/auto-actions/cleanup', { credentials: 'same-origin' }).then(r => r.json());
+  body.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="cl-enabled" ${__autoCleanup.enabled ? 'checked' : ''} onchange="saveClEnabled(this.checked)" style="accent-color:#22c55e;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">Ativar limpeza automática</span>
+        </label>
+        <button onclick="addAutoCleanup()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;">Adicionar Canal</button>
+      </div>
+      ${(__autoCleanup.items || []).map(c => `
+        <div style="background:#0e0e0e;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:600;color:#fff;font-size:12px;">Canal #${escapeHtml(c.channel_id)}</div>
+            <button onclick="deleteAutoCleanup(${c.id})" style="background:transparent;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;">×</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal (ID)</label>
+              <input type="text" value="${escapeAttr(c.channel_id)}" data-cl-ch="${c.id}" class="inp" style="margin-top:4px;">
+            </div>
+            <div>
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Limpar mensagens ao trancar</label>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;">
+                <input type="checkbox" data-cl-clear="${c.id}" ${c.clear_on_lock ? 'checked' : ''} style="accent-color:#22c55e;">
+                <span style="font-size:12px;color:${c.clear_on_lock ? '#7dd3a4' : '#888'};">${c.clear_on_lock ? 'Sim' : 'Não'}</span>
+              </label>
+            </div>
+            <div>
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Horário para Trancar</label>
+              <input type="time" value="${escapeAttr(c.lock_time || '22:00')}" data-cl-lock="${c.id}" class="inp" style="margin-top:4px;">
+            </div>
+            <div>
+              <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Horário para Destrancar</label>
+              <input type="time" value="${escapeAttr(c.unlock_time || '08:00')}" data-cl-unlock="${c.id}" class="inp" style="margin-top:4px;">
+            </div>
+          </div>
+          <button onclick="saveAutoCleanup(${c.id})" style="margin-top:10px;background:#fff;color:#000;border:0;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;">Salvar</button>
+        </div>
+      `).join('') || '<div style="text-align:center;color:#666;padding:24px;font-size:12px;">Nenhum canal configurado</div>'}
+    </div>
+  `;
+}
+
+async function saveClEnabled(on) {
+  await fetch('/api/auto-actions/cleanup/_enabled', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+}
+
+async function addAutoCleanup() {
+  const ch = prompt('ID do canal:');
+  if (!ch) return;
+  await fetch('/api/auto-actions/cleanup', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: ch }) });
+  renderAaLimpeza();
+}
+
+async function saveAutoCleanup(id) {
+  await fetch('/api/auto-actions/cleanup/' + id, { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    channel_id: document.querySelector(`[data-cl-ch="${id}"]`)?.value || '',
+    clear_on_lock: document.querySelector(`[data-cl-clear="${id}"]`)?.checked || false,
+    lock_time: document.querySelector(`[data-cl-lock="${id}"]`)?.value || '22:00',
+    unlock_time: document.querySelector(`[data-cl-unlock="${id}"]`)?.value || '08:00'
+  }) });
+  toast('Salvo');
+}
+
+async function deleteAutoCleanup(id) {
+  if (!confirm('Remover?')) return;
+  await fetch('/api/auto-actions/cleanup/' + id, { method: 'DELETE', credentials: 'same-origin' });
+  renderAaLimpeza();
+}
+
+// --- SUGESTOES (usa Embed Builder) ---
+let __sugBuilder = null;
+async function renderAaSugestoes() {
+  const body = document.getElementById('aa-body');
+  __autoSuggestions = await fetch('/api/auto-actions/suggestions', { credentials: 'same-origin' }).then(r => r.json());
+  body.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal de Sugestões <span style="text-transform:none;color:#666;">(onde serão postadas)</span></label>
+          <input id="sug-channel" type="text" value="${escapeAttr(__autoSuggestions.channel_id || '')}" placeholder="Selecione um canal" class="inp" style="margin-top:5px;">
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="font-size:10.5px;color:#888;font-family:'IBM Plex Mono',monospace;">Canal para enviar o painel</label>
+            <input id="sug-post-channel" type="text" value="${escapeAttr(__autoSuggestions.post_channel_id || '')}" placeholder="Selecione um canal" class="inp" style="margin-top:5px;">
+          </div>
+          <button onclick="postSugPanel()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:9px 14px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;">Enviar</button>
+        </div>
+      </div>
+      <div style="font-size:10.5px;text-transform:uppercase;color:#666;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">Configuração do Painel</div>
+      <div id="sug-builder-wrap"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button onclick="saveSugPanel()" class="kyc-btn primary">Salvar Painel</button>
+      </div>
+    </div>
+  `;
+  __sugBuilder = mountEmbedBuilder({
+    container: document.getElementById('sug-builder-wrap'),
+    value: __autoSuggestions.embed || { color: '#5865F2', title: 'Central de Sugestoes', description: 'Clique no botão abaixo para enviar sua sugestão!' },
+    botName: "Bot"
+  });
+}
+
+async function saveSugPanel() {
+  await fetch('/api/auto-actions/suggestions', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    channel_id: document.getElementById('sug-channel').value,
+    post_channel_id: document.getElementById('sug-post-channel').value,
+    embed: __sugBuilder ? __sugBuilder.getValue() : null
+  }) });
+  toast('Painel salvo');
+}
+
+async function postSugPanel() {
+  await saveSugPanel();
+  toast('Em breve: envio direto via bot');
+}
+
+// Hook
+const __origSpAa = window.sp;
+if (typeof __origSpAa === 'function' && !window.__spHookedAa) {
+  window.__spHookedAa = true;
+  window.sp = function (page, el) {
+    __origSpAa(page, el);
+    if (page === 'acoes-automaticas') { __aaTab = 'mensagens'; renderAaTab(); }
+  };
+}
