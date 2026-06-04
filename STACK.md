@@ -208,6 +208,19 @@ implementar na ordem da lista PENDENTE → de cima pra baixo.
   - Envia pro email cadastrado
   - Async com confirmação visual
 
+## 🟠 Sobraram desta rodada (próxima sessão)
+
+- [ ] **Página "Sorteios" avançada** (tabs Geral/Requisitos/Tarefas)
+- [ ] **Página "Tickets — Painéis de Suporte"** (tabs Geral/Funções/Embed)
+- [ ] **Página "eCloud" landing** (CTAs Registrar Novo Bot / Vincular Chave)
+- [ ] **Página "Loja"** com Painéis (tabs Produtos/Geral/Cupons)
+- [ ] **Página "Ações Automáticas"** com 5 tabs
+- [ ] **Embed Builder reusável com preview live**
+- [ ] **IA de Atendimento** (paywall) em Tickets
+- [ ] Admin de promo codes (gerar codigos UI)
+- [ ] **Servidor Principal conectado** card avancado
+- [ ] BIO rotativa real (paywall pago)
+
 ## 📌 Ideias deferidas (do design Claude)
 
 - [ ] Design system com tokens live (accent color, corner radius, density)
