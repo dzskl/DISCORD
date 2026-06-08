@@ -28,8 +28,9 @@ function balanceFor(userId, guildId) {
   `).get(...gArgs).v;
 
   // Soma de taxas pagas pra plataforma (transparencia pro owner)
+  // Inclui % + taxa fixa
   const platformFees = db.prepare(`
-    SELECT COALESCE(SUM(s.platform_fee_cents), 0) AS v
+    SELECT COALESCE(SUM(s.platform_fee_cents + COALESCE(s.platform_fixed_fee_cents, 0)), 0) AS v
     FROM sales s
     WHERE s.status = 'paid' ${gFilter}
   `).get(...gArgs).v;
@@ -41,12 +42,14 @@ function balanceFor(userId, guildId) {
     FROM withdrawals WHERE user_id = ? AND status IN ('pending','approved','paid') ${wFilter}
   `).get(userId, ...wArgs).v;
 
+  const pf = require('../config/platform-fee');
   return {
     earned_cents: earned,
     withdrawn_cents: withdrawn,
     available_cents: Math.max(0, earned - withdrawn),
     platform_fees_cents: platformFees,
-    platform_fee_rate: require('../config/platform-fee').PLATFORM_FEE_RATE
+    platform_fee_rate: pf.PLATFORM_FEE_RATE,
+    platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
   };
 }
 
@@ -186,20 +189,28 @@ router.post('/admin/withdrawals/:id/review', requireOwner, (req, res) => {
   res.json({ ok: true });
 });
 
-// Receita total da plataforma (taxa 6.5% acumulada)
+// Receita total da plataforma — % + taxa fixa
 router.get('/admin/platform-revenue', requireOwner, (req, res) => {
-  const total = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
-  const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND platform_fee_cents > 0`).get().c;
+  const percent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
+  const fixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid'`).get().v;
+  const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND (platform_fee_cents > 0 OR COALESCE(platform_fixed_fee_cents,0) > 0)`).get().c;
   const gross = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const now = Math.floor(Date.now()/1000);
   const monthStart = now - 30 * 86400;
-  const monthFee = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  const monthPercent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  const monthFixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  const pf = require('../config/platform-fee');
   res.json({
-    total_collected_cents: total,
+    total_collected_cents: percent + fixed,
+    percent_collected_cents: percent,
+    fixed_collected_cents: fixed,
     sales_with_fee: sales,
     gross_volume_cents: gross,
-    month_collected_cents: monthFee,
-    fee_rate: require('../config/platform-fee').PLATFORM_FEE_RATE
+    month_collected_cents: monthPercent + monthFixed,
+    month_percent_cents: monthPercent,
+    month_fixed_cents: monthFixed,
+    fee_rate: pf.PLATFORM_FEE_RATE,
+    fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
   });
 });
 
