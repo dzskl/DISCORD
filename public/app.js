@@ -4749,6 +4749,9 @@ async function updateFinanceiroBadge() {
     if (!r.ok) return;
     const nav = document.getElementById('nav-financeiro');
     if (nav) nav.style.display = 'flex';
+    // Mostra grupo admin inteiro se algum nav admin estiver visivel
+    const adminGroup = document.getElementById('nav-group-admin');
+    if (adminGroup) adminGroup.style.display = 'flex';
   } catch {}
 }
 
