@@ -351,4 +351,6 @@ router.delete('/users/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Expoe pra outros controllers (ex: admin-panel) registrarem a Discord strategy
+router.ensureDiscordStrategy = ensureDiscordStrategy;
 module.exports = router;

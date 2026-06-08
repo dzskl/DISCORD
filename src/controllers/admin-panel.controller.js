@@ -66,8 +66,11 @@ router.post('/auth/login', loginLimiter, async (req, res) => {
 
 // Discord OAuth para super-admin (reusa a strategy ja registrada em auth.controller)
 router.get('/auth/discord', (req, res, next) => {
-  const clientID = getCredential('DISCORD_CLIENT_ID');
-  if (!clientID) return res.redirect('/admin/login.html?err=no_discord');
+  // Garante que a strategy 'discord' do passport esta registrada nesse processo
+  const authCtrl = require('./auth.controller');
+  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy()) {
+    return res.redirect('/admin/login.html?err=no_discord');
+  }
   // Flag pra o callback saber que veio do /admin/
   req.session.admin_oauth_flow = 1;
   passport.authenticate('discord')(req, res, next);
@@ -77,6 +80,12 @@ router.get('/auth/discord', (req, res, next) => {
 router.get('/auth/discord/callback', (req, res, next) => {
   const fail = (r) => res.redirect('/admin/login.html?err=' + encodeURIComponent(r));
   if (req.query.error) return fail(req.query.error);
+
+  // Garante strategy registrada (req pode chegar antes de qualquer call em /auth/discord)
+  const authCtrl = require('./auth.controller');
+  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy()) {
+    return fail('no_discord');
+  }
 
   passport.authenticate('discord', { failureRedirect: '/admin/login.html?err=auth_failed' })(req, res, () => {
     try {
