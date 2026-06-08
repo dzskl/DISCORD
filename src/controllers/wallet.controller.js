@@ -80,11 +80,20 @@ function balanceFor(userId, guildId) {
     `).get(userId, ...featArgs).v;
   } catch { /* tabela pode nao existir ainda */ }
 
+  // Selos Verificado pagos via saldo
+  let badgeSpent = 0;
+  try {
+    badgeSpent = db.prepare(`
+      SELECT COALESCE(SUM(price_cents),0) AS v FROM verified_badge_payments
+      WHERE user_id=? AND paid_via='balance'
+    `).get(userId).v;
+  } catch {}
+
   const pf = require('../config/platform-fee');
   const hp = require('../config/hold-period');
   const cb = require('../config/chargeback-reserve');
   const reserve = cb.calcReserveFor(db, userId, guildId);
-  const available = Math.max(0, released - withdrawn - reserve - advanceFeesPaid - featuredSpent);
+  const available = Math.max(0, released - withdrawn - reserve - advanceFeesPaid - featuredSpent - badgeSpent);
 
   return {
     earned_cents: earned,
@@ -94,6 +103,7 @@ function balanceFor(userId, guildId) {
     chargeback_reserve_cents: reserve,
     advance_fees_paid_cents: advanceFeesPaid,
     featured_spent_cents: featuredSpent,
+    badge_spent_cents: badgeSpent,
     platform_fees_cents: platformFees,
     platform_fee_rate: pf.PLATFORM_FEE_RATE,
     platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS,
@@ -249,6 +259,32 @@ router.post('/advance/execute', (req, res) => {
   });
 });
 
+// Toggle de saque automatico (so vendedor 'established' pode habilitar)
+router.get('/auto-withdraw', (req, res) => {
+  const u = db.prepare('SELECT auto_withdraw_enabled, auto_withdraw_min_cents FROM users WHERE id=?').get(req.appUser.id);
+  const hp = require('../config/hold-period');
+  const tier = hp.classifySeller(db, req.appUser.id);
+  res.json({
+    enabled: !!u?.auto_withdraw_enabled,
+    min_cents: u?.auto_withdraw_min_cents || 5000,
+    tier,
+    eligible: tier === 'established'
+  });
+});
+
+router.post('/auto-withdraw', (req, res) => {
+  const { enabled, min_cents } = req.body || {};
+  const hp = require('../config/hold-period');
+  const tier = hp.classifySeller(db, req.appUser.id);
+  if (enabled && tier !== 'established') {
+    return res.status(403).json({ error: 'apenas vendedores estabelecidos podem habilitar saque automatico', tier });
+  }
+  const min = Math.max(5000, parseInt(min_cents) || 5000);
+  db.prepare(`UPDATE users SET auto_withdraw_enabled=?, auto_withdraw_min_cents=? WHERE id=?`)
+    .run(enabled ? 1 : 0, min, req.appUser.id);
+  res.json({ ok: true, enabled: !!enabled, min_cents: min });
+});
+
 // Historico de antecipacoes do vendedor
 router.get('/advances', (req, res) => {
   const rows = db.prepare(`
@@ -370,6 +406,8 @@ router.get('/admin/platform-revenue', requireOwner, (req, res) => {
   const advance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied'`).get().v;
   let featured = 0;
   try { featured = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM featured_products WHERE paid_via='balance' AND status!='cancelled'`).get().v; } catch {}
+  let badges = 0;
+  try { badges = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM verified_badge_payments WHERE paid_via='balance'`).get().v; } catch {}
   const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND (platform_fee_cents > 0 OR COALESCE(platform_fixed_fee_cents,0) > 0)`).get().c;
   const gross = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const now = Math.floor(Date.now()/1000);
@@ -379,20 +417,24 @@ router.get('/admin/platform-revenue', requireOwner, (req, res) => {
   const monthAdvance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied' AND created_at >= ?`).get(monthStart).v;
   let monthFeatured = 0;
   try { monthFeatured = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM featured_products WHERE paid_via='balance' AND status!='cancelled' AND created_at >= ?`).get(monthStart).v; } catch {}
+  let monthBadges = 0;
+  try { monthBadges = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM verified_badge_payments WHERE paid_via='balance' AND created_at >= ?`).get(monthStart).v; } catch {}
   const pf = require('../config/platform-fee');
   res.json({
-    total_collected_cents: percent + fixed + advance + featured,
+    total_collected_cents: percent + fixed + advance + featured + badges,
     percent_collected_cents: percent,
     fixed_collected_cents: fixed,
     advance_collected_cents: advance,
     featured_collected_cents: featured,
+    badge_collected_cents: badges,
     sales_with_fee: sales,
     gross_volume_cents: gross,
-    month_collected_cents: monthPercent + monthFixed + monthAdvance + monthFeatured,
+    month_collected_cents: monthPercent + monthFixed + monthAdvance + monthFeatured + monthBadges,
     month_percent_cents: monthPercent,
     month_fixed_cents: monthFixed,
     month_advance_cents: monthAdvance,
     month_featured_cents: monthFeatured,
+    month_badge_cents: monthBadges,
     fee_rate: pf.PLATFORM_FEE_RATE,
     fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
   });

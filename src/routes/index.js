@@ -36,6 +36,7 @@ function register(app) {
   app.use('/api/subscriptions', require('../controllers/subscriptions.controller'));
   app.use('/api/support-inquiries', require('../controllers/support-inquiries.controller'));
   app.use('/api/featured', require('../controllers/featured-products.controller'));
+  app.use('/api/verified-badge', require('../controllers/verified-badge.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

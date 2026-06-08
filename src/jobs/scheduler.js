@@ -14,6 +14,10 @@ function start() {
   cron.schedule('*/15 * * * *', followUpAbandonedCarts);
   cron.schedule('* * * * *', rotateBotBios);
   cron.schedule('*/30 * * * *', runReconciliation);
+  // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
+  cron.schedule('0 12 * * *', runAutoWithdraw);
+  // Limpeza de featured/badge expirados — diario
+  cron.schedule('30 0 * * *', expireFeaturedAndBadges);
   logger.info('scheduler iniciado');
 }
 
@@ -23,6 +27,25 @@ async function runReconciliation() {
     await recon.run();
   } catch (e) {
     logger.error({ err: e.message }, 'reconciliacao MysticPay falhou');
+  }
+}
+
+async function runAutoWithdraw() {
+  try {
+    const aw = require('./auto-withdraw');
+    await aw.run();
+  } catch (e) {
+    logger.error({ err: e.message }, 'auto-withdraw falhou');
+  }
+}
+
+async function expireFeaturedAndBadges() {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare(`UPDATE featured_products SET status='expired' WHERE status='active' AND ends_at < ?`).run(now);
+    // Badge: o until ja eh autoritativo, nao precisa mexer
+  } catch (e) {
+    logger.error({ err: e.message }, 'expireFeaturedAndBadges falhou');
   }
 }
 
