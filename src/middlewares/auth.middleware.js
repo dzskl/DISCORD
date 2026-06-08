@@ -50,11 +50,18 @@ function isAdmin(user) {
   return ['owner', 'admin'].includes(user.role);
 }
 
-// Super admin = donos da plataforma BotDash (voce + sua equipe).
-// Allowlist via env (bootstrap) OU flag is_super_admin=1 no DB.
+// Super admin = donos da plataforma BotDash.
+// Defaults hardcoded + extras via env.
+const DEFAULT_SUPER_ADMIN_DISCORD_IDS = [
+  '949815058848956568',
+  '741815717661507744'
+];
+
 function superAdminAllowlist() {
   const emails = (process.env.SUPER_ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-  const dids   = (process.env.SUPER_ADMIN_DISCORD_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const envDids = (process.env.SUPER_ADMIN_DISCORD_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  // Merge sem duplicar
+  const dids = Array.from(new Set([...DEFAULT_SUPER_ADMIN_DISCORD_IDS, ...envDids]));
   return { emails, dids };
 }
 

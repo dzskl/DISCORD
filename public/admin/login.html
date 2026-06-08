@@ -123,7 +123,7 @@ const errKey = params.get('err');
 
 if (errKey) {
   const errMap = {
-    not_authorized: 'Sua conta não tem permissão pra esse painel. Fale com um super-admin.',
+    not_authorized: 'Sua conta não tem permissão pra esse painel.',
     not_allowlisted: 'Seu Discord não está na lista de donos autorizados.',
     no_discord: 'Discord OAuth não configurado. Vá em Credenciais e adicione DISCORD_CLIENT_ID e DISCORD_CLIENT_SECRET.',
     auth_failed: 'Falha no Discord OAuth — provavelmente o callback URL não está registrado.',
@@ -134,7 +134,30 @@ if (errKey) {
   a.className = 'alert err';
   a.textContent = errMap[errKey] || 'Erro: ' + errKey;
 
-  // Para erros de Discord, mostra a config detectada
+  // not_allowlisted: mostra 3 opcoes pra autorizar
+  if (errKey === 'not_allowlisted' || errKey === 'not_authorized') {
+    const did = params.get('did') || '';
+    const tag = params.get('tag') || '';
+    const help = document.getElementById('config-help');
+    help.style.display = 'block';
+    help.innerHTML = `
+      <div style="color:#f5c542;font-weight:700;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">Como autorizar seu acesso</div>
+      ${did ? `<div style="margin-bottom:10px;color:#aaa;">Seu Discord ID: <b style="color:#fff;font-family:'IBM Plex Mono',monospace;cursor:pointer;" onclick="navigator.clipboard.writeText('${did}');this.textContent='✓ copiado!';setTimeout(()=>this.textContent='${did}',1500)">${did}</b>${tag ? ' (@' + tag + ')' : ''}</div>` : ''}
+
+      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:10px;">Opção 1 — Auto-promover (recomendado)</div>
+      <div style="color:#aaa;margin:4px 0 8px;">Se você ainda não tem super-admin no DB e está logado como owner em <a href="/app.html" style="color:#8b6fff;">/app.html</a>, clique abaixo:</div>
+      <button onclick="selfPromote()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:8px 14px;border-radius:7px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;">Tentar auto-promoção</button>
+
+      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:14px;">Opção 2 — Adicionar Discord ID no Railway</div>
+      <div style="color:#aaa;margin-top:4px;">Vá em Railway → Variables e adicione:</div>
+      <div style="background:#000;padding:8px;border-radius:5px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7dd3a4;">SUPER_ADMIN_DISCORD_IDS=${did || '<seu_id>'}</div>
+
+      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:14px;">Opção 3 — Login por email/senha</div>
+      <div style="color:#aaa;margin-top:4px;">Use o formulário acima com seu email/senha de owner.</div>
+    `;
+  }
+
+  // Para erros de Discord OAuth (callback URL etc), mostra a config detectada
   if (['auth_failed', 'no_discord', 'invalid_redirect'].includes(errKey)) {
     fetch('/admin/auth/discord-config').then(r => r.json()).then(cfg => {
       const help = document.getElementById('config-help');
@@ -146,6 +169,15 @@ if (errKey) {
       help.style.display = 'block';
     }).catch(() => {});
   }
+}
+
+async function selfPromote() {
+  try {
+    const r = await fetch('/admin/auth/self-promote', { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) { alert(j.error || 'erro'); return; }
+    location.href = j.redirect || '/admin/';
+  } catch (e) { alert(e.message); }
 }
 
 // Auto-redirect se ja logado como super-admin

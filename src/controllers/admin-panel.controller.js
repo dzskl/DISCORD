@@ -110,15 +110,22 @@ router.get('/auth/discord/callback', (req, res, next) => {
       const profile = req.user;
       if (!profile?.id) return fail('no_profile');
 
+      const { dids } = superAdminAllowlist();
+      const existingSuperAdmins = db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_super_admin=1 AND active=1').get().c;
+      const allowlistEmpty = dids.length === 0 && (process.env.SUPER_ADMIN_EMAILS || '').trim() === '';
+      // Bootstrap: se ninguem eh super-admin ainda E nao tem allowlist no env,
+      // o primeiro Discord login vira super-admin automaticamente.
+      const canBootstrap = existingSuperAdmins === 0 && allowlistEmpty;
+
       let user = db.prepare('SELECT * FROM users WHERE discord_id=?').get(profile.id);
       if (!user) {
-        // Verifica se esta na allowlist antes de criar
-        const { dids } = superAdminAllowlist();
-        if (!dids.includes(String(profile.id))) {
+        const inAllowlist = dids.includes(String(profile.id));
+        if (!inAllowlist && !canBootstrap) {
           audit.log({ req, action: 'admin_panel.discord_unauthorized', details: { discord_id: profile.id, tag: profile.username } });
-          return fail('not_allowlisted');
+          // Passa o discord_id na URL pro front-end mostrar
+          return res.redirect(`/admin/login.html?err=not_allowlisted&did=${encodeURIComponent(profile.id)}&tag=${encodeURIComponent(profile.username || '')}`);
         }
-        // Cria conta de super-admin
+        // Cria conta de super-admin (allowlist OU bootstrap)
         const info = db.prepare(`
           INSERT INTO users (email, discord_id, discord_tag, discord_avatar, display_name, role, is_super_admin, active, last_login_at)
           VALUES (?, ?, ?, ?, ?, 'owner', 1, 1, strftime('%s','now'))
@@ -127,7 +134,7 @@ router.get('/auth/discord/callback', (req, res, next) => {
           profile.id, profile.username || null, profile.avatar || null, profile.username || profile.id
         );
         user = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
-        audit.log({ req, action: 'admin_panel.super_admin_created', target_id: user.id, details: { discord_id: profile.id } });
+        audit.log({ req, action: 'admin_panel.super_admin_created', target_id: user.id, details: { discord_id: profile.id, via: canBootstrap ? 'bootstrap' : 'allowlist' } });
       } else {
         // Atualiza dados e promove se elegivel
         db.prepare(`
@@ -137,12 +144,18 @@ router.get('/auth/discord/callback', (req, res, next) => {
           WHERE id = ?
         `).run(profile.username || null, profile.avatar || null, user.id);
         maybePromoteToSuperAdmin(user);
+        // Bootstrap pra user existente: se ninguem eh super-admin e nada no env, promove
+        if (!user.is_super_admin && canBootstrap) {
+          db.prepare('UPDATE users SET is_super_admin=1 WHERE id=?').run(user.id);
+          user.is_super_admin = 1;
+          audit.log({ req, action: 'admin_panel.super_admin_bootstrap', target_id: user.id, details: { via: 'discord' } });
+        }
       }
 
       if (!user.active) return fail('inactive');
       if (!isSuperAdmin(user)) {
         audit.log({ req, action: 'admin_panel.login_denied', target_id: user.id, details: { via: 'discord' } });
-        return fail('not_authorized');
+        return res.redirect(`/admin/login.html?err=not_authorized&did=${encodeURIComponent(profile.id)}&tag=${encodeURIComponent(profile.username || '')}`);
       }
 
       req.session.userId = user.id;
@@ -157,6 +170,25 @@ router.get('/auth/discord/callback', (req, res, next) => {
       fail(e.message.slice(0, 60));
     }
   });
+});
+
+// Self-promote: se voce ja esta logado como owner e nenhum super-admin existe,
+// permite auto-promocao via cookie session existente. So funciona uma vez.
+router.post('/auth/self-promote', (req, res) => {
+  if (!req.appUser) return res.status(401).json({ error: 'voce precisa estar logado primeiro em /login.html' });
+  const existing = db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_super_admin=1 AND active=1').get().c;
+  if (existing > 0) {
+    if (!isSuperAdmin(req.appUser)) {
+      return res.status(403).json({ error: 'super-admin ja existe — peca pra ele te convidar via painel /admin/' });
+    }
+    return res.json({ ok: true, already_super_admin: true });
+  }
+  if (req.appUser.role !== 'owner') {
+    return res.status(403).json({ error: 'apenas user role=owner pode fazer auto-promocao na primeira vez' });
+  }
+  db.prepare('UPDATE users SET is_super_admin=1 WHERE id=?').run(req.appUser.id);
+  audit.log({ req, action: 'admin_panel.self_promote', target_id: req.appUser.id });
+  res.json({ ok: true, redirect: '/admin/' });
 });
 
 router.post('/auth/logout', (req, res) => {
