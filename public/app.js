@@ -4435,11 +4435,37 @@ async function loadCarteira() {
     window.__balance = bal;
     const setRS = (id, c) => { const el = document.getElementById(id); if (el) el.textContent = 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ','); };
     setRS('ct-available', bal.available_cents);
-    setRS('ct-blocked', bal.blocked_cents);
+    setRS('ct-hold', bal.pending_release_cents);
+    setRS('ct-reserve', bal.chargeback_reserve_cents);
     setRS('ct-med', bal.med_blocked_cents);
     setRS('ct-total', bal.total_cents);
+    setRS('ct-fees', bal.platform_fees_cents);
     setRS('ct-avail-line', bal.available_cents);
     document.getElementById('ct-med-line').textContent = '-R$ ' + ((bal.med_blocked_cents || 0) / 100).toFixed(2).replace('.', ',');
+    const feeRateEl = document.getElementById('ct-fee-rate-label');
+    if (feeRateEl) feeRateEl.textContent = `taxa ${((bal.platform_fee_rate || 0.065) * 100).toFixed(1).replace('.', ',')}%`;
+
+    // Pro banner: mostra so se plano = free
+    try {
+      const me = window.__user || (await fetch('/auth/me', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null));
+      const isFree = !me?.plan || me.plan === 'free';
+      const proBanner = document.getElementById('ct-pro-banner');
+      if (proBanner) proBanner.style.display = isFree ? 'flex' : 'none';
+    } catch {}
+
+    // Auto-saque box: mostra so se elegivel
+    try {
+      const aw = await fetch('/api/wallet/auto-withdraw', { credentials: 'same-origin' }).then(r => r.json());
+      const box = document.getElementById('ct-auto-saque-box');
+      if (box && aw && aw.eligible) {
+        box.style.display = 'flex';
+        document.getElementById('ct-auto-toggle').checked = !!aw.enabled;
+        document.getElementById('ct-auto-status').textContent = aw.enabled ? 'ativado' : 'desativado';
+        document.getElementById('ct-auto-min').textContent = 'R$ ' + ((aw.min_cents || 5000) / 100).toFixed(0);
+      } else if (box) {
+        box.style.display = 'none';
+      }
+    } catch {}
 
     // banner 2FA
     const banner = document.getElementById('ct-2fa-banner');
@@ -4474,6 +4500,242 @@ async function loadCarteira() {
     updateCtPreview();
   } catch (e) { console.warn('carteira', e.message); }
 }
+
+// ============ ANTECIPACAO DE RECEBIVEIS ============
+async function loadAntecipacao() {
+  const fmt = c => 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ',');
+  try {
+    const [preview, holds, history] = await Promise.all([
+      fetch('/api/wallet/advance/preview', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/wallet/holds', { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/wallet/advances', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+
+    if (preview.enabled === false) {
+      document.getElementById('ant-execute-btn').disabled = true;
+      document.getElementById('ant-min-msg').textContent = 'Antecipação desabilitada pela plataforma';
+      return;
+    }
+    document.getElementById('ant-gross').textContent = fmt(preview.gross_cents);
+    document.getElementById('ant-gross-line').textContent = fmt(preview.gross_cents);
+    document.getElementById('ant-count').textContent = preview.sales_count || 0;
+    document.getElementById('ant-fee').textContent = '- ' + fmt(preview.fee_cents);
+    document.getElementById('ant-net').textContent = fmt(preview.net_cents);
+    document.getElementById('ant-rate').textContent = ((preview.rate || 0.0299) * 100).toFixed(2).replace('.', ',') + '%';
+
+    const btn = document.getElementById('ant-execute-btn');
+    const msg = document.getElementById('ant-min-msg');
+    if (!preview.eligible || preview.gross_cents <= 0) {
+      btn.disabled = true;
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'not-allowed';
+      msg.textContent = preview.gross_cents <= 0
+        ? 'Você não tem vendas em hold no momento.'
+        : `Valor mínimo para antecipar: ${fmt(preview.min_gross_cents || 5000)}.`;
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      msg.textContent = '';
+    }
+
+    // Holds table
+    const tbody = document.getElementById('ant-holds-tbody');
+    if (!Array.isArray(holds) || !holds.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:#444;padding:24px;text-align:center;">Nenhuma venda em hold</td></tr>';
+    } else {
+      tbody.innerHTML = holds.map(h => {
+        const days = h.available_at ? Math.ceil((h.available_at - Date.now()/1000) / 86400) : 0;
+        const tier = h.seller_tier === 'established' ? '<span style="color:#7dd3a4;">estabelecido</span>' : '<span style="color:#f5c542;">novato</span>';
+        return `<tr>
+          <td style="font-family:'IBM Plex Mono',monospace;color:#888;font-size:11px;">#${h.id}</td>
+          <td style="color:#fff;">${escapeHtmlW(h.product_name || '—')}</td>
+          <td style="color:#fff;">${fmt(h.net_to_owner_cents || h.amount_cents)}</td>
+          <td>${tier}</td>
+          <td style="color:#aaa;font-size:11.5px;">em ${days} dia${days===1?'':'s'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Historico
+    const hbody = document.getElementById('ant-history-tbody');
+    if (!Array.isArray(history) || !history.length) {
+      hbody.innerHTML = '<tr><td colspan="6" style="color:#444;padding:18px;text-align:center;">Nenhuma antecipação ainda</td></tr>';
+    } else {
+      hbody.innerHTML = history.map(h => {
+        const date = new Date(h.created_at * 1000).toLocaleString('pt-BR');
+        const sales = JSON.parse(h.sale_ids || '[]').length;
+        const statusColor = h.status === 'applied' ? '#7dd3a4' : '#888';
+        return `<tr>
+          <td style="color:#aaa;font-size:11.5px;">${date}</td>
+          <td style="color:#fff;">${sales}</td>
+          <td style="color:#fff;">${fmt(h.gross_cents)}</td>
+          <td style="color:#f5c542;">${fmt(h.fee_cents)}</td>
+          <td style="color:#7dd3a4;">${fmt(h.net_cents)}</td>
+          <td><span style="color:${statusColor};font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;">${h.status}</span></td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.warn('antecipacao', e.message);
+  }
+}
+
+async function executeAdvance() {
+  if (!confirm('Confirmar antecipação? Você paga 2,99% sobre o valor em hold pra liberar tudo agora.')) return;
+  const btn = document.getElementById('ant-execute-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/wallet/advance/execute', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } });
+    const j = await r.json();
+    if (!r.ok) {
+      toast(j.error || 'falha', 'err');
+      btn.disabled = false;
+      return;
+    }
+    toast('Antecipação realizada — valor liberado pra saque', 'ok');
+    loadAntecipacao();
+  } catch (e) {
+    toast('erro: ' + e.message, 'err');
+    btn.disabled = false;
+  }
+}
+
+function escapeHtmlW(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============ UPGRADE PRO ============
+async function loadUpgradePro() {
+  try {
+    const me = await fetch('/api/billing/me', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+    const planId = me?.plan_id || me?.plan?.id || 'free';
+    const cur = document.getElementById('up-pro-current');
+    if (cur && planId === 'pro') {
+      cur.style.display = 'block';
+      cur.textContent = '✓ Você já é Pro';
+      // Desabilita botao de upgrade
+      const btn = cur.previousElementSibling;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Plano atual';
+        btn.style.background = '#1a1a1a';
+        btn.style.color = '#666';
+        btn.style.cursor = 'not-allowed';
+      }
+    }
+  } catch {}
+}
+
+async function upgradeToPro() {
+  try {
+    const r = await fetch('/api/billing/checkout', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: 'pro' })
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'falha', 'err');
+    if (j.url) window.location.href = j.url;
+    else toast('checkout criado', 'ok');
+  } catch (e) {
+    toast('erro: ' + e.message, 'err');
+  }
+}
+
+// ============ AUTO-SAQUE TOGGLE ============
+async function toggleAutoWithdraw() {
+  const enabled = document.getElementById('ct-auto-toggle').checked;
+  const min = 5000;
+  try {
+    const r = await fetch('/api/wallet/auto-withdraw', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, min_cents: min })
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      toast(j.error || 'falha', 'err');
+      document.getElementById('ct-auto-toggle').checked = !enabled;
+      return;
+    }
+    document.getElementById('ct-auto-status').textContent = j.enabled ? 'ativado' : 'desativado';
+    toast(j.enabled ? 'Saque automático ativado' : 'Saque automático desativado', 'ok');
+  } catch (e) {
+    toast('erro: ' + e.message, 'err');
+  }
+}
+
+// ============ FINANCEIRO (admin) ============
+async function loadFinanceiro() {
+  const fmt = c => 'R$ ' + ((c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  try {
+    const data = await fetch('/api/wallet/admin/platform-revenue', { credentials: 'same-origin' }).then(r => r.json());
+    if (!data || data.error) return;
+
+    document.getElementById('fn-total').textContent = fmt(data.total_collected_cents);
+    document.getElementById('fn-total-month').textContent = '+ ' + fmt(data.month_collected_cents) + ' nos últimos 30d';
+    document.getElementById('fn-gross').textContent = fmt(data.gross_volume_cents);
+    const take = data.gross_volume_cents > 0 ? (data.total_collected_cents / data.gross_volume_cents * 100) : 0;
+    document.getElementById('fn-gross-take').textContent = 'take rate: ' + take.toFixed(2).replace('.', ',') + '%';
+    document.getElementById('fn-sales-count').textContent = (data.sales_with_fee || 0).toLocaleString('pt-BR');
+    const avg = data.sales_with_fee > 0 ? (data.gross_volume_cents / data.sales_with_fee) : 0;
+    document.getElementById('fn-avg-ticket').textContent = 'ticket médio: ' + fmt(avg);
+
+    document.getElementById('fn-fee-rate').textContent = ((data.fee_rate || 0.065) * 100).toFixed(1).replace('.', ',') + '%';
+    document.getElementById('fn-fixed-fee').textContent = fmt(data.fixed_fee_cents || 99);
+    document.getElementById('fn-margin').textContent = take.toFixed(2).replace('.', ',') + '%';
+
+    // Quebra por fonte
+    const sources = [
+      { label: 'Comissão %', color: '#8b6fff', total: data.percent_collected_cents, month: data.month_percent_cents },
+      { label: 'Taxa fixa R$ 0,99', color: '#7dd3a4', total: data.fixed_collected_cents, month: data.month_fixed_cents },
+      { label: 'Antecipação 2,99%', color: '#ffa500', total: data.advance_collected_cents, month: data.month_advance_cents },
+      { label: 'Featured products', color: '#f5c542', total: data.featured_collected_cents, month: data.month_featured_cents },
+      { label: 'Selo Verificado', color: '#87ceeb', total: data.badge_collected_cents, month: data.month_badge_cents }
+    ];
+    const max = Math.max(1, ...sources.map(s => s.total || 0));
+    const el = document.getElementById('fn-sources');
+    el.innerHTML = sources.map(s => {
+      const pct = ((s.total || 0) / max * 100).toFixed(1);
+      const sharePct = data.total_collected_cents > 0 ? ((s.total || 0) / data.total_collected_cents * 100).toFixed(1) : 0;
+      return `
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+            <span style="color:#ddd;font-weight:600;">${s.label} <span style="color:#666;font-family:'IBM Plex Mono',monospace;">(${sharePct}%)</span></span>
+            <span style="font-family:'IBM Plex Mono',monospace;color:#fff;"><b>${fmt(s.total)}</b> <span style="color:#7dd3a4;font-weight:500;">+${fmt(s.month)}</span></span>
+          </div>
+          <div style="background:#0a0a0a;border:1px solid var(--border);border-radius:4px;height:8px;overflow:hidden;">
+            <div style="background:${s.color};height:100%;width:${pct}%;transition:width .3s;"></div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('financeiro', e.message);
+  }
+}
+
+async function updateFinanceiroBadge() {
+  try {
+    const r = await fetch('/api/wallet/admin/platform-revenue', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const nav = document.getElementById('nav-financeiro');
+    if (nav) nav.style.display = 'flex';
+  } catch {}
+}
+
+// Hook do sp() pra antecipacao + upgrade-pro + financeiro
+const __origSpFin = window.sp;
+if (typeof __origSpFin === 'function' && !window.__spHookedFin) {
+  window.__spHookedFin = true;
+  window.sp = function (page, el) {
+    __origSpFin(page, el);
+    if (page === 'antecipacao') loadAntecipacao();
+    if (page === 'upgrade-pro') loadUpgradePro();
+    if (page === 'financeiro') loadFinanceiro();
+  };
+}
+setTimeout(updateFinanceiroBadge, 2200);
 
 function computeWalletStats(ws) {
   if (!Array.isArray(ws)) return { salesCount: 0, totalWithdrawn: 0, medCount: 0, approved: 0, pending: 0, refunded: 0, canceled: 0 };
