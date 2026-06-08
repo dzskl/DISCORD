@@ -26,21 +26,25 @@
 
   --primary:          #8b6fff;
   --primary-deep:     #5a4ad1;
+  --primary-hov:      #7758ff;
   --primary-soft:     #a99cff;
-  --primary-glow:     #5865F2;
+  --primary-glow:     rgba(139,111,255,0.35);
 
   --success:          #22c55e;
   --success-soft:     #7dd3a4;
   --success-bg:       rgba(34,197,94,0.08);
+  --success-bd:       rgba(34,197,94,0.25);
   --success-border:   rgba(34,197,94,0.25);
 
   --warn:             #f5c542;
   --warn-bg:          rgba(245,197,66,0.06);
+  --warn-bd:          rgba(245,197,66,0.25);
   --warn-border:      rgba(245,197,66,0.25);
 
   --danger:           #ef4444;
   --danger-soft:      #fca5a5;
   --danger-bg:        rgba(239,68,68,0.08);
+  --danger-bd:        rgba(239,68,68,0.3);
   --danger-border:    rgba(239,68,68,0.3);
 
   --info:             #87ceeb;
@@ -736,3 +740,297 @@ tbody tr:hover td { background: var(--surface); }
   .sidebar.open { transform: translateX(0); }
   .topbar { padding: 0 12px; }
 }
+
+/* === REFINOS ESPECIFICOS app.html (sobreposicao seletiva) === */
+
+/* Sidebar refinada — fundo mais escuro pra contraste */
+.sidebar {
+  background: #0a0a0a !important;
+  border-right: 1px solid #161616 !important;
+}
+
+/* Brand block do app */
+.brand {
+  padding: 16px 18px 14px !important;
+  border-bottom: 1px solid #161616 !important;
+}
+
+/* Section headers do nav */
+.section, .nav-section {
+  font-size: 9.5px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-family: var(--font-mono);
+  padding: 14px 12px 6px;
+  font-weight: 600;
+}
+
+/* Topbar refinada */
+.topbar {
+  padding: 14px 28px !important;
+  border-bottom: 1px solid var(--border) !important;
+  background: rgba(10,10,10,0.85) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Cards principais do dashboard ganham borda lateral roxa */
+.dashboard-card,
+.card-section,
+.ctitle-card {
+  border-left: 2px solid var(--primary) !important;
+}
+
+/* Ctitle (titulo dentro de card) com underline roxa pequena */
+.ctitle {
+  position: relative;
+  font-weight: 700 !important;
+  color: var(--text-strong) !important;
+  font-size: 13.5px !important;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Stat numbers mais elegantes */
+.stat-value, .ct-stat, [class*="stat-num"] {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Tabela com hover sutil */
+.vtable tr:hover td,
+table tr:hover td {
+  background: var(--surface) !important;
+  transition: background .12s;
+}
+
+/* Botoes verdes de Sacar */
+.btn-success, [onclick*="sacar"], [onclick*="Sacar"] {
+  background: var(--success);
+  color: #062e15;
+  font-weight: 700;
+}
+
+/* Modal overlay padronizado */
+[id$="-modal"],
+.modal {
+  backdrop-filter: blur(2px);
+}
+
+/* Inputs sem flicker */
+.inp, input, select, textarea {
+  transition: border-color .15s, background .12s;
+}
+.inp:focus, input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px rgba(139,111,255,0.08);
+}
+
+/* Nav items mais polidos */
+.ni {
+  font-weight: 500 !important;
+  letter-spacing: .005em;
+}
+.ni.active {
+  background: linear-gradient(90deg, rgba(139,111,255,0.12), rgba(139,111,255,0.04)) !important;
+  border-left: 2px solid var(--primary);
+  padding-left: 8px !important;
+}
+
+/* Banner pendente/aviso */
+.warn-banner, [class*="alert-warn"], .banner-kyc {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-bd);
+  color: var(--warn);
+}
+
+/* Empty states */
+.empty, [class*="empty-state"] {
+  padding: 36px 24px;
+  text-align: center;
+  color: var(--text-mute);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Botao power/restart/destroy (sidebar topo) */
+.brand-buttons button,
+.bot-actions button {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  padding: 7px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.brand-buttons button:hover,
+.bot-actions button:hover {
+  border-color: var(--primary);
+}
+
+/* Variable chips inline (auto-applied a spans com class var-chip) */
+code, .var, .variable {
+  background: var(--surface-3);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--primary-soft);
+  border: 1px solid var(--border);
+}
+
+/* === REFINOS /admin/ === */
+
+/* Sidebar do admin com card de perfil no rodape */
+.me-card {
+  margin-top: auto;
+  padding: 12px !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  border-left: 2px solid var(--primary) !important;
+}
+
+/* Tag DONOS no admin */
+.brand .tag, .sidebar-brand .tag {
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: .08em;
+  margin-left: auto;
+  border: 1px solid var(--warn-bd);
+}
+
+/* Cards de alerta clicaveis no overview */
+[data-link] {
+  cursor: pointer;
+  transition: transform .12s, border-color .15s;
+}
+[data-link]:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary) !important;
+}
+
+/* Source bar (revenue breakdown) */
+.src-row .bar { background: #050505 !important; height: 8px !important; border-radius: 4px !important; }
+.src-row .fill { transition: width .3s ease-out; }
+
+/* Reload button */
+.reload-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-dim) !important;
+  padding: 7px 13px !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 12px !important;
+  transition: all .15s;
+}
+.reload-btn:hover {
+  color: var(--text-strong) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: 8px;
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-dim) !important;
+  padding: 8px !important;
+  border-radius: var(--radius-md) !important;
+  width: 100%;
+  font-size: 11px !important;
+  font-family: var(--font-mono);
+  transition: all .15s;
+}
+.logout-btn:hover {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+
+/* === REFINOS /login.html e /admin/login.html === */
+
+/* Card de login padronizado */
+body > .wrap > .card,
+.card.login-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 38px 36px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 80px rgba(139,111,255,0.05);
+}
+
+/* Divider "ou" */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0;
+  color: var(--text-mute);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Discord button */
+.btn-discord {
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-strong) !important;
+  transition: all .15s;
+}
+.btn-discord:hover {
+  border-color: #5865f2 !important;
+  background: rgba(88,101,242,0.06) !important;
+}
+
+/* === REFINOS /index.html landing === */
+
+/* Hero gradient sutil */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+}
+.page-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 100%;
+  background: radial-gradient(ellipse, rgba(139,111,255,0.08), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+.page-hero > * { position: relative; z-index: 1; }
+
+/* === ANIMATIONS === */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page.active { animation: slide-in .2s ease-out; }
