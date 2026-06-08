@@ -6,7 +6,8 @@
 //   - conta com mais de NEW_ACCOUNT_DAYS dias E
 //   - mais de ESTABLISHED_MIN_PAID_CENTS em vendas pagas historico
 
-const { findSellerUserId } = require('../utils/seller-resolver');
+const { findSellerUserId, sellerPlanId } = require('../utils/seller-resolver');
+const { getPlan } = require('./plans');
 
 const HOLD_DAYS_NEW         = parseInt(process.env.HOLD_DAYS_NEW)         || 14;
 const HOLD_DAYS_ESTABLISHED = parseInt(process.env.HOLD_DAYS_ESTABLISHED) || 2;
@@ -34,7 +35,13 @@ function classifySeller(db, userId) {
   return totalPaid >= ESTABLISHED_MIN_PAID_CENTS ? 'established' : 'new';
 }
 
-function holdDaysFor(tier) {
+function holdDaysFor(tier, planId) {
+  // Plano sobrescreve tier (Scale=1, Pro=2, Starter=7 novato/2 estab, Free=14)
+  if (planId) {
+    const plan = getPlan(planId) || {};
+    if (tier === 'established' && typeof plan.hold_days_established === 'number') return plan.hold_days_established;
+    if (tier === 'new' && typeof plan.hold_days_new === 'number') return plan.hold_days_new;
+  }
   return tier === 'established' ? HOLD_DAYS_ESTABLISHED : HOLD_DAYS_NEW;
 }
 
@@ -45,12 +52,13 @@ function applyHoldToSale(db, saleId) {
   if (!sale || sale.status !== 'paid') return null;
   const sellerId = findSellerUserId(db, sale);
   const tier = classifySeller(db, sellerId);
-  const days = holdDaysFor(tier);
+  const planId = sellerPlanId(db, sellerId);
+  const days = holdDaysFor(tier, planId);
   const paidAt = sale.paid_at || Math.floor(Date.now() / 1000);
   const availableAt = paidAt + days * DAY;
   db.prepare(`UPDATE sales SET available_at=?, hold_days=?, seller_tier=? WHERE id=?`)
     .run(availableAt, days, tier, saleId);
-  return { available_at: availableAt, hold_days: days, seller_tier: tier };
+  return { available_at: availableAt, hold_days: days, seller_tier: tier, plan: planId };
 }
 
 module.exports = {
