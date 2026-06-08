@@ -6,8 +6,12 @@ const mp = require('../services/misticpay.service');
 
 const router = express.Router();
 
+// Body parser local pras rotas que recebem JSON (o webhook usa express.raw localizado).
+// Importante: nao usa express.json no router inteiro pra nao consumir o raw do webhook.
+const jsonParser = express.json({ limit: '128kb' });
+
 // Cria uma cobranca PIX via MisticPay e retorna QR code + copy/paste
-router.post('/create', async (req, res) => {
+router.post('/create', jsonParser, async (req, res) => {
   if (!mp.isConfigured()) return res.status(503).json({ error: 'MisticPay nao configurado' });
 
   let { product_id, items, discord_id, discord_tag, coupon_code, affiliate_code, payer_name, payer_document } = req.body || {};
@@ -126,28 +130,80 @@ router.get('/status/:tx', async (req, res) => {
 });
 
 // Webhook (configurado no painel MisticPay apontando aqui)
-router.post('/webhook', express.json(), async (req, res) => {
+// Usa express.raw pra preservar o body cru e validar HMAC.
+router.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  const wh = require('../services/webhook-security.service');
+  const log = require('../utils/logger');
+  let eventRowId = null;
   try {
-    const payload = req.body || {};
+    const rawBody = req.body instanceof Buffer ? req.body.toString('utf8') : String(req.body || '');
+    let payload = {};
+    try { payload = JSON.parse(rawBody || '{}'); } catch {}
+
+    // 1. Valida assinatura
+    const sigHeader = req.headers['x-signature'] || req.headers['x-webhook-signature'] || req.headers['signature'];
+    const sigResult = wh.verifyMisticPaySignature(rawBody, sigHeader);
+    if (sigResult.ok === false) {
+      log.warn({ sigHeader }, 'misticpay webhook: assinatura invalida — rejeitado');
+      return res.status(401).send('invalid signature');
+    }
+
     const txId = payload.transactionId || payload.id || payload.data?.transactionId;
-    if (!txId) return res.status(400).send('missing transactionId');
+    const eventType = payload.event || payload.type || payload.status || null;
+    const eventId = wh.extractEventId('misticpay', payload, rawBody);
+
+    // 2. Registra evento (UNIQUE constraint detecta duplicidade)
+    const rec = wh.recordEvent({
+      gateway: 'misticpay',
+      event_id: eventId,
+      event_type: eventType,
+      transaction_id: txId || null,
+      payload,
+      signature_ok: sigResult.ok
+    });
+    eventRowId = rec.id;
+    if (rec.duplicate) {
+      // Idempotencia: ja foi processado antes, devolve 200 sem refazer
+      return res.json({ received: true, duplicate: true });
+    }
+
+    if (!txId) {
+      wh.markFailed(eventRowId, 'missing transactionId');
+      return res.status(400).send('missing transactionId');
+    }
 
     const sale = db.prepare('SELECT * FROM sales WHERE stripe_session_id=?').get('mp:' + txId);
-    if (!sale) return res.json({ received: true });
-    if (sale.status === 'paid') return res.json({ received: true });
+    if (!sale) {
+      wh.markProcessed(eventRowId, null); // evento valido mas sem sale correspondente
+      return res.json({ received: true });
+    }
+    if (sale.status === 'paid') {
+      wh.markProcessed(eventRowId, sale.id);
+      return res.json({ received: true });
+    }
 
-    // Confirma com a API antes de aceitar como pago
+    // 3. Confirma com a API antes de aceitar como pago
     let confirmed = false;
     try {
       const remote = await mp.getTransaction(txId);
       const status = (remote.status || '').toUpperCase();
       confirmed = ['APROVADO', 'APPROVED', 'PAID', 'PAGO'].includes(status);
-    } catch {}
+    } catch (e) {
+      log.warn({ err: e, txId }, 'misticpay webhook: erro consultando getTransaction');
+    }
 
-    if (confirmed) await markPaid(sale, txId);
+    if (confirmed) {
+      await markPaid(sale, txId);
+      wh.markProcessed(eventRowId, sale.id);
+    } else {
+      wh.markProcessed(eventRowId, sale.id);
+    }
     res.json({ received: true });
   } catch (e) {
     require('../utils/logger').error({ err: e }, 'misticpay webhook erro');
+    if (eventRowId) {
+      try { wh.markFailed(eventRowId, e.message); } catch {}
+    }
     res.status(500).send('erro');
   }
 });
