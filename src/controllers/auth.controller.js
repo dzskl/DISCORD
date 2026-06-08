@@ -178,13 +178,21 @@ function ensureDiscordStrategy() {
 }
 
 router.get('/discord', (req, res, next) => {
-  if (!ensureDiscordStrategy()) return res.redirect('/setup.html?missing=discord');
+  if (!ensureDiscordStrategy()) {
+    require('../utils/logger').warn('discord oauth start: credenciais ausentes');
+    return res.redirect('/setup.html?missing=discord');
+  }
   passport.authenticate('discord')(req, res, next);
 });
 
 router.get('/discord/callback', (req, res, next) => {
-  if (!ensureDiscordStrategy()) return res.redirect('/setup.html?missing=discord');
-  passport.authenticate('discord', { failureRedirect: '/login.html?login=fail' })(req, res, () => {
+  if (!ensureDiscordStrategy()) return res.redirect('/login.html?login=fail&reason=no_credentials');
+  // Captura erro retornado pelo Discord (ex: access_denied)
+  if (req.query.error) {
+    require('../utils/logger').warn({ err: req.query.error, desc: req.query.error_description }, 'discord oauth retornou erro');
+    return res.redirect('/login.html?login=fail&reason=' + encodeURIComponent(req.query.error));
+  }
+  passport.authenticate('discord', { failureRedirect: '/login.html?login=fail&reason=auth_failed' })(req, res, () => {
     try {
       const profile = req.user;
       if (!profile?.id) return res.redirect('/login.html?login=fail');
@@ -253,10 +261,16 @@ router.get('/discord/callback', (req, res, next) => {
 
       // Mantem session.userId pra proximas requests usarem email/senha session-based
       req.session.userId = user.id;
-      req.session.save(() => res.redirect('/app.html'));
+      req.session.save((err) => {
+        if (err) {
+          require('../utils/logger').error({ err: err.message, user_id: user.id }, 'falha salvar session apos discord callback');
+          return res.redirect('/login.html?login=fail&reason=session_save');
+        }
+        res.redirect('/app.html');
+      });
     } catch (e) {
-      require('../utils/logger').error({ err: e.message }, 'erro no callback discord');
-      res.redirect('/login.html?login=fail');
+      require('../utils/logger').error({ err: e.message, stack: e.stack }, 'erro no callback discord');
+      res.redirect('/login.html?login=fail&reason=' + encodeURIComponent(e.message.slice(0, 60)));
     }
   });
 });

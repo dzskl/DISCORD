@@ -18,36 +18,50 @@ router.get('/scheduled', requireAuth, (req, res) => {
 });
 
 router.post('/', requireAuth, async (req, res) => {
-  const { channels, body, kind, embed_title, embed_color, product_id, scheduled_for } = req.body || {};
+  const { channels, body, kind, embed_title, embed_color, product_id, scheduled_for,
+          image_url, banner_url, thumbnail_url } = req.body || {};
   if (!Array.isArray(channels) || !channels.length) return res.status(400).json({ error: 'canais obrigatorios' });
   if (!body || !body.trim()) return res.status(400).json({ error: 'mensagem obrigatoria' });
 
   const channelsStr = channels.join(',');
   const k = kind || 'texto';
 
+  // Valida URLs (devem ser http/https; max 1024 chars)
+  const validUrl = (u) => !u || (/^https?:\/\//i.test(u) && u.length <= 1024);
+  if (!validUrl(image_url))     return res.status(400).json({ error: 'image_url invalida' });
+  if (!validUrl(banner_url))    return res.status(400).json({ error: 'banner_url invalida' });
+  if (!validUrl(thumbnail_url)) return res.status(400).json({ error: 'thumbnail_url invalida' });
+
   if (scheduled_for) {
     const info = db.prepare(`
-      INSERT INTO announcements (channels,body,kind,embed_title,embed_color,product_id,scheduled_for,status)
-      VALUES (?,?,?,?,?,?,?,'scheduled')
-    `).run(channelsStr, body, k, embed_title || null, embed_color || null, product_id || null, parseInt(scheduled_for));
+      INSERT INTO announcements (channels,body,kind,embed_title,embed_color,product_id,scheduled_for,status,image_url,banner_url,thumbnail_url)
+      VALUES (?,?,?,?,?,?,?,'scheduled',?,?,?)
+    `).run(channelsStr, body, k, embed_title || null, embed_color || null, product_id || null,
+            parseInt(scheduled_for), image_url || null, banner_url || null, thumbnail_url || null);
     return res.json({ ok: true, id: info.lastInsertRowid, status: 'scheduled' });
   }
 
   try {
-    let productName = null, productPrice = null;
+    let productName = null, productPrice = null, productImage = null;
     if (product_id) {
       const p = db.prepare('SELECT * FROM products WHERE id=?').get(product_id);
-      if (p) { productName = p.name; productPrice = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ','); }
+      if (p) {
+        productName = p.name;
+        productPrice = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ',');
+        productImage = p.image_url;
+      }
     }
 
     const sent = await bot.sendAnnouncement({
-      channels, body, kind: k, embed_title, embed_color, productName, productPrice
+      channels, body, kind: k, embed_title, embed_color, productName, productPrice, productImage,
+      image_url, banner_url, thumbnail_url
     });
 
     const info = db.prepare(`
-      INSERT INTO announcements (channels,body,kind,embed_title,embed_color,product_id,sent_at,status)
-      VALUES (?,?,?,?,?,?,strftime('%s','now'),'sent')
-    `).run(channelsStr, body, k, embed_title || null, embed_color || null, product_id || null);
+      INSERT INTO announcements (channels,body,kind,embed_title,embed_color,product_id,sent_at,status,image_url,banner_url,thumbnail_url)
+      VALUES (?,?,?,?,?,?,strftime('%s','now'),'sent',?,?,?)
+    `).run(channelsStr, body, k, embed_title || null, embed_color || null, product_id || null,
+            image_url || null, banner_url || null, thumbnail_url || null);
 
     logEvent({ type: 'anuncio', message: `Anuncio enviado em ${sent.join(', ')}`, channel: sent.join(',') });
     res.json({ ok: true, id: info.lastInsertRowid, sent });

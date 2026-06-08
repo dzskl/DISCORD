@@ -661,6 +661,14 @@ function populateProdSelect() {
     produtos.filter(p => p.active).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
 }
 
+function _annMediaPayload() {
+  return {
+    image_url: document.getElementById('ann-image-url')?.value.trim() || null,
+    banner_url: document.getElementById('ann-banner-url')?.value.trim() || null,
+    thumbnail_url: document.getElementById('ann-thumb-url')?.value.trim() || null
+  };
+}
+
 async function enviarAnuncio() {
   const body = document.getElementById('anuncio-texto').value.trim();
   const channels = [...document.querySelectorAll('.canal-chip.sel')].map(c => c.textContent);
@@ -668,7 +676,7 @@ async function enviarAnuncio() {
   if (!body) return toast('Digite uma mensagem.', 'warn');
   if (!channels.length) return toast('Selecione pelo menos um canal.', 'warn');
 
-  const payload = { channels, body, kind };
+  const payload = { channels, body, kind, ..._annMediaPayload() };
   if (kind === 'embed') {
     payload.embed_title = document.getElementById('embed-titulo').value;
     payload.embed_color = document.getElementById('embed-cor').value;
@@ -678,6 +686,9 @@ async function enviarAnuncio() {
   try {
     await api('/api/announcements', { method: 'POST', body: JSON.stringify(payload) });
     document.getElementById('anuncio-texto').value = '';
+    ['ann-image-url', 'ann-banner-url', 'ann-thumb-url'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
+    });
     loadAnuncios();
     toast('Anuncio enviado.', 'ok');
   } catch (e) { toast(e.message, 'err'); }
@@ -700,7 +711,8 @@ async function agendarAnuncio() {
         kind: document.getElementById('anuncio-tipo').value,
         embed_title: document.getElementById('embed-titulo')?.value,
         embed_color: document.getElementById('embed-cor')?.value,
-        scheduled_for: ts
+        scheduled_for: ts,
+        ..._annMediaPayload()
       })
     });
     loadAnuncios();
@@ -952,19 +964,35 @@ function updatePreview() {
   const emb = document.getElementById('preview-embed');
   document.getElementById('embed-fields').style.display = tipo === 'embed' ? 'block' : 'none';
   document.getElementById('produto-field').style.display = tipo === 'produto' ? 'block' : 'none';
+
+  const isHttp = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+  const imageUrl = document.getElementById('ann-image-url')?.value.trim();
+  const bannerUrl = document.getElementById('ann-banner-url')?.value.trim();
+  const thumbUrl = document.getElementById('ann-thumb-url')?.value.trim();
+  const mainImg = isHttp(imageUrl) ? imageUrl : (isHttp(bannerUrl) ? bannerUrl : null);
+  const mediaHtml = (mainImg || isHttp(thumbUrl)) ? `
+    <div style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
+      ${mainImg ? `<img src="${escapeHtml(mainImg)}" style="max-width:100%;max-height:160px;border-radius:5px;object-fit:cover;flex:1;" onerror="this.style.display='none'">` : ''}
+      ${isHttp(thumbUrl) ? `<img src="${escapeHtml(thumbUrl)}" style="width:56px;height:56px;border-radius:4px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+    </div>` : '';
+
   if (tipo === 'embed') {
     const titulo = document.getElementById('embed-titulo').value || 'Título do Embed';
     const cor = document.getElementById('embed-cor').value;
-    emb.innerHTML = `<div class="embed-box" style="border-left-color:${cor}"><div class="embed-title">${escapeHtml(titulo)}</div><div class="embed-desc">${escapeHtml(texto)}</div></div>`;
+    emb.innerHTML = `<div class="embed-box" style="border-left-color:${cor}"><div class="embed-title">${escapeHtml(titulo)}</div><div class="embed-desc">${escapeHtml(texto)}</div>${mediaHtml}</div>`;
     document.getElementById('preview-msg').textContent = '';
   } else if (tipo === 'produto') {
     const idx = document.getElementById('prod-select').value;
     const p = produtos.find(x => String(x.id) === idx);
     if (p) {
       const price = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ',');
-      emb.innerHTML = `<div class="embed-box"><div class="embed-title">${escapeHtml(p.name)}</div><div class="embed-desc">${escapeHtml(p.description || '')}</div><div class="embed-price">${price}</div></div>`;
+      const productImg = isHttp(p.image_url) ? `<img src="${escapeHtml(p.image_url)}" style="max-width:100%;max-height:140px;border-radius:5px;object-fit:cover;margin-top:8px;" onerror="this.style.display='none'">` : '';
+      emb.innerHTML = `<div class="embed-box"><div class="embed-title">${escapeHtml(p.name)}</div><div class="embed-desc">${escapeHtml(p.description || '')}</div><div class="embed-price">${price}</div>${mainImg ? mediaHtml : productImg}</div>`;
     } else { emb.innerHTML = ''; }
-  } else { emb.innerHTML = ''; }
+  } else {
+    // texto puro — mostra a imagem como auto-embed (Discord-style)
+    emb.innerHTML = mediaHtml;
+  }
 }
 
 // ---------- CHART HELPERS ----------
@@ -4724,7 +4752,248 @@ async function updateFinanceiroBadge() {
   } catch {}
 }
 
-// Hook do sp() pra antecipacao + upgrade-pro + financeiro
+// ============ ADMIN USUARIOS GLOBAL (owner) ============
+let __auSelected = null;
+let __auDebounceTimer = null;
+
+function debounceLoadAdminUsers() {
+  clearTimeout(__auDebounceTimer);
+  __auDebounceTimer = setTimeout(loadAdminUsers, 300);
+}
+
+async function loadAdminUsers() {
+  const q = document.getElementById('au-search')?.value || '';
+  const role = document.getElementById('au-filter-role')?.value || '';
+  const plan = document.getElementById('au-filter-plan')?.value || '';
+  const active = document.getElementById('au-filter-active')?.value || '';
+  const params = new URLSearchParams();
+  if (q) params.append('q', q);
+  if (role) params.append('role', role);
+  if (plan) params.append('plan', plan);
+  if (active !== '') params.append('active', active);
+
+  try {
+    const [list, stats] = await Promise.all([
+      fetch('/api/admin-users/list?' + params, { credentials: 'same-origin' }).then(r => r.json()),
+      fetch('/api/admin-users/stats', { credentials: 'same-origin' }).then(r => r.json())
+    ]);
+
+    document.getElementById('au-stat-total').textContent = stats.total;
+    document.getElementById('au-stat-active').textContent = stats.active;
+    document.getElementById('au-stat-pro').textContent = stats.pro;
+    document.getElementById('au-stat-owners').textContent = stats.owners;
+    document.getElementById('au-stat-new').textContent = stats.new_last_30d;
+    document.getElementById('au-stat-active30').textContent = stats.active_last_30d;
+
+    const tbody = document.getElementById('au-tbody');
+    if (!Array.isArray(list) || !list.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="color:#444;padding:24px;text-align:center;">nenhum usuário encontrado</td></tr>';
+      return;
+    }
+    const fmt = c => 'R$ ' + ((c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const roleColor = { owner: '#f5c542', admin: '#b9a8ff', member: '#888' };
+    const planColor = { pro: '#b9a8ff', free: '#888', trial_24h: '#7dd3a4' };
+    tbody.innerHTML = list.map(u => {
+      const avatar = u.discord_avatar
+        ? `<img src="${escapeHtmlW(u.discord_avatar)}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;">`
+        : `<div style="width:24px;height:24px;border-radius:50%;background:#1a1a1a;color:#888;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'IBM Plex Mono',monospace;">${(u.email || '?')[0].toUpperCase()}</div>`;
+      const lastLogin = u.last_login_at
+        ? new Date(u.last_login_at * 1000).toLocaleDateString('pt-BR')
+        : '<span style="color:#444;">nunca</span>';
+      const activeBadge = u.active
+        ? ''
+        : '<span style="background:#1a0a0a;color:#ef4444;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:6px;font-family:\'IBM Plex Mono\',monospace;">DESATIVADO</span>';
+      return `<tr style="cursor:pointer;" onclick="openAdminUserDetail(${u.id})">
+        <td>
+          <div style="display:flex;gap:9px;align-items:center;">
+            ${avatar}
+            <div style="min-width:0;">
+              <div style="color:#fff;font-weight:600;font-size:12.5px;">${escapeHtmlW(u.display_name || u.email)}${activeBadge}</div>
+              <div style="color:#666;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">${escapeHtmlW(u.email || '—')}${u.discord_tag ? ' · @' + escapeHtmlW(u.discord_tag) : ''}</div>
+            </div>
+          </div>
+        </td>
+        <td><span style="color:${roleColor[u.role] || '#888'};font-weight:700;font-size:11px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${u.role}</span></td>
+        <td><span style="color:${planColor[u.plan] || '#888'};font-weight:700;font-size:11px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${u.plan || 'free'}</span></td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#fff;">${u.paid_sales_count || 0}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#fff;">${fmt(u.total_gmv_cents)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#7dd3a4;">${fmt(u.platform_revenue_cents)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;color:#aaa;font-size:11px;">${lastLogin}</td>
+        <td><button class="btn-w" onclick="event.stopPropagation();openAdminUserDetail(${u.id})" style="padding:5px 10px;font-size:11px;">editar</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.warn('loadAdminUsers', e.message);
+    document.getElementById('au-tbody').innerHTML = '<tr><td colspan="8" style="color:#ef4444;padding:20px;text-align:center;">erro: ' + escapeHtmlW(e.message) + '</td></tr>';
+  }
+}
+
+async function updateAdminUsersBadge() {
+  // owner sempre vê este nav
+  try {
+    const r = await fetch('/api/admin-users/stats', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const nav = document.getElementById('nav-admin-usuarios');
+    if (nav) nav.style.display = 'flex';
+  } catch {}
+}
+
+async function openAdminUserDetail(id) {
+  try {
+    const data = await fetch('/api/admin-users/' + id, { credentials: 'same-origin' }).then(r => r.json());
+    if (!data || data.error) return toast(data?.error || 'erro', 'err');
+    __auSelected = data.user;
+    const u = data.user;
+    document.getElementById('au-modal-name').textContent = u.display_name || u.email || ('#' + u.id);
+    const created = u.created_at ? new Date(u.created_at * 1000).toLocaleDateString('pt-BR') : '—';
+    document.getElementById('au-modal-meta').textContent =
+      `#${u.id} · ${u.email || 'sem email'}${u.discord_tag ? ' · @' + u.discord_tag : ''} · criado ${created}`;
+    document.getElementById('au-edit-role').value = u.role || 'admin';
+    document.getElementById('au-edit-plan').value = u.plan || 'free';
+    document.getElementById('au-edit-active').value = String(u.active || 0);
+    document.getElementById('au-edit-name').value = u.display_name || '';
+
+    const guildsEl = document.getElementById('au-guilds');
+    if (!data.guilds.length) {
+      guildsEl.innerHTML = '<div style="color:#444;font-size:11.5px;padding:6px 0;">sem acesso a servidores</div>';
+    } else {
+      guildsEl.innerHTML = data.guilds.map(g => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#0a0a0a;border:1px solid var(--border);border-radius:7px;">
+          <div>
+            <div style="color:#fff;font-size:12.5px;font-weight:600;">${escapeHtmlW(g.name || g.id || '—')}</div>
+            <div style="color:#666;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">guild ${escapeHtmlW(g.id || '—')} · ${escapeHtmlW(g.role)}${g.plan ? ' · plano ' + escapeHtmlW(g.plan) : ''}</div>
+          </div>
+          <button style="background:transparent;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 10px;font-size:10.5px;font-family:inherit;cursor:pointer;" onclick="revokeUserGuild(${u.id}, '${escapeHtmlW(g.id)}')">remover</button>
+        </div>`).join('');
+    }
+
+    const salesBody = document.getElementById('au-sales');
+    if (!data.recent_sales.length) {
+      salesBody.innerHTML = '<tr><td colspan="5" style="color:#444;padding:12px;text-align:center;">sem vendas registradas</td></tr>';
+    } else {
+      salesBody.innerHTML = data.recent_sales.map(s => `
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace;color:#666;">#${s.id}</td>
+          <td style="color:#fff;">${escapeHtmlW(s.product_name || '—')}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;color:#fff;">R$ ${((s.amount_cents || 0) / 100).toFixed(2)}</td>
+          <td><span style="color:${s.status === 'paid' ? '#7dd3a4' : '#888'};font-size:10.5px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${s.status}</span></td>
+          <td style="color:#888;font-size:10.5px;">${new Date(s.created_at * 1000).toLocaleDateString('pt-BR')}</td>
+        </tr>`).join('');
+    }
+
+    const loginsEl = document.getElementById('au-logins');
+    if (!data.recent_logins.length) {
+      loginsEl.innerHTML = '<div style="color:#444;">nenhum registro</div>';
+    } else {
+      loginsEl.innerHTML = data.recent_logins.map(l => {
+        const via = l.details?.via || '';
+        return `<div>${new Date(l.created_at * 1000).toLocaleString('pt-BR')} ${via ? `<span style="color:#666;">(${via})</span>` : ''}</div>`;
+      }).join('');
+    }
+
+    document.getElementById('au-modal').style.display = 'flex';
+  } catch (e) { toast('erro: ' + e.message, 'err'); }
+}
+
+function closeAdminUserModal() {
+  document.getElementById('au-modal').style.display = 'none';
+  __auSelected = null;
+}
+
+async function saveAdminUser() {
+  if (!__auSelected) return;
+  const payload = {
+    role: document.getElementById('au-edit-role').value,
+    plan: document.getElementById('au-edit-plan').value,
+    active: parseInt(document.getElementById('au-edit-active').value) === 1,
+    display_name: document.getElementById('au-edit-name').value
+  };
+  try {
+    const r = await fetch('/api/admin-users/' + __auSelected.id, {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'erro', 'err');
+    toast('Usuário atualizado', 'ok');
+    closeAdminUserModal();
+    loadAdminUsers();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function resetUserPassword() {
+  if (!__auSelected) return;
+  if (!confirm('Resetar senha desse usuário e gerar uma temporária?')) return;
+  try {
+    const r = await fetch(`/api/admin-users/${__auSelected.id}/reset-password`, { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'erro', 'err');
+    prompt('Senha temporária — copie e envie ao usuário:', j.temp_password);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deactivateAdminUser() {
+  if (!__auSelected) return;
+  if (!confirm('Desativar essa conta? O usuário não vai mais conseguir logar.')) return;
+  try {
+    const r = await fetch('/api/admin-users/' + __auSelected.id, { method: 'DELETE', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'erro', 'err');
+    toast('Conta desativada', 'ok');
+    closeAdminUserModal();
+    loadAdminUsers();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function revokeUserGuild(userId, guildId) {
+  if (!confirm('Remover acesso desse usuário a essa guild?')) return;
+  try {
+    const r = await fetch(`/api/admin-users/${userId}/guilds/${guildId}`, { method: 'DELETE', credentials: 'same-origin' });
+    if (!r.ok) { const j = await r.json(); return toast(j.error || 'erro', 'err'); }
+    toast('Acesso removido', 'ok');
+    openAdminUserDetail(userId);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function openAdminUserForm() {
+  ['au-new-email', 'au-new-name', 'au-new-pw', 'au-new-result'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+    if (id === 'au-new-result') document.getElementById(id).textContent = '';
+  });
+  document.getElementById('au-create-modal').style.display = 'flex';
+}
+
+async function submitNewAdminUser() {
+  const email = document.getElementById('au-new-email').value.trim();
+  if (!email) return toast('email obrigatório', 'warn');
+  const payload = {
+    email,
+    display_name: document.getElementById('au-new-name').value.trim(),
+    role: document.getElementById('au-new-role').value,
+    plan: document.getElementById('au-new-plan').value,
+    password: document.getElementById('au-new-pw').value || undefined
+  };
+  try {
+    const r = await fetch('/api/admin-users', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (!r.ok) return toast(j.error || 'erro', 'err');
+    const result = document.getElementById('au-new-result');
+    if (j.temp_password) {
+      result.innerHTML = `✓ Criado #${j.id}. Senha temporária: <b style="color:#fff;">${escapeHtmlW(j.temp_password)}</b><br><span style="color:#888;font-size:10.5px;">Copie e envie ao usuário com segurança.</span>`;
+    } else {
+      result.textContent = '✓ Usuário criado #' + j.id;
+      setTimeout(() => document.getElementById('au-create-modal').style.display = 'none', 1500);
+    }
+    loadAdminUsers();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// Hook do sp() pra antecipacao + upgrade-pro + financeiro + admin-usuarios
 const __origSpFin = window.sp;
 if (typeof __origSpFin === 'function' && !window.__spHookedFin) {
   window.__spHookedFin = true;
@@ -4733,9 +5002,11 @@ if (typeof __origSpFin === 'function' && !window.__spHookedFin) {
     if (page === 'antecipacao') loadAntecipacao();
     if (page === 'upgrade-pro') loadUpgradePro();
     if (page === 'financeiro') loadFinanceiro();
+    if (page === 'admin-usuarios') loadAdminUsers();
   };
 }
 setTimeout(updateFinanceiroBadge, 2200);
+setTimeout(updateAdminUsersBadge, 2300);
 
 function computeWalletStats(ws) {
   if (!Array.isArray(ws)) return { salesCount: 0, totalWithdrawn: 0, medCount: 0, approved: 0, pending: 0, refunded: 0, canceled: 0 };

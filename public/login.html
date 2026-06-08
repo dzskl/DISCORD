@@ -92,7 +92,19 @@ h1{font-size:22px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
 const params = new URLSearchParams(location.search);
 const a = document.getElementById('alert');
 if (params.get('login') === 'denied') { a.className = 'alert err'; a.textContent = 'sua conta nao tem permissao.'; }
-if (params.get('login') === 'fail') { a.className = 'alert err'; a.textContent = 'falha no login.'; }
+if (params.get('login') === 'fail') {
+  a.className = 'alert err';
+  const reason = params.get('reason');
+  const msgs = {
+    no_credentials: 'Discord OAuth não configurado. Configure DISCORD_CLIENT_ID/SECRET em Credenciais.',
+    auth_failed: 'Discord rejeitou o login. Verifique o callback URL em Developer Portal: deve ser exatamente ' + location.origin + '/auth/discord/callback',
+    session_save: 'Login OK mas falhou ao salvar a sessão (DB sem volume persistente?).',
+    access_denied: 'Você cancelou a autorização no Discord.',
+    denied: 'Sua conta está desativada.'
+  };
+  a.textContent = msgs[reason] || ('Falha no login' + (reason ? ': ' + reason : '.') + ' Veja /diagnostico.html');
+}
+if (params.get('login') === 'denied') { a.className = 'alert err'; a.textContent = 'Sua conta está desativada.'; }
 if (params.get('registered')) { a.className = 'alert ok'; a.textContent = '✓ conta criada — faça login agora.'; }
 
 // Auto-redirect se ja logado, OU vira form de criar conta se for o primeiro user

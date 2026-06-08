@@ -54,10 +54,16 @@ router.get('/health', (req, res) => {
   let discord = { client_id: false, client_secret: false };
   try {
     const { getCredential } = require('../database/connection');
+    const cid = getCredential('DISCORD_CLIENT_ID');
+    const csec = getCredential('DISCORD_CLIENT_SECRET');
+    const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
     discord = {
-      client_id: !!getCredential('DISCORD_CLIENT_ID'),
-      client_secret: !!getCredential('DISCORD_CLIENT_SECRET'),
-      bot_token: !!getCredential('DISCORD_TOKEN') || !!getCredential('DISCORD_BOT_TOKEN')
+      client_id: !!cid,
+      client_id_valid: /^\d{15,25}$/.test(cid || ''),
+      client_secret: !!csec,
+      bot_token: !!getCredential('DISCORD_TOKEN') || !!getCredential('DISCORD_BOT_TOKEN'),
+      expected_callback_url: base + '/auth/discord/callback',
+      note: 'Cole exatamente essa URL em Discord Developer Portal > OAuth2 > Redirects'
     };
   } catch {}
 

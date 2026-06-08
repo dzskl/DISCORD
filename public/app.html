@@ -620,6 +620,10 @@ footer.appfoot a:hover{color:var(--text);}
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           receita plataforma
         </div>
+        <div class="ni" data-page="admin-usuarios" onclick="sp('admin-usuarios',this)" id="nav-admin-usuarios" style="display:none;">
+          <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          usuários globais
+        </div>
         <div class="ni" data-page="suporte-inbox" onclick="sp('suporte-inbox',this)" id="nav-suporte-inbox" style="display:none;">
           <svg class="ni-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
           suporte (inbox) <span id="suporte-badge" style="margin-left:auto;background:#f5c542;color:#0a0a0a;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;display:none;"></span>
@@ -2161,6 +2165,180 @@ footer.appfoot a:hover{color:var(--text);}
         </div>
       </div>
 
+      <!-- ADMIN USUARIOS GLOBAL (owner only) -->
+      <div id="page-admin-usuarios" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:#fff;margin:0;">Usuários da plataforma</h2>
+            <p style="color:#888;font-size:12.5px;margin:4px 0 0;">Gerencie todas as contas e permissões do BotDash.</p>
+          </div>
+          <button class="btn-w" onclick="openAdminUserForm()">+ criar usuário</button>
+        </div>
+
+        <!-- Stats -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;">
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#666;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Total</div><div id="au-stat-total" style="font-size:22px;font-weight:800;color:#fff;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#7dd3a4;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Ativos</div><div id="au-stat-active" style="font-size:22px;font-weight:800;color:#7dd3a4;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#b9a8ff;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Pro</div><div id="au-stat-pro" style="font-size:22px;font-weight:800;color:#b9a8ff;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#f5c542;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Owners</div><div id="au-stat-owners" style="font-size:22px;font-weight:800;color:#f5c542;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#666;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Novos 30d</div><div id="au-stat-new" style="font-size:22px;font-weight:800;color:#fff;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+          <div class="card" style="padding:13px;"><div style="font-size:10.5px;color:#666;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Ativos 30d</div><div id="au-stat-active30" style="font-size:22px;font-weight:800;color:#fff;font-family:'IBM Plex Mono',monospace;margin-top:4px;">0</div></div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card" style="padding:14px;margin-bottom:14px;">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="fgroup" style="flex:1;min-width:200px;">
+              <div class="flabel">buscar</div>
+              <input id="au-search" class="inp" placeholder="email, nome, discord ou id..." oninput="debounceLoadAdminUsers()">
+            </div>
+            <div class="fgroup">
+              <div class="flabel">role</div>
+              <select id="au-filter-role" class="inp" onchange="loadAdminUsers()">
+                <option value="">todos</option>
+                <option value="owner">owner</option>
+                <option value="admin">admin</option>
+                <option value="member">member</option>
+              </select>
+            </div>
+            <div class="fgroup">
+              <div class="flabel">plano</div>
+              <select id="au-filter-plan" class="inp" onchange="loadAdminUsers()">
+                <option value="">todos</option>
+                <option value="free">free</option>
+                <option value="pro">pro</option>
+                <option value="trial_24h">trial</option>
+              </select>
+            </div>
+            <div class="fgroup">
+              <div class="flabel">status</div>
+              <select id="au-filter-active" class="inp" onchange="loadAdminUsers()">
+                <option value="">todos</option>
+                <option value="1">ativos</option>
+                <option value="0">desativados</option>
+              </select>
+            </div>
+            <button class="btn-g" onclick="document.getElementById('au-search').value='';document.getElementById('au-filter-role').value='';document.getElementById('au-filter-plan').value='';document.getElementById('au-filter-active').value='';loadAdminUsers()">limpar</button>
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+          <table class="vtable">
+            <thead>
+              <tr>
+                <th>usuário</th>
+                <th>role</th>
+                <th>plano</th>
+                <th>vendas</th>
+                <th>GMV</th>
+                <th>receita p/ plat.</th>
+                <th>último login</th>
+                <th>ações</th>
+              </tr>
+            </thead>
+            <tbody id="au-tbody"><tr><td colspan="8" style="color:#444;padding:20px;text-align:center;">carregando...</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Drawer/Modal de detalhes -->
+        <div id="au-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:20px;">
+          <div class="card" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;">
+              <div>
+                <div id="au-modal-name" style="color:#fff;font-size:18px;font-weight:800;">—</div>
+                <div id="au-modal-meta" style="color:#888;font-size:12px;margin-top:3px;">—</div>
+              </div>
+              <button class="btn-g" onclick="closeAdminUserModal()">fechar</button>
+            </div>
+
+            <div class="frow">
+              <div class="fgroup">
+                <div class="flabel">role</div>
+                <select id="au-edit-role" class="inp">
+                  <option value="owner">owner</option>
+                  <option value="admin">admin</option>
+                  <option value="member">member</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">plano</div>
+                <select id="au-edit-plan" class="inp">
+                  <option value="free">free</option>
+                  <option value="pro">pro</option>
+                  <option value="trial_24h">trial 24h</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">status</div>
+                <select id="au-edit-active" class="inp">
+                  <option value="1">ativo</option>
+                  <option value="0">desativado</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup">
+              <div class="flabel">nome de exibição</div>
+              <input id="au-edit-name" class="inp" placeholder="display name">
+            </div>
+
+            <div style="display:flex;gap:10px;margin:14px 0;flex-wrap:wrap;">
+              <button class="btn-w" onclick="saveAdminUser()">salvar mudanças</button>
+              <button class="btn-g" onclick="resetUserPassword()">resetar senha</button>
+              <button style="background:#1a0a0a;border:1px solid #ef4444;color:#ef4444;border-radius:8px;padding:8px 14px;font-size:11.5px;font-family:inherit;cursor:pointer;" onclick="deactivateAdminUser()">desativar</button>
+            </div>
+
+            <div style="margin-top:18px;">
+              <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">acesso a servidores</div>
+              <div id="au-guilds" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+
+            <div style="margin-top:18px;">
+              <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">últimas vendas (loja desse user)</div>
+              <table class="vtable" style="font-size:11px;">
+                <thead><tr><th>id</th><th>produto</th><th>valor</th><th>status</th><th>data</th></tr></thead>
+                <tbody id="au-sales"></tbody>
+              </table>
+            </div>
+
+            <div style="margin-top:18px;">
+              <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">últimos logins</div>
+              <div id="au-logins" style="font-size:11.5px;color:#aaa;font-family:'IBM Plex Mono',monospace;display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal criar user -->
+        <div id="au-create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:20px;">
+          <div class="card" style="max-width:520px;width:100%;padding:24px;">
+            <div style="color:#fff;font-size:17px;font-weight:800;margin-bottom:14px;">Criar usuário</div>
+            <div class="fgroup"><div class="flabel">email *</div><input id="au-new-email" class="inp" type="email" placeholder="usuario@exemplo.com"></div>
+            <div class="fgroup"><div class="flabel">nome (opcional)</div><input id="au-new-name" class="inp" placeholder="display name"></div>
+            <div class="frow">
+              <div class="fgroup"><div class="flabel">role</div>
+                <select id="au-new-role" class="inp">
+                  <option value="admin">admin</option>
+                  <option value="member">member</option>
+                  <option value="owner">owner</option>
+                </select>
+              </div>
+              <div class="fgroup"><div class="flabel">plano</div>
+                <select id="au-new-plan" class="inp">
+                  <option value="free">free</option>
+                  <option value="pro">pro</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup"><div class="flabel">senha (deixe vazio pra gerar)</div><input id="au-new-pw" class="inp" type="text" placeholder="senha temporária"></div>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+              <button class="btn-w" onclick="submitNewAdminUser()">criar</button>
+              <button class="btn-g" onclick="document.getElementById('au-create-modal').style.display='none'">cancelar</button>
+            </div>
+            <div id="au-new-result" style="margin-top:14px;font-size:12px;color:#7dd3a4;font-family:'IBM Plex Mono',monospace;"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- VERIFICACOES (owner only) -->
       <div id="page-verificacoes" class="page">
         <div style="display:flex;gap:8px;margin-bottom:14px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;">
@@ -2352,7 +2530,34 @@ footer.appfoot a:hover{color:var(--text);}
                   </select>
                 </div>
               </div>
-              <div style="display:flex;gap:10px;">
+
+              <!-- MIDIA: banner, imagem, thumbnail -->
+              <details style="margin-top:10px;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+                <summary style="cursor:pointer;color:#aaa;font-size:12.5px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Imagem / Banner / Fotos
+                </summary>
+                <div style="padding-top:12px;display:flex;flex-direction:column;gap:10px;">
+                  <div class="fgroup">
+                    <div class="flabel">imagem grande (URL) — aparece embaixo do embed</div>
+                    <input class="inp" id="ann-image-url" type="url" placeholder="https://..." oninput="updatePreview()">
+                  </div>
+                  <div class="fgroup">
+                    <div class="flabel">banner alternativo (URL) — usado se imagem não setada</div>
+                    <input class="inp" id="ann-banner-url" type="url" placeholder="https://..." oninput="updatePreview()">
+                  </div>
+                  <div class="fgroup">
+                    <div class="flabel">thumbnail (URL) — aparece no canto direito do embed</div>
+                    <input class="inp" id="ann-thumb-url" type="url" placeholder="https://..." oninput="updatePreview()">
+                  </div>
+                  <div style="font-size:10.5px;color:#666;line-height:1.6;">
+                    Cole o link direto da imagem (.jpg, .png, .gif). Pra enviar do PC, faça upload no Discord/Imgur e copie o link.
+                    Em mensagens "texto simples", a imagem é enviada como link (Discord faz auto-embed).
+                  </div>
+                </div>
+              </details>
+
+              <div style="display:flex;gap:10px;margin-top:10px;">
                 <button class="btn-w" onclick="enviarAnuncio()">enviar agora</button>
                 <button class="btn-g" onclick="agendarAnuncio()">agendar</button>
               </div>

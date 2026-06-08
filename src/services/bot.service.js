@@ -644,7 +644,9 @@ async function listMembers(limit = 100) {
   }));
 }
 
-async function sendAnnouncement({ channels, body, kind, embed_title, embed_color, productName, productPrice }) {
+async function sendAnnouncement({ channels, body, kind, embed_title, embed_color,
+                                  productName, productPrice, productImage,
+                                  image_url, banner_url, thumbnail_url }) {
   const guild = await fetchGuild();
   const allChannels = await guild.channels.fetch();
   const targets = channels.map(name => {
@@ -655,6 +657,7 @@ async function sendAnnouncement({ channels, body, kind, embed_title, embed_color
   if (!targets.length) throw new Error('Nenhum canal valido');
 
   const allowedMentions = { parse: ['users'] };
+  const isHttp = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
 
   for (const ch of targets) {
     if (kind === 'embed' || kind === 'produto') {
@@ -664,9 +667,22 @@ async function sendAnnouncement({ channels, body, kind, embed_title, embed_color
         .setDescription(body)
         .setColor(colorMap[embed_color] ?? 0x5865f2);
       if (kind === 'produto' && productPrice) eb.addFields({ name: 'Preco', value: productPrice });
+
+      // Imagem principal (banner/image grande): prioridade image_url > banner_url > productImage (se for produto)
+      const mainImg = image_url || banner_url || (kind === 'produto' ? productImage : null);
+      if (isHttp(mainImg)) eb.setImage(mainImg);
+
+      // Thumbnail (canto): thumbnail_url > productImage (se nao foi usado como main)
+      const thumb = thumbnail_url || (kind === 'produto' && image_url ? productImage : null);
+      if (isHttp(thumb)) eb.setThumbnail(thumb);
+
       await ch.send({ embeds: [eb], allowedMentions });
     } else {
-      await ch.send({ content: body, allowedMentions });
+      // Texto puro — se tiver imagem, manda como attachment URL no proprio conteudo
+      // (Discord faz embed automatico da imagem)
+      const img = image_url || banner_url;
+      const content = isHttp(img) ? `${body}\n${img}` : body;
+      await ch.send({ content, allowedMentions });
     }
   }
   return targets.map(c => '#' + c.name);

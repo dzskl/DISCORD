@@ -194,6 +194,11 @@ async function runScheduledAnnouncements() {
         const p = db.prepare('SELECT * FROM products WHERE id=?').get(ann.product_id);
         if (p) { productName = p.name; productPrice = 'R$ ' + (p.price_cents / 100).toFixed(2).replace('.', ','); }
       }
+      let productImage = null;
+      if (ann.product_id) {
+        const p = db.prepare('SELECT image_url FROM products WHERE id=?').get(ann.product_id);
+        if (p) productImage = p.image_url;
+      }
       const sent = await bot.sendAnnouncement({
         channels: ann.channels.split(','),
         body: ann.body,
@@ -201,7 +206,11 @@ async function runScheduledAnnouncements() {
         embed_title: ann.embed_title,
         embed_color: ann.embed_color,
         productName,
-        productPrice
+        productPrice,
+        productImage,
+        image_url: ann.image_url,
+        banner_url: ann.banner_url,
+        thumbnail_url: ann.thumbnail_url
       });
       db.prepare(`UPDATE announcements SET status='sent', sent_at=strftime('%s','now') WHERE id=?`).run(ann.id);
       logEvent({ type: 'anuncio', message: `Anuncio agendado enviado em ${sent.join(', ')}` });
