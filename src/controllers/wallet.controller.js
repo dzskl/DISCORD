@@ -60,11 +60,19 @@ function balanceFor(userId, guildId) {
     FROM withdrawals WHERE user_id = ? AND status IN ('pending','approved','paid') ${wFilter}
   `).get(userId, ...wArgs).v;
 
+  // Taxas de antecipacao ja pagas (descontadas do saldo final)
+  const advFilter = guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const advArgs = guildId ? [guildId] : [];
+  const advanceFeesPaid = db.prepare(`
+    SELECT COALESCE(SUM(fee_cents), 0) AS v
+    FROM advance_requests WHERE user_id=? AND status='applied' ${advFilter}
+  `).get(userId, ...advArgs).v;
+
   const pf = require('../config/platform-fee');
   const hp = require('../config/hold-period');
   const cb = require('../config/chargeback-reserve');
   const reserve = cb.calcReserveFor(db, userId, guildId);
-  const available = Math.max(0, released - withdrawn - reserve);
+  const available = Math.max(0, released - withdrawn - reserve - advanceFeesPaid);
 
   return {
     earned_cents: earned,
@@ -72,6 +80,7 @@ function balanceFor(userId, guildId) {
     available_cents: available,
     pending_release_cents: Math.max(0, pendingRelease),
     chargeback_reserve_cents: reserve,
+    advance_fees_paid_cents: advanceFeesPaid,
     platform_fees_cents: platformFees,
     platform_fee_rate: pf.PLATFORM_FEE_RATE,
     platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS,
@@ -125,6 +134,114 @@ router.post('/extract-email', (req, res) => {
 
 router.get('/withdrawals', (req, res) => {
   const rows = db.prepare(`SELECT * FROM withdrawals WHERE user_id=? ORDER BY requested_at DESC LIMIT 100`).all(req.appUser.id);
+  res.json(rows);
+});
+
+// Preview da antecipacao: mostra quanto sai liquido pro vendedor se antecipar
+// TODAS as vendas em hold dele agora.
+router.get('/advance/preview', (req, res) => {
+  const adv = require('../config/advance-fee');
+  if (!adv.ENABLED) return res.json({ enabled: false });
+  const now = Math.floor(Date.now() / 1000);
+  const gFilter = req.guildId ? 'AND (s.guild_id = ? OR s.guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+  const rows = db.prepare(`
+    SELECT s.id, COALESCE(NULLIF(s.net_to_owner_cents,0), s.amount_cents) AS net
+    FROM sales s
+    JOIN user_guilds ug ON ug.guild_id = s.guild_id AND ug.role = 'owner'
+    WHERE ug.user_id = ?
+      AND s.status = 'paid'
+      AND s.available_at IS NOT NULL
+      AND s.available_at > ?
+      AND s.advance_request_id IS NULL
+      ${gFilter}
+  `).all(req.appUser.id, now, ...gArgs);
+
+  const gross = rows.reduce((acc, r) => acc + (r.net || 0), 0);
+  const fee = adv.calcFee(gross);
+  const net = gross - fee;
+  res.json({
+    enabled: true,
+    rate: adv.RATE_DEFAULT,
+    min_gross_cents: adv.MIN_GROSS,
+    sales_count: rows.length,
+    gross_cents: gross,
+    fee_cents: fee,
+    net_cents: net,
+    eligible: gross >= adv.MIN_GROSS
+  });
+});
+
+// Executa antecipacao: marca sales como advanced + cria advance_request +
+// "libera" o net antecipado (setando available_at <= now nas sales).
+router.post('/advance/execute', (req, res) => {
+  const adv = require('../config/advance-fee');
+  if (!adv.ENABLED) return res.status(503).json({ error: 'antecipacao desabilitada' });
+
+  const now = Math.floor(Date.now() / 1000);
+  const gFilter = req.guildId ? 'AND (s.guild_id = ? OR s.guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+  const eligible = db.prepare(`
+    SELECT s.id, COALESCE(NULLIF(s.net_to_owner_cents,0), s.amount_cents) AS net
+    FROM sales s
+    JOIN user_guilds ug ON ug.guild_id = s.guild_id AND ug.role = 'owner'
+    WHERE ug.user_id = ?
+      AND s.status = 'paid'
+      AND s.available_at IS NOT NULL
+      AND s.available_at > ?
+      AND s.advance_request_id IS NULL
+      ${gFilter}
+  `).all(req.appUser.id, now, ...gArgs);
+
+  const gross = eligible.reduce((a, r) => a + (r.net || 0), 0);
+  if (gross < adv.MIN_GROSS) {
+    return res.status(400).json({ error: `valor minimo de antecipacao: R$ ${(adv.MIN_GROSS / 100).toFixed(2)}`, gross_cents: gross });
+  }
+
+  const fee = adv.calcFee(gross);
+  const net = gross - fee;
+
+  // Transacao atomica
+  const tx = db.transaction(() => {
+    const info = db.prepare(`
+      INSERT INTO advance_requests (user_id, guild_id, gross_cents, fee_rate, fee_cents, net_cents, status, sale_ids)
+      VALUES (?,?,?,?,?,?,'applied',?)
+    `).run(
+      req.appUser.id,
+      req.guildId || null,
+      gross,
+      adv.RATE_DEFAULT,
+      fee,
+      net,
+      JSON.stringify(eligible.map(r => r.id))
+    );
+    const adId = info.lastInsertRowid;
+    // Marca as sales: zera o hold (available_at <= now) e linka o advance
+    const stmt = db.prepare(`UPDATE sales SET available_at = ?, advance_request_id = ?, advanced_at = ? WHERE id = ?`);
+    for (const r of eligible) stmt.run(now, adId, now, r.id);
+    return adId;
+  });
+
+  const adId = tx();
+  audit.log({ req, action: 'wallet.advance', target_type: 'advance_request', target_id: adId, details: { gross_cents: gross, fee_cents: fee, net_cents: net, sales: eligible.length } });
+
+  res.json({
+    ok: true,
+    advance_id: adId,
+    gross_cents: gross,
+    fee_cents: fee,
+    net_cents: net,
+    rate: adv.RATE_DEFAULT,
+    sales_advanced: eligible.length
+  });
+});
+
+// Historico de antecipacoes do vendedor
+router.get('/advances', (req, res) => {
+  const rows = db.prepare(`
+    SELECT * FROM advance_requests WHERE user_id=?
+    ORDER BY created_at DESC LIMIT 50
+  `).all(req.appUser.id);
   res.json(rows);
 });
 
@@ -233,26 +350,30 @@ router.post('/admin/withdrawals/:id/review', requireOwner, (req, res) => {
   res.json({ ok: true });
 });
 
-// Receita total da plataforma — % + taxa fixa
+// Receita total da plataforma — % + taxa fixa + antecipacao
 router.get('/admin/platform-revenue', requireOwner, (req, res) => {
   const percent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const fixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid'`).get().v;
+  const advance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied'`).get().v;
   const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND (platform_fee_cents > 0 OR COALESCE(platform_fixed_fee_cents,0) > 0)`).get().c;
   const gross = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const now = Math.floor(Date.now()/1000);
   const monthStart = now - 30 * 86400;
   const monthPercent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
   const monthFixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  const monthAdvance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied' AND created_at >= ?`).get(monthStart).v;
   const pf = require('../config/platform-fee');
   res.json({
-    total_collected_cents: percent + fixed,
+    total_collected_cents: percent + fixed + advance,
     percent_collected_cents: percent,
     fixed_collected_cents: fixed,
+    advance_collected_cents: advance,
     sales_with_fee: sales,
     gross_volume_cents: gross,
-    month_collected_cents: monthPercent + monthFixed,
+    month_collected_cents: monthPercent + monthFixed + monthAdvance,
     month_percent_cents: monthPercent,
     month_fixed_cents: monthFixed,
+    month_advance_cents: monthAdvance,
     fee_rate: pf.PLATFORM_FEE_RATE,
     fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
   });
