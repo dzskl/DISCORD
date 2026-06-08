@@ -15,8 +15,13 @@ ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-RUN mkdir -p /app/data && chown -R node:node /app/data
-USER node
+RUN mkdir -p /app/data
 
-ENTRYPOINT ["/sbin/tini","--"]
+# entrypoint script que garante /app/data writable antes de rodar o node
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# IMPORTANTE: rodando como root pra conseguir escrever no Volume do Railway
+# (o mount point pertence a uid 0 e nao podemos chown depois sem root)
+ENTRYPOINT ["/sbin/tini","--","/docker-entrypoint.sh"]
 CMD ["node","src/server.js"]
