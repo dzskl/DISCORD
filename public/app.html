@@ -3637,10 +3637,10 @@ footer.appfoot a:hover{color:var(--text);}
 
 <script>
 /* ============ TAB GROUPS — agrupa sub-paginas por categoria ============ */
+/* IMPORTANTE: so adicionar grupos onde TODAS as paginas envolvidas NAO tem
+   suas proprias tabs internas. Senao gera tab strips duplicados. */
 const PAGE_TAB_GROUPS = {
   'bot-config': {
-    label: 'Configuração do Bot',
-    sub: 'Configure tudo do seu bot',
     pages: [
       { page: 'configurar-bot',   label: 'Geral' },
       { page: 'boasvindas',       label: 'Boas-vindas' },
@@ -3650,19 +3650,7 @@ const PAGE_TAB_GROUPS = {
       { page: 'auditoria',        label: 'Auditoria' }
     ]
   },
-  'monetizacao-extra': {
-    label: 'Loja',
-    sub: 'Configure a loja, produtos e categorias',
-    pages: [
-      { page: 'loja-cfg',  label: 'Geral' },
-      { page: 'produtos',  label: 'Produtos' },
-      { page: 'categorias',label: 'Categorias' },
-      { page: 'cupons',    label: 'Cupons' }
-    ]
-  },
   'automacoes': {
-    label: 'Comunicação Automática',
-    sub: 'Configure as automações do bot',
     pages: [
       { page: 'anuncios',           label: 'Anúncios' },
       { page: 'acoes-automaticas',  label: 'Ações Automáticas' },
@@ -3687,18 +3675,11 @@ function renderPageTabs(pageId) {
   // Remove tab bar antigo se existir
   pageEl.querySelector(':scope > .page-tabs-injected')?.remove();
   pageEl.querySelector(':scope > .page-title-injected')?.remove();
-  // Injeta titulo + tabs no topo da pagina
-  const titleHtml = `
-    <div class="page-title-row page-title-injected">
-      <h2>${group.label}</h2>
-      <div class="page-sub">${group.sub}</div>
-    </div>
-    <div class="page-tabs page-tabs-injected">
-      ${group.pages.map(p =>
-        `<button class="page-tab ${p.page === pageId ? 'active' : ''}" onclick="sp('${p.page}', null)">${p.label}</button>`
-      ).join('')}
-    </div>`;
-  pageEl.insertAdjacentHTML('afterbegin', titleHtml);
+  // SO injeta tabs (sem titulo) — preserva o titulo original da pagina
+  const tabsHtml = `<div class="page-tabs page-tabs-injected">${group.pages.map(p =>
+    `<button class="page-tab ${p.page === pageId ? 'active' : ''}" onclick="sp('${p.page}', null)">${p.label}</button>`
+  ).join('')}</div>`;
+  pageEl.insertAdjacentHTML('afterbegin', tabsHtml);
 }
 
 // Hook no sp() existente — espera o app.js carregar
@@ -3708,11 +3689,17 @@ function hookSpTabs() {
   if (window.__spHookedTabs) return;
   window.__spHookedTabs = true;
   window.sp = function(p, el) {
-    orig(p, el);
+    // sp original requer um element pra setar .active — se null, busca o .ni correspondente
+    if (!el) el = document.querySelector('.ni[data-page="' + p + '"]');
+    if (!el) {
+      // Cria um fake element pra evitar erro do orig sp()
+      el = document.createElement('div');
+      el.className = 'ni';
+    }
+    try { orig(p, el); } catch (e) { console.warn('sp error:', e.message); }
     renderPageTabs(p);
   };
-  // Renderiza pra pagina atual (em caso de hash inicial)
-  const cur = document.querySelector('.page.active')?.id?.replace(/^page-/,'');
+  const cur = document.querySelector('.page.show')?.id?.replace(/^page-/,'');
   if (cur) renderPageTabs(cur);
 }
 window.addEventListener('DOMContentLoaded', hookSpTabs);
