@@ -62,16 +62,23 @@ function balanceFor(userId, guildId) {
 
   const pf = require('../config/platform-fee');
   const hp = require('../config/hold-period');
+  const cb = require('../config/chargeback-reserve');
+  const reserve = cb.calcReserveFor(db, userId, guildId);
+  const available = Math.max(0, released - withdrawn - reserve);
+
   return {
     earned_cents: earned,
     withdrawn_cents: withdrawn,
-    available_cents: Math.max(0, released - withdrawn),
+    available_cents: available,
     pending_release_cents: Math.max(0, pendingRelease),
+    chargeback_reserve_cents: reserve,
     platform_fees_cents: platformFees,
     platform_fee_rate: pf.PLATFORM_FEE_RATE,
     platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS,
     hold_days_new: hp.HOLD_DAYS_NEW,
-    hold_days_established: hp.HOLD_DAYS_ESTABLISHED
+    hold_days_established: hp.HOLD_DAYS_ESTABLISHED,
+    chargeback_reserve_rate: cb.RATE,
+    chargeback_reserve_window_days: cb.WINDOW_DAYS
   };
 }
 
