@@ -148,18 +148,35 @@ router.post('/reset', async (req, res) => {
 });
 
 // ---------- DISCORD OAUTH (segue funcionando) ----------
+// Detecta a base URL preferindo PUBLIC_URL valido, senao usa o host da request.
+// PUBLIC_URL com placeholder "seu-dominio" eh ignorado.
+function detectBaseUrl(req) {
+  const env = (process.env.PUBLIC_URL || '').trim();
+  const isPlaceholder = !env || /seu-dominio|example\.com|localhost/i.test(env);
+  if (env && !isPlaceholder && /^https?:\/\//.test(env)) return env.replace(/\/+$/, '');
+  if (req && req.get) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.get('host');
+    if (host) return `${proto}://${host}`;
+  }
+  return env || 'http://localhost:3000';
+}
+
 let _registeredKey = null;
-function ensureDiscordStrategy() {
+function ensureDiscordStrategy(req) {
   const clientID = getCredential('DISCORD_CLIENT_ID');
   const clientSecret = getCredential('DISCORD_CLIENT_SECRET');
   if (!clientID || !clientSecret) return false;
-  const key = `${clientID}::${clientSecret}::${process.env.PUBLIC_URL || ''}`;
+  const base = detectBaseUrl(req);
+  // callbackURL default da strategy; cada rota faz override no authenticate({ callbackURL })
+  const defaultCallback = base + '/auth/discord/callback';
+  const key = `${clientID}::${clientSecret}::${base}`;
   if (_registeredKey === key) return true;
   passport.unuse('discord');
   passport.use(new DiscordStrategy({
     clientID,
     clientSecret,
-    callbackURL: (process.env.PUBLIC_URL || 'http://localhost:3000') + '/auth/discord/callback',
+    callbackURL: defaultCallback,
     scope: ['identify', 'guilds']
   }, (accessToken, refreshToken, profile, done) => {
     done(null, {
@@ -169,7 +186,6 @@ function ensureDiscordStrategy() {
       avatar: profile.avatar
         ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
         : null,
-      // profile.guilds vem do scope 'guilds' — usado pra auto-link com tenants
       guilds: Array.isArray(profile.guilds) ? profile.guilds : []
     });
   }));
@@ -178,21 +194,22 @@ function ensureDiscordStrategy() {
 }
 
 router.get('/discord', (req, res, next) => {
-  if (!ensureDiscordStrategy()) {
+  if (!ensureDiscordStrategy(req)) {
     require('../utils/logger').warn('discord oauth start: credenciais ausentes');
     return res.redirect('/setup.html?missing=discord');
   }
-  passport.authenticate('discord')(req, res, next);
+  const callbackURL = detectBaseUrl(req) + '/auth/discord/callback';
+  passport.authenticate('discord', { callbackURL })(req, res, next);
 });
 
 router.get('/discord/callback', (req, res, next) => {
-  if (!ensureDiscordStrategy()) return res.redirect('/login.html?login=fail&reason=no_credentials');
-  // Captura erro retornado pelo Discord (ex: access_denied)
+  if (!ensureDiscordStrategy(req)) return res.redirect('/login.html?login=fail&reason=no_credentials');
   if (req.query.error) {
     require('../utils/logger').warn({ err: req.query.error, desc: req.query.error_description }, 'discord oauth retornou erro');
     return res.redirect('/login.html?login=fail&reason=' + encodeURIComponent(req.query.error));
   }
-  passport.authenticate('discord', { failureRedirect: '/login.html?login=fail&reason=auth_failed' })(req, res, () => {
+  const callbackURL = detectBaseUrl(req) + '/auth/discord/callback';
+  passport.authenticate('discord', { callbackURL, failureRedirect: '/login.html?login=fail&reason=auth_failed' })(req, res, () => {
     try {
       const profile = req.user;
       if (!profile?.id) return res.redirect('/login.html?login=fail');
@@ -353,4 +370,5 @@ router.delete('/users/:id', (req, res) => {
 
 // Expoe pra outros controllers (ex: admin-panel) registrarem a Discord strategy
 router.ensureDiscordStrategy = ensureDiscordStrategy;
+router.detectBaseUrl = detectBaseUrl;
 module.exports = router;

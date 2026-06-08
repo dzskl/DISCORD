@@ -15,6 +15,24 @@ const router = express.Router();
 const loginLimiter = rateLimit({ windowMs: 60_000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'muitas tentativas, espere 1 min' } });
 
 // ---------- AUTH ----------
+// URLs que precisam estar registradas no Discord Developer Portal
+// (publico, pro user conseguir copiar se nao consegue logar)
+router.get('/auth/discord-config', (req, res) => {
+  const authCtrl = require('./auth.controller');
+  const base = authCtrl.detectBaseUrl(req);
+  res.json({
+    detected_base_url: base,
+    public_url_env: process.env.PUBLIC_URL || null,
+    public_url_is_placeholder: /seu-dominio|example\.com|localhost/i.test(process.env.PUBLIC_URL || ''),
+    callback_urls_to_register: [
+      base + '/auth/discord/callback',
+      base + '/admin/auth/discord/callback'
+    ],
+    note: 'Cole AMBAS as URLs em Discord Developer Portal > OAuth2 > Redirects',
+    discord_client_id_configured: !!getCredential('DISCORD_CLIENT_ID')
+  });
+});
+
 // Status do usuario logado: e super-admin? quem?
 router.get('/auth/me', (req, res) => {
   if (!req.appUser) return res.json({ authenticated: false, super_admin: false });
@@ -66,14 +84,13 @@ router.post('/auth/login', loginLimiter, async (req, res) => {
 
 // Discord OAuth para super-admin (reusa a strategy ja registrada em auth.controller)
 router.get('/auth/discord', (req, res, next) => {
-  // Garante que a strategy 'discord' do passport esta registrada nesse processo
   const authCtrl = require('./auth.controller');
-  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy()) {
+  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy(req)) {
     return res.redirect('/admin/login.html?err=no_discord');
   }
-  // Flag pra o callback saber que veio do /admin/
   req.session.admin_oauth_flow = 1;
-  passport.authenticate('discord')(req, res, next);
+  const callbackURL = authCtrl.detectBaseUrl(req) + '/admin/auth/discord/callback';
+  passport.authenticate('discord', { callbackURL })(req, res, next);
 });
 
 // Callback dedicado pro admin — checa allowlist
@@ -83,11 +100,12 @@ router.get('/auth/discord/callback', (req, res, next) => {
 
   // Garante strategy registrada (req pode chegar antes de qualquer call em /auth/discord)
   const authCtrl = require('./auth.controller');
-  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy()) {
+  if (!authCtrl.ensureDiscordStrategy || !authCtrl.ensureDiscordStrategy(req)) {
     return fail('no_discord');
   }
 
-  passport.authenticate('discord', { failureRedirect: '/admin/login.html?err=auth_failed' })(req, res, () => {
+  const callbackURL = authCtrl.detectBaseUrl(req) + '/admin/auth/discord/callback';
+  passport.authenticate('discord', { callbackURL, failureRedirect: '/admin/login.html?err=auth_failed' })(req, res, () => {
     try {
       const profile = req.user;
       if (!profile?.id) return fail('no_profile');

@@ -105,25 +105,47 @@
       continuar com Discord
     </a>
 
+    <div id="config-help" style="display:none;margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;font-size:11px;color:#aaa;line-height:1.55;">
+      <div style="color:#f5c542;font-weight:700;margin-bottom:6px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">⚠ Configuração Discord</div>
+      <div>Adicione estas URLs em <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865f2;">Discord Developer Portal</a> → OAuth2 → Redirects:</div>
+      <div id="config-urls" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#fff;word-break:break-all;"></div>
+    </div>
+
     <div class="foot">
-      <a href="/api/session/health" target="_blank">diagnóstico do sistema</a> · <a href="/login.html">login normal</a>
+      <a href="/api/session/health" target="_blank">diagnóstico</a> · <a href="/admin/auth/discord-config" target="_blank">config Discord</a> · <a href="/login.html">login normal</a>
     </div>
   </div>
 
 <script>
 const params = new URLSearchParams(location.search);
 const a = document.getElementById('alert');
-if (params.get('err')) {
+const errKey = params.get('err');
+
+if (errKey) {
   const errMap = {
     not_authorized: 'Sua conta não tem permissão pra esse painel. Fale com um super-admin.',
     not_allowlisted: 'Seu Discord não está na lista de donos autorizados.',
-    no_discord: 'Discord OAuth não configurado nesse ambiente.',
-    auth_failed: 'Falha na autenticação Discord. Confira o callback URL no Developer Portal: ' + location.origin + '/admin/auth/discord/callback',
+    no_discord: 'Discord OAuth não configurado. Vá em Credenciais e adicione DISCORD_CLIENT_ID e DISCORD_CLIENT_SECRET.',
+    auth_failed: 'Falha no Discord OAuth — provavelmente o callback URL não está registrado.',
+    invalid_redirect: 'O Discord rejeitou o redirect_uri. Veja abaixo as URLs que precisam estar registradas.',
     session_save: 'Login OK mas falhou ao salvar a sessão (volume persistente?).',
     inactive: 'Sua conta está desativada.'
   };
   a.className = 'alert err';
-  a.textContent = errMap[params.get('err')] || 'Erro: ' + params.get('err');
+  a.textContent = errMap[errKey] || 'Erro: ' + errKey;
+
+  // Para erros de Discord, mostra a config detectada
+  if (['auth_failed', 'no_discord', 'invalid_redirect'].includes(errKey)) {
+    fetch('/admin/auth/discord-config').then(r => r.json()).then(cfg => {
+      const help = document.getElementById('config-help');
+      const urls = document.getElementById('config-urls');
+      urls.innerHTML = cfg.callback_urls_to_register.map(u => `<div style="padding:3px 0;">→ ${u}</div>`).join('');
+      if (cfg.public_url_is_placeholder) {
+        urls.innerHTML += `<div style="margin-top:8px;color:#ef4444;">⚠ PUBLIC_URL env está com placeholder. Configure no Railway → Variables com o domínio real.</div>`;
+      }
+      help.style.display = 'block';
+    }).catch(() => {});
+  }
 }
 
 // Auto-redirect se ja logado como super-admin
