@@ -39,6 +39,10 @@ function register(app) {
   app.use('/api/verified-badge', require('../controllers/verified-badge.controller'));
   app.use('/api/admin-users', require('../controllers/admin-users.controller'));
 
+  // Painel exclusivo dos donos da plataforma (super-admin)
+  // /admin/auth/* e /admin/api/* — backend do dashboard standalone
+  app.use('/admin', require('../controllers/admin-panel.controller'));
+
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));
 

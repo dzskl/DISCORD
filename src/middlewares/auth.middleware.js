@@ -18,7 +18,7 @@ function loadUser(req, res, next) {
 
   // sessao tradicional (email/senha)
   if (req.session?.userId) {
-    const u = db.prepare('SELECT id,email,role,discord_id,discord_tag,discord_avatar,display_name,active FROM users WHERE id=?').get(req.session.userId);
+    const u = db.prepare('SELECT id,email,role,discord_id,discord_tag,discord_avatar,display_name,active,is_super_admin FROM users WHERE id=?').get(req.session.userId);
     if (u && u.active) req.appUser = u;
   }
 
@@ -36,6 +36,11 @@ function loadUser(req, res, next) {
     if (u && u.active) req.appUser = u;
   }
 
+  // Bootstrap automatico de super-admin via env (so na 1a vez)
+  if (req.appUser && !req.appUser.is_super_admin) {
+    maybePromoteToSuperAdmin(req.appUser);
+  }
+
   next();
 }
 
@@ -43,6 +48,54 @@ function isAdmin(user) {
   if (!user) return false;
   if (user._dev) return true;
   return ['owner', 'admin'].includes(user.role);
+}
+
+// Super admin = donos da plataforma BotDash (voce + sua equipe).
+// Allowlist via env (bootstrap) OU flag is_super_admin=1 no DB.
+function superAdminAllowlist() {
+  const emails = (process.env.SUPER_ADMIN_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  const dids   = (process.env.SUPER_ADMIN_DISCORD_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return { emails, dids };
+}
+
+function isSuperAdmin(user) {
+  if (!user) return false;
+  if (user._dev) return true;
+  if (user.is_super_admin) return true;
+  const { emails, dids } = superAdminAllowlist();
+  if (user.email && emails.includes(String(user.email).toLowerCase())) return true;
+  if (user.discord_id && dids.includes(String(user.discord_id))) return true;
+  return false;
+}
+
+// Promove o user automaticamente:
+// 1) Se bate na allowlist do env (SUPER_ADMIN_EMAILS / SUPER_ADMIN_DISCORD_IDS)
+// 2) BOOTSTRAP: se nao ha nenhum super-admin no DB E nenhuma allowlist no env,
+//    o primeiro user com role='owner' que aparecer vira o 1o super-admin.
+function maybePromoteToSuperAdmin(user) {
+  if (!user || user.is_super_admin) return;
+  try {
+    const { db } = require('../database/connection');
+    const { emails, dids } = superAdminAllowlist();
+    let shouldPromote = isSuperAdmin(user);
+
+    if (!shouldPromote && user.role === 'owner' && emails.length === 0 && dids.length === 0) {
+      const existing = db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_super_admin=1 AND active=1').get().c;
+      if (existing === 0) shouldPromote = true; // bootstrap automatico
+    }
+
+    if (shouldPromote) {
+      db.prepare('UPDATE users SET is_super_admin=1 WHERE id=?').run(user.id);
+      user.is_super_admin = 1;
+    }
+  } catch {}
+}
+
+function requireSuperAdmin(req, res, next) {
+  if (bypassActive()) { req.appUser = req.appUser || DEV_USER; return next(); }
+  if (!req.appUser) return res.status(401).json({ error: 'nao autenticado', super_admin_required: true });
+  if (!isSuperAdmin(req.appUser)) return res.status(403).json({ error: 'apenas super-admin', super_admin_required: true });
+  next();
 }
 
 function requireAuth(req, res, next) {
@@ -60,4 +113,4 @@ function requireOwner(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireOwner, loadUser, isAdmin, bypassActive, DEV_USER };
+module.exports = { requireAuth, requireOwner, requireSuperAdmin, loadUser, isAdmin, isSuperAdmin, maybePromoteToSuperAdmin, superAdminAllowlist, bypassActive, DEV_USER };

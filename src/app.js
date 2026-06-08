@@ -56,6 +56,19 @@ function buildApp() {
   // === ROTAS ===
   routes.register(app);
 
+  // === GATE: /admin/ exige super-admin (exceto login + auth) ===
+  app.use('/admin', (req, res, next) => {
+    // Sempre liberadas (sem auth)
+    const open = ['/login.html', '/login', '/auth/', '/api/auth/'];
+    if (open.some(p => req.path === p || req.path.startsWith(p))) return next();
+    // Bypass DEV
+    if (process.env.DEV_BYPASS_AUTH === '1' && process.env.NODE_ENV !== 'production') return next();
+    const { isSuperAdmin } = require('./middlewares/auth.middleware');
+    if (!req.appUser) return res.redirect('/admin/login.html');
+    if (!isSuperAdmin(req.appUser)) return res.redirect('/admin/login.html?err=not_authorized');
+    next();
+  });
+
   // === ARQUIVOS ESTATICOS ===
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
