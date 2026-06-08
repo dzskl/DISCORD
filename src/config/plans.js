@@ -8,6 +8,8 @@ const PLANS = {
     price_monthly_brl: 0,
     description: 'tudo liberado por 24h pra testar',
     duration_hours: 24,
+    commission_rate: 0.045,        // mesmo % do Pro durante o trial
+    fixed_fee_cents: 99,
     features: {
       max_products: Infinity,
       max_coupons: Infinity,
@@ -29,6 +31,8 @@ const PLANS = {
     name: 'Free',
     price_monthly_brl: 0,
     description: 'pra testar e operar pequeno',
+    commission_rate: 0.065,        // 6,5%
+    fixed_fee_cents: 99,            // R$ 0,99 por venda
     features: {
       max_products: 5,
       max_coupons: 3,
@@ -48,8 +52,10 @@ const PLANS = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price_monthly_brl: 47,
-    description: 'tudo liberado pra escalar',
+    price_monthly_brl: 49,
+    description: 'tudo liberado pra escalar — comissao menor (4,5%) + saque diario',
+    commission_rate: 0.045,        // 4,5%
+    fixed_fee_cents: 99,
     features: {
       max_products: Infinity,
       max_coupons: Infinity,

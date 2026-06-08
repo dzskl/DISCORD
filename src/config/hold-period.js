@@ -6,30 +6,14 @@
 //   - conta com mais de NEW_ACCOUNT_DAYS dias E
 //   - mais de ESTABLISHED_MIN_PAID_CENTS em vendas pagas historico
 
+const { findSellerUserId } = require('../utils/seller-resolver');
+
 const HOLD_DAYS_NEW         = parseInt(process.env.HOLD_DAYS_NEW)         || 14;
 const HOLD_DAYS_ESTABLISHED = parseInt(process.env.HOLD_DAYS_ESTABLISHED) || 2;
 const NEW_ACCOUNT_DAYS      = parseInt(process.env.NEW_ACCOUNT_DAYS)      || 30;
 const ESTABLISHED_MIN_PAID_CENTS = parseInt(process.env.ESTABLISHED_MIN_PAID_CENTS) || 100000; // R$ 1000
 
 const DAY = 86400;
-
-// Descobre o user_id "vendedor" de uma sale.
-// Modelo atual: vendedor = owner do guild da venda (user_guilds.role='owner').
-// Se sale.guild_id for null, cai em fallback: user_id pode ser o admin global.
-function findSellerUserId(db, sale) {
-  if (!sale) return null;
-  if (sale.guild_id) {
-    const row = db.prepare(`
-      SELECT user_id FROM user_guilds
-      WHERE guild_id = ? AND role = 'owner'
-      ORDER BY created_at ASC LIMIT 1
-    `).get(sale.guild_id);
-    if (row?.user_id) return row.user_id;
-  }
-  // Fallback: primeiro owner global
-  const fb = db.prepare(`SELECT id FROM users WHERE role='owner' ORDER BY id ASC LIMIT 1`).get();
-  return fb?.id || null;
-}
 
 function classifySeller(db, userId) {
   if (!userId) return 'new';
