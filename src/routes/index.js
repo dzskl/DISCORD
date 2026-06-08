@@ -35,6 +35,7 @@ function register(app) {
   app.use('/api/public-stats', require('../controllers/public-stats.controller'));
   app.use('/api/subscriptions', require('../controllers/subscriptions.controller'));
   app.use('/api/support-inquiries', require('../controllers/support-inquiries.controller'));
+  app.use('/api/featured', require('../controllers/featured-products.controller'));
 
   // Auth
   app.use('/auth', require('../controllers/auth.controller'));

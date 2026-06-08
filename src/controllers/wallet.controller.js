@@ -68,11 +68,23 @@ function balanceFor(userId, guildId) {
     FROM advance_requests WHERE user_id=? AND status='applied' ${advFilter}
   `).get(userId, ...advArgs).v;
 
+  // Featured products pagos via saldo (descontados)
+  const featFilter = guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const featArgs = guildId ? [guildId] : [];
+  let featuredSpent = 0;
+  try {
+    featuredSpent = db.prepare(`
+      SELECT COALESCE(SUM(price_cents), 0) AS v
+      FROM featured_products
+      WHERE user_id=? AND paid_via='balance' AND status!='cancelled' ${featFilter}
+    `).get(userId, ...featArgs).v;
+  } catch { /* tabela pode nao existir ainda */ }
+
   const pf = require('../config/platform-fee');
   const hp = require('../config/hold-period');
   const cb = require('../config/chargeback-reserve');
   const reserve = cb.calcReserveFor(db, userId, guildId);
-  const available = Math.max(0, released - withdrawn - reserve - advanceFeesPaid);
+  const available = Math.max(0, released - withdrawn - reserve - advanceFeesPaid - featuredSpent);
 
   return {
     earned_cents: earned,
@@ -81,6 +93,7 @@ function balanceFor(userId, guildId) {
     pending_release_cents: Math.max(0, pendingRelease),
     chargeback_reserve_cents: reserve,
     advance_fees_paid_cents: advanceFeesPaid,
+    featured_spent_cents: featuredSpent,
     platform_fees_cents: platformFees,
     platform_fee_rate: pf.PLATFORM_FEE_RATE,
     platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS,
@@ -355,6 +368,8 @@ router.get('/admin/platform-revenue', requireOwner, (req, res) => {
   const percent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const fixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid'`).get().v;
   const advance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied'`).get().v;
+  let featured = 0;
+  try { featured = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM featured_products WHERE paid_via='balance' AND status!='cancelled'`).get().v; } catch {}
   const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND (platform_fee_cents > 0 OR COALESCE(platform_fixed_fee_cents,0) > 0)`).get().c;
   const gross = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
   const now = Math.floor(Date.now()/1000);
@@ -362,18 +377,22 @@ router.get('/admin/platform-revenue', requireOwner, (req, res) => {
   const monthPercent = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
   const monthFixed = db.prepare(`SELECT COALESCE(SUM(COALESCE(platform_fixed_fee_cents,0)),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
   const monthAdvance = db.prepare(`SELECT COALESCE(SUM(fee_cents),0) AS v FROM advance_requests WHERE status='applied' AND created_at >= ?`).get(monthStart).v;
+  let monthFeatured = 0;
+  try { monthFeatured = db.prepare(`SELECT COALESCE(SUM(price_cents),0) AS v FROM featured_products WHERE paid_via='balance' AND status!='cancelled' AND created_at >= ?`).get(monthStart).v; } catch {}
   const pf = require('../config/platform-fee');
   res.json({
-    total_collected_cents: percent + fixed + advance,
+    total_collected_cents: percent + fixed + advance + featured,
     percent_collected_cents: percent,
     fixed_collected_cents: fixed,
     advance_collected_cents: advance,
+    featured_collected_cents: featured,
     sales_with_fee: sales,
     gross_volume_cents: gross,
-    month_collected_cents: monthPercent + monthFixed + monthAdvance,
+    month_collected_cents: monthPercent + monthFixed + monthAdvance + monthFeatured,
     month_percent_cents: monthPercent,
     month_fixed_cents: monthFixed,
     month_advance_cents: monthAdvance,
+    month_featured_cents: monthFeatured,
     fee_rate: pf.PLATFORM_FEE_RATE,
     fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
   });
