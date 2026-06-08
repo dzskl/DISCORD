@@ -6776,3 +6776,165 @@ if (typeof __origSpAi === 'function' && !window.__spHookedAi) {
     if (page === 'support-panels') loadSupportAi();
   };
 }
+
+// ============ SUPORTE INBOX (owner) ============
+let __currentSupportTicket = null;
+
+async function loadSupportInbox(status, btn) {
+  document.querySelectorAll('.si-tab').forEach(t => {
+    t.classList.remove('active');
+    t.style.background = 'transparent';
+    t.style.borderColor = 'var(--border)';
+    t.style.color = '#888';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.background = '#1a1a1a';
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = '#fff';
+  }
+  const tbody = document.getElementById('suporte-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" style="color:#444">carregando...</td></tr>';
+  try {
+    const url = '/api/support-inquiries/admin/list' + (status ? '?status=' + encodeURIComponent(status) : '');
+    const r = await fetch(url, { credentials: 'same-origin' });
+    const rows = await r.json();
+    if (!Array.isArray(rows) || !rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="color:#444;padding:30px;text-align:center;">nenhum ticket</td></tr>';
+      return;
+    }
+    const prioColor = { urgent: '#ef4444', high: '#f5c542', normal: '#888', low: '#555' };
+    const statusColor = { open: '#22c55e', in_progress: '#8b6fff', waiting_user: '#f5c542', closed: '#555' };
+    tbody.innerHTML = rows.map(t => {
+      const date = new Date(t.created_at * 1000).toLocaleString('pt-BR');
+      const who = t.user_name || t.name || '—';
+      const email = t.user_email || t.email || '';
+      return `<tr style="cursor:pointer;" onclick="openSupportTicket(${t.id})">
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;">${t.protocol}</td>
+        <td style="color:#fff;">${escapeHtmlSi(t.subject)}</td>
+        <td>${escapeHtmlSi(who)}<br><span style="color:#666;font-size:11px;">${escapeHtmlSi(email)}</span></td>
+        <td style="color:#888;font-size:11px;">${escapeHtmlSi(t.category)}</td>
+        <td><span style="color:${prioColor[t.priority]||'#888'};font-weight:700;font-size:11px;text-transform:uppercase;">${t.priority}</span></td>
+        <td><span style="color:${statusColor[t.status]||'#888'};font-weight:700;font-size:11px;">${t.status}</span></td>
+        <td style="color:#666;font-size:11px;">${date}</td>
+        <td><button class="btn-w" onclick="event.stopPropagation();openSupportTicket(${t.id})" style="padding:5px 10px;font-size:11px;">abrir</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="8" style="color:#ef4444">erro: ' + e.message + '</td></tr>';
+  }
+}
+
+async function openSupportTicket(id) {
+  try {
+    const r = await fetch('/api/support-inquiries/' + id, { credentials: 'same-origin' });
+    const t = await r.json();
+    __currentSupportTicket = t;
+    const box = document.getElementById('suporte-detail');
+    box.style.display = '';
+    document.getElementById('sd-subject').textContent = 'SUP-' + String(t.id).padStart(6,'0') + ' — ' + t.subject;
+    document.getElementById('sd-meta').textContent =
+      `${t.name || '—'} <${t.email}> · cat: ${t.category} · prio: ${t.priority} · status: ${t.status}`;
+    const th = document.getElementById('sd-thread');
+    th.innerHTML = '';
+    for (const m of (t.messages || [])) {
+      const isAdmin = m.author_type === 'admin';
+      const bg = isAdmin ? 'rgba(139,111,255,.08)' : '#141414';
+      const bd = isAdmin ? 'rgba(139,111,255,.25)' : 'var(--border)';
+      const el = document.createElement('div');
+      el.style.cssText = `background:${bg};border:1px solid ${bd};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;line-height:1.5;`;
+      el.innerHTML = `<div style="font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;font-weight:600;">${isAdmin ? 'Equipe' : 'Usuário'} · ${new Date(m.created_at*1000).toLocaleString('pt-BR')}</div>${escapeHtmlSi(m.message)}`;
+      th.appendChild(el);
+    }
+    th.scrollTop = th.scrollHeight;
+    document.getElementById('sd-reply').value = '';
+    document.getElementById('sd-status').value = 'waiting_user';
+    document.getElementById('sd-priority').value = '';
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    alert('erro: ' + e.message);
+  }
+}
+
+async function respondSupportTicket() {
+  if (!__currentSupportTicket) return;
+  const msg = document.getElementById('sd-reply').value.trim();
+  if (!msg) return alert('escreva uma resposta');
+  const status = document.getElementById('sd-status').value;
+  try {
+    const r = await fetch(`/api/support-inquiries/admin/${__currentSupportTicket.id}/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ message: msg, status })
+    });
+    const data = await r.json();
+    if (!r.ok) return alert(data.error || 'erro');
+    document.getElementById('suporte-detail').style.display = 'none';
+    const activeTab = document.querySelector('.si-tab.active');
+    loadSupportInbox(activeTab?.dataset.si || 'open', activeTab);
+    updateSupportBadge();
+  } catch (e) {
+    alert('erro: ' + e.message);
+  }
+}
+
+async function updateSupportStatus() {
+  if (!__currentSupportTicket) return;
+  const status = document.getElementById('sd-status').value;
+  const priority = document.getElementById('sd-priority').value || null;
+  try {
+    const r = await fetch(`/api/support-inquiries/admin/${__currentSupportTicket.id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ status, priority })
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      return alert(d.error || 'erro');
+    }
+    document.getElementById('suporte-detail').style.display = 'none';
+    const activeTab = document.querySelector('.si-tab.active');
+    loadSupportInbox(activeTab?.dataset.si || 'open', activeTab);
+    updateSupportBadge();
+  } catch (e) {
+    alert('erro: ' + e.message);
+  }
+}
+
+async function updateSupportBadge() {
+  try {
+    const r = await fetch('/api/support-inquiries/admin/stats', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const s = await r.json();
+    const nav = document.getElementById('nav-suporte-inbox');
+    const badge = document.getElementById('suporte-badge');
+    if (nav) nav.style.display = 'flex';
+    const pending = (s.open || 0) + (s.in_progress || 0);
+    if (badge) {
+      if (pending > 0) { badge.style.display = 'inline-block'; badge.textContent = pending; }
+      else badge.style.display = 'none';
+    }
+    const stats = document.getElementById('suporte-stats');
+    if (stats) stats.textContent = `${s.open} abertos · ${s.in_progress} em análise · ${s.urgent_pending} urgentes`;
+  } catch {}
+}
+
+function escapeHtmlSi(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const __origSpSi = window.sp;
+if (typeof __origSpSi === 'function' && !window.__spHookedSi) {
+  window.__spHookedSi = true;
+  window.sp = function (page, el) {
+    __origSpSi(page, el);
+    if (page === 'suporte-inbox') {
+      loadSupportInbox('open', document.querySelector('.si-tab[data-si="open"]'));
+      updateSupportBadge();
+    }
+  };
+}
+setTimeout(updateSupportBadge, 2000);
+setInterval(updateSupportBadge, 90000);
