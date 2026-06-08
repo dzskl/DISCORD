@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, claude/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          LOG_LEVEL: error
+
+  lint-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate migrations sequence
+        run: |
+          set -e
+          # Garante que arquivos seguem padrao 0XX_nome.sql sem gaps
+          ls database/migrations/*.sql | sort | awk -F'/' '{print $NF}' | awk -F'_' '{print $1}' > /tmp/nums.txt
+          prev=0
+          while read n; do
+            num=$(echo $n | sed 's/^0*//')
+            if [ "$num" != "" ] && [ "$num" -ne "$((prev+1))" ]; then
+              echo "Gap em migration: prev=$prev, atual=$num"
+              exit 1
+            fi
+            prev=$num
+          done < /tmp/nums.txt
+          echo "Migrations OK"
+
+  module-load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci --no-audit --no-fund
+      - name: Verify all modules load
+        run: |
+          node -e "require('./src/app'); console.log('app loads ok')"
+          node -e "require('./src/services/ledger.service'); require('./src/services/points.service'); require('./src/services/referrals.service'); require('./src/services/webhook-dlq.service'); console.log('services load ok')"

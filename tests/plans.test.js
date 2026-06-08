@@ -8,20 +8,34 @@ applyMigrations();
 
 test('PLAN free tem limites', () => {
   const p = plans.getPlan('free');
-  assertEq(p.features.max_products, 5);
+  assertEq(p.features.max_products, 10);  // pricing v2: subiu de 5 pra 10
   assertEq(p.features.autoreply, false);
+  assertEq(p.commission_rate, 0.079);
+  assertEq(p.branding_required, true);
 });
 
 test('PLAN pro libera tudo', () => {
   const p = plans.getPlan('pro');
   assertEq(p.features.max_products, Infinity);
   assertEq(p.features.autoreply, true);
+  assertEq(p.commission_rate, 0.039);
+});
+
+test('PLAN starter existe (pricing v2)', () => {
+  const p = plans.getPlan('starter');
+  assertEq(p.id, 'starter');
+  assertEq(p.commission_rate, 0.059);
+});
+
+test('PLAN scale existe (pricing v2)', () => {
+  const p = plans.getPlan('scale');
+  assertEq(p.id, 'scale');
+  assertEq(p.commission_rate, 0.029);
 });
 
 test('withinLimit respeita limite', () => {
-  // sem req → cai pra ownerPlan; sem owner → free
   assertEq(plans.withinLimit('max_products', 0), true);
-  assertEq(plans.withinLimit('max_products', 5), false);
+  assertEq(plans.withinLimit('max_products', 10), false);
 });
 
 test('guildPlan retorna plano da guild ativa', () => {

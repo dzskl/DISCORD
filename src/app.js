@@ -46,6 +46,16 @@ function buildApp() {
   app.use('/api/coupons/validate', limits.coupon);
   app.use('/api/', limits.api);
 
+  // === RATE LIMIT POR TENANT (anti-abuse por vendedor) ===
+  const { tenantLimiter } = require('./middlewares/tenant-rate-limit.middleware');
+  // Por guild: 60 checkouts/min, 30 criacoes de produto/min
+  app.use('/api/checkout/pix/create', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
+  app.use('/api/checkout/create-session', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
+  app.use('/api/products', tenantLimiter({ scope: 'guild', capacity: 30, windowMs: 60_000 }));
+  // Por user: 10 saques/min, 5 antecipacoes/min
+  app.use('/api/wallet/withdraw', tenantLimiter({ scope: 'user', capacity: 10, windowMs: 60_000 }));
+  app.use('/api/wallet/advance/execute', tenantLimiter({ scope: 'user', capacity: 5, windowMs: 60_000 }));
+
   // === SESSION + AUTH ===
   app.use(buildSession());
   app.use(passport.initialize());

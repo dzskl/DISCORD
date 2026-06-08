@@ -1,14 +1,16 @@
 {
   "name": "botdash",
   "version": "1.0.0",
-  "description": "Discord bot vendável com dashboard, pagamentos via Stripe e SQLite.",
+  "description": "Discord bot vend\u00e1vel com dashboard, pagamentos via Stripe e SQLite.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "migrate": "node src/database/migrate.js",
     "seed": "node -e \"require('./src/database/connection');const fs=require('fs');const {db}=require('./src/database/connection');db.exec(fs.readFileSync('database/seeds/demo.sql','utf8'));console.log('seed ok')\"",
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "backup": "node scripts/backup.js",
+    "db:reset": "node -e \"require('./src/database/migrate').applyMigrations()\""
   },
   "type": "commonjs",
   "dependencies": {
@@ -29,5 +31,9 @@
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "stripe": "^17.5.0"
+  },
+  "optionalDependencies": {
+    "@sentry/node": "^8.0.0",
+    "pino-pretty": "^11.0.0"
   }
 }
