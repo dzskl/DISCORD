@@ -219,9 +219,18 @@ async function markPaid(sale, txId) {
     .run(expiresAt, sale.id);
 
   // Taxa da plataforma (% + fixa)
-  try { require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
+  let feeRes = null;
+  try { feeRes = require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
   // Hold period escalonado por tier do vendedor
   try { require('../config/hold-period').applyHoldToSale(db, sale.id); } catch {}
+  // BotDash Points (1% do net pro vendedor) + Referral commission
+  try {
+    if (feeRes?.seller_id && feeRes?.net_to_owner_cents) {
+      require('../services/points.service').awardForSale(db, feeRes.seller_id, sale.id, feeRes.net_to_owner_cents);
+      const platformRev = (feeRes.percent_fee_cents || 0) + (feeRes.fixed_fee_cents || 0);
+      require('../services/referrals.service').payCommissionFromSale(db, feeRes.seller_id, sale.id, platformRev);
+    }
+  } catch (e) { require('../utils/logger').warn({ err: e.message, sale: sale.id }, 'points/referral falhou'); }
 
   const cfg = getConfig();
   const valueStr = `R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')}`;

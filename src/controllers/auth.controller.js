@@ -59,6 +59,12 @@ router.post('/register', registerLimiter, async (req, res) => {
   req.session.userId = user.id;
   audit.log({ req, action: 'user.register', target_type: 'user', target_id: user.id, details: { role, trial: isFirst } });
 
+  // Vincula referral se veio com ?ref=
+  const refCode = req.body?.ref || req.query?.ref;
+  if (refCode) {
+    try { require('../services/referrals.service').linkReferee(db, user.id, refCode); } catch {}
+  }
+
   // Email de boas-vindas (fire-and-forget)
   if (mailer.isConfigured()) {
     const tpl = mailer.T.welcome(user);

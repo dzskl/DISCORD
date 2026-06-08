@@ -38,6 +38,9 @@ function register(app) {
   app.use('/api/featured', require('../controllers/featured-products.controller'));
   app.use('/api/verified-badge', require('../controllers/verified-badge.controller'));
   app.use('/api/admin-users', require('../controllers/admin-users.controller'));
+  app.use('/api/reviews', require('../controllers/reviews.controller'));
+  app.use('/api/points', require('../controllers/points.controller'));
+  app.use('/api/referrals', require('../controllers/referrals.controller'));
 
   // Painel exclusivo dos donos da plataforma (super-admin)
   // /admin/auth/* e /admin/api/* — backend do dashboard standalone

@@ -7,7 +7,7 @@ function findSellerUserId(db, sale) {
     const row = db.prepare(`
       SELECT user_id FROM user_guilds
       WHERE guild_id = ? AND role = 'owner'
-      ORDER BY created_at ASC LIMIT 1
+      ORDER BY added_at ASC LIMIT 1
     `).get(sale.guild_id);
     if (row?.user_id) return row.user_id;
   }

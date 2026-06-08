@@ -18,6 +18,8 @@ function start() {
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
   cron.schedule('30 0 * * *', expireFeaturedAndBadges);
+  // Gera review-invites pra vendas pagas ha 7 dias — diario as 10h
+  cron.schedule('0 10 * * *', generateReviewInvites);
   logger.info('scheduler iniciado');
 }
 
@@ -37,6 +39,38 @@ async function runAutoWithdraw() {
   } catch (e) {
     logger.error({ err: e.message }, 'auto-withdraw falhou');
   }
+}
+
+async function generateReviewInvites() {
+  try {
+    const reviews = require('../controllers/reviews.controller');
+    const bot = require('../services/bot.service');
+    const now = Math.floor(Date.now() / 1000);
+    const d7 = now - 7 * 86400;
+    const d8 = now - 8 * 86400;
+    // Vendas pagas entre 7d e 8d atras, sem review nem invite
+    const candidates = db.prepare(`
+      SELECT s.id, s.discord_id, s.discord_tag, p.name AS product_name
+      FROM sales s LEFT JOIN products p ON p.id = s.product_id
+      WHERE s.status='paid' AND s.paid_at BETWEEN ? AND ?
+        AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.sale_id=s.id)
+        AND NOT EXISTS (SELECT 1 FROM review_invites ri WHERE ri.sale_id=s.id)
+      LIMIT 200
+    `).all(d8, d7);
+    const publicUrl = process.env.PUBLIC_URL || '';
+    for (const c of candidates) {
+      try {
+        const token = reviews._generateInviteForSale(db, c.id);
+        const link = `${publicUrl.replace(/\/+$/, '')}/review.html?token=${token}`;
+        if (bot.dmUser) {
+          await bot.dmUser(c.discord_id, `📝 Que tal avaliar **${c.product_name || 'sua compra'}**?\nSua opinião ajuda outros compradores: ${link}`).catch(() => {});
+        }
+      } catch (e) {
+        logger.warn({ err: e.message, sale_id: c.id }, 'generateReviewInvites: falha');
+      }
+    }
+    if (candidates.length) logger.info({ count: candidates.length }, 'review invites gerados');
+  } catch (e) { logger.error({ err: e.message }, 'generateReviewInvites falhou'); }
 }
 
 async function expireFeaturedAndBadges() {

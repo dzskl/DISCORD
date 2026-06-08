@@ -251,9 +251,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       `).run(session.payment_intent || null, expiresAt, sale.id);
 
       // Taxa da plataforma (% + fixa) — debita do amount, owner recebe net
-      try { require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
-      // Hold escalonado D+14 novato / D+2 estabelecido
+      let feeRes = null;
+      try { feeRes = require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
+      // Hold escalonado conforme plano do vendedor
       try { require('../config/hold-period').applyHoldToSale(db, sale.id); } catch {}
+      // BotDash Points + Referral commission
+      try {
+        if (feeRes?.seller_id && feeRes?.net_to_owner_cents) {
+          require('../services/points.service').awardForSale(db, feeRes.seller_id, sale.id, feeRes.net_to_owner_cents);
+          const platformRev = (feeRes.percent_fee_cents || 0) + (feeRes.fixed_fee_cents || 0);
+          require('../services/referrals.service').payCommissionFromSale(db, feeRes.seller_id, sale.id, platformRev);
+        }
+      } catch (e) { require('../utils/logger').warn({ err: e.message, sale: sale.id }, 'points/referral falhou'); }
 
       // Conquistas (premiacoes por marcos)
       try {
