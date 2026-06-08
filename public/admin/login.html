@@ -5,87 +5,201 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BotDash · Painel dos Donos</title>
 <meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="/_design-system.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { min-height: 100%; background: #0a0a0a; color: #e8e8e8; font-family: 'Inter', sans-serif; }
   body {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(245,197,66,0.06), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(139,111,255,0.10), transparent 50%),
+      #0a0a0a;
+    min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at top, rgba(139,111,255,0.06), transparent 60%), #0a0a0a;
-    padding: 20px;
+    padding: 30px 20px;
+    position: relative;
+    overflow-x: hidden;
   }
-  .card {
-    background: #141414; border: 1px solid #1f1f1f;
-    border-radius: 14px; padding: 32px; width: 100%; max-width: 420px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
   }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
-  .brand .lg {
-    width: 36px; height: 36px; border-radius: 9px;
+  .card-login {
+    width: 100%; max-width: 440px;
+    background: #0e0e0e;
+    border: 1px solid #1f1f1f;
+    border-radius: 14px;
+    padding: 38px 36px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(245,197,66,0.05);
+    position: relative; z-index: 1;
+  }
+  .brand-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .brand-logo {
+    width: 44px; height: 44px;
+    border-radius: 11px;
     background: linear-gradient(135deg, #8b6fff, #5a4ad1);
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 800; font-size: 15px;
+    color: #fff; font-weight: 800; font-size: 19px;
+    box-shadow: 0 6px 20px rgba(139,111,255,0.35);
   }
-  .brand .nm { font-weight: 800; font-size: 18px; letter-spacing: -.01em; }
+  .brand-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+
   .pill {
-    display: inline-block; padding: 3px 10px; border-radius: 30px;
-    background: rgba(245,197,66,0.08); border: 1px solid rgba(245,197,66,0.25);
-    color: #f5c542; font-size: 10px; font-family: 'IBM Plex Mono', monospace;
-    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px;
+    background: rgba(245,197,66,0.13);
+    border: 1px solid rgba(245,197,66,0.3);
+    color: #f5c542;
+    font-size: 10.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase; letter-spacing: .08em;
+    border-radius: 999px;
+    font-weight: 700;
+    margin-bottom: 14px;
   }
-  h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 6px; }
-  .sub { color: #888; font-size: 12.5px; margin-bottom: 22px; }
-  .alert { padding: 10px 13px; border-radius: 8px; font-size: 12.5px; margin-bottom: 14px; display: none; }
-  .alert.err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; display: block; }
-  .alert.ok  { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.3);  color: #7dd3a4; display: block; }
-  label { display: block; font-size: 11.5px; color: #aaa; margin-bottom: 5px; font-weight: 600; }
-  input {
-    width: 100%; padding: 11px 13px;
-    background: #0a0a0a; border: 1px solid #2a2a2a;
-    border-radius: 8px; color: #e8e8e8; font: inherit; font-size: 13px;
-    margin-bottom: 14px; transition: border-color .15s;
+  .pill::before {
+    content: ''; width: 5px; height: 5px;
+    background: #f5c542; border-radius: 50%;
+    box-shadow: 0 0 8px #f5c542;
   }
-  input:focus { outline: none; border-color: #8b6fff; }
-  button.primary {
-    width: 100%; padding: 12px 0; cursor: pointer; border: 0;
+
+  h1 {
+    font-size: 26px; font-weight: 800;
+    color: #fff; margin-bottom: 6px;
+    letter-spacing: -.02em;
+  }
+  .sub {
+    font-size: 13px;
+    color: #888; margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .sub a { color: #b9a8ff; text-decoration: none; font-weight: 600; }
+  .sub a:hover { color: #fff; }
+
+  label {
+    display: block;
+    font-size: 11.5px; color: #aaa;
+    margin-bottom: 6px; font-weight: 600;
+    margin-top: 14px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type=email], input[type=password] {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 11px 13px;
+    font-size: 13px;
+    color: #fff;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus {
+    border-color: #8b6fff;
+    box-shadow: 0 0 0 3px rgba(139,111,255,0.1);
+  }
+
+  .primary {
+    width: 100%;
     background: linear-gradient(90deg, #8b6fff, #7758ff);
-    color: #fff; font-weight: 700; font-size: 13px;
-    border-radius: 8px; transition: filter .15s;
+    color: #fff;
+    border: 0;
+    padding: 13px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter .15s, transform .05s;
+    font-family: 'Inter', sans-serif;
+    margin-top: 20px;
   }
-  button.primary:hover { filter: brightness(1.1); }
-  button.primary:disabled { opacity: .55; cursor: wait; }
+  .primary:hover { filter: brightness(1.1); }
+  .primary:active { transform: translateY(0.5px); }
+  .primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-discord {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    color: #fff;
+    padding: 12px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-discord:hover {
+    border-color: #5865f2;
+    background: rgba(88,101,242,0.06);
+  }
+
   .divider {
-    text-align: center; color: #555; font-size: 11px;
-    margin: 18px 0 14px; font-family: 'IBM Plex Mono', monospace;
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 12px;
+    margin: 22px 0;
+    color: #444;
+    font-size: 10.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
   }
   .divider::before, .divider::after {
-    content: ''; flex: 1; height: 1px; background: #1f1f1f;
+    content: ''; flex: 1; height: 1px; background: #1a1a1a;
   }
-  .btn-discord {
-    width: 100%; display: flex; align-items: center; justify-content: center;
-    gap: 10px; background: transparent; border: 1px solid #2a2a2a;
-    color: #fff; padding: 11px; border-radius: 8px;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    cursor: pointer; text-decoration: none; transition: all .15s;
+
+  .alert {
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-bottom: 16px;
+    display: none;
+    line-height: 1.5;
+    border: 1px solid;
   }
-  .btn-discord:hover { border-color: #5865f2; background: rgba(88,101,242,0.06); }
-  .foot { text-align: center; margin-top: 18px; color: #555; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .alert.err {
+    background: rgba(239,68,68,0.08);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,0.3);
+    display: block;
+  }
+  .alert.ok {
+    background: rgba(34,197,94,0.08);
+    color: #7dd3a4;
+    border-color: rgba(34,197,94,0.3);
+    display: block;
+  }
+
+  .foot {
+    text-align: center;
+    margin-top: 20px;
+    color: #555;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
   .foot a { color: #888; text-decoration: none; }
   .foot a:hover { color: #fff; }
 </style>
-<link rel="stylesheet" href="/_design-system.css">
 </head>
 <body>
-  <div class="card">
-    <div class="brand">
-      <div class="lg">B</div>
-      <div class="nm">BotDash</div>
+  <div class="card-login">
+    <div class="brand-row">
+      <div class="brand-logo">B</div>
+      <div class="brand-name">BotDash</div>
     </div>
 
     <div class="pill">Acesso restrito</div>
     <h1>Painel dos Donos</h1>
-    <div class="sub">Esse painel é exclusivo da equipe BotDash. Outros usuários, voltem ao <a href="/login.html" style="color:#8b6fff;">login normal</a>.</div>
+    <div class="sub">Esse painel é exclusivo da equipe BotDash. Outros usuários, voltem ao <a href="/login.html">login normal</a>.</div>
 
     <div id="alert" class="alert"></div>
 
@@ -106,8 +220,8 @@
       continuar com Discord
     </a>
 
-    <div id="config-help" style="display:none;margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;font-size:11px;color:#aaa;line-height:1.55;">
-      <div style="color:#f5c542;font-weight:700;margin-bottom:6px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">⚠ Configuração Discord</div>
+    <div id="config-help" style="display:none;margin-top:14px;padding:14px;background:#0a0a0a;border:1px solid #2a2a2a;border-left:2px solid #f5c542;border-radius:9px;font-size:11.5px;color:#aaa;line-height:1.6;">
+      <div style="color:#f5c542;font-weight:700;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">⚠ Configuração Discord</div>
       <div>Adicione estas URLs em <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865f2;">Discord Developer Portal</a> → OAuth2 → Redirects:</div>
       <div id="config-urls" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#fff;word-break:break-all;"></div>
     </div>
@@ -135,30 +249,28 @@ if (errKey) {
   a.className = 'alert err';
   a.textContent = errMap[errKey] || 'Erro: ' + errKey;
 
-  // not_allowlisted: mostra 3 opcoes pra autorizar
   if (errKey === 'not_allowlisted' || errKey === 'not_authorized') {
     const did = params.get('did') || '';
     const tag = params.get('tag') || '';
     const help = document.getElementById('config-help');
     help.style.display = 'block';
     help.innerHTML = `
-      <div style="color:#f5c542;font-weight:700;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">Como autorizar seu acesso</div>
-      ${did ? `<div style="margin-bottom:10px;color:#aaa;">Seu Discord ID: <b style="color:#fff;font-family:'IBM Plex Mono',monospace;cursor:pointer;" onclick="navigator.clipboard.writeText('${did}');this.textContent='✓ copiado!';setTimeout(()=>this.textContent='${did}',1500)">${did}</b>${tag ? ' (@' + tag + ')' : ''}</div>` : ''}
+      <div style="color:#f5c542;font-weight:700;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">Como autorizar seu acesso</div>
+      ${did ? `<div style="margin-bottom:12px;color:#aaa;">Seu Discord ID: <b style="color:#fff;font-family:'IBM Plex Mono',monospace;cursor:pointer;padding:2px 6px;background:#111;border-radius:4px;" onclick="navigator.clipboard.writeText('${did}');this.textContent='✓ copiado!';setTimeout(()=>this.textContent='${did}',1500)">${did}</b>${tag ? ' (@' + tag + ')' : ''}</div>` : ''}
 
-      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:10px;">Opção 1 — Auto-promover (recomendado)</div>
-      <div style="color:#aaa;margin:4px 0 8px;">Se você ainda não tem super-admin no DB e está logado como owner em <a href="/app.html" style="color:#8b6fff;">/app.html</a>, clique abaixo:</div>
-      <button onclick="selfPromote()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:8px 14px;border-radius:7px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;">Tentar auto-promoção</button>
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:12px;">Opção 1 — Auto-promover (recomendado)</div>
+      <div style="color:#888;margin:5px 0 10px;">Se você ainda não tem super-admin no DB e está logado como owner em <a href="/app.html" style="color:#b9a8ff;">/app.html</a>, clique abaixo:</div>
+      <button onclick="selfPromote()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:9px 16px;border-radius:8px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;">Tentar auto-promoção →</button>
 
-      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:14px;">Opção 2 — Adicionar Discord ID no Railway</div>
-      <div style="color:#aaa;margin-top:4px;">Vá em Railway → Variables e adicione:</div>
-      <div style="background:#000;padding:8px;border-radius:5px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7dd3a4;">SUPER_ADMIN_DISCORD_IDS=${did || '<seu_id>'}</div>
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:16px;">Opção 2 — Adicionar Discord ID no Railway</div>
+      <div style="color:#888;margin-top:5px;">Vá em Railway → Variables e adicione:</div>
+      <div style="background:#000;padding:9px 11px;border:1px solid #1a1a1a;border-radius:6px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7dd3a4;">SUPER_ADMIN_DISCORD_IDS=${did || '<seu_id>'}</div>
 
-      <div style="color:#fff;font-weight:600;font-size:11px;margin-top:14px;">Opção 3 — Login por email/senha</div>
-      <div style="color:#aaa;margin-top:4px;">Use o formulário acima com seu email/senha de owner.</div>
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:16px;">Opção 3 — Login por email/senha</div>
+      <div style="color:#888;margin-top:5px;">Use o formulário acima com seu email/senha de owner.</div>
     `;
   }
 
-  // Para erros de Discord OAuth (callback URL etc), mostra a config detectada
   if (['auth_failed', 'no_discord', 'invalid_redirect'].includes(errKey)) {
     fetch('/admin/auth/discord-config').then(r => r.json()).then(cfg => {
       const help = document.getElementById('config-help');
@@ -181,7 +293,6 @@ async function selfPromote() {
   } catch (e) { alert(e.message); }
 }
 
-// Auto-redirect se ja logado como super-admin
 fetch('/admin/auth/me', { credentials: 'same-origin' })
   .then(r => r.json())
   .then(m => { if (m.super_admin) location.href = '/admin/'; })
