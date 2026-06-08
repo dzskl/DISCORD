@@ -13,7 +13,17 @@ function start() {
   cron.schedule('20 * * * *', checkGuildTrials);
   cron.schedule('*/15 * * * *', followUpAbandonedCarts);
   cron.schedule('* * * * *', rotateBotBios);
+  cron.schedule('*/30 * * * *', runReconciliation);
   logger.info('scheduler iniciado');
+}
+
+async function runReconciliation() {
+  try {
+    const recon = require('./reconciliation');
+    await recon.run();
+  } catch (e) {
+    logger.error({ err: e.message }, 'reconciliacao MysticPay falhou');
+  }
 }
 
 async function rotateBotBios() {

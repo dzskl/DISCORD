@@ -289,4 +289,6 @@ function computeExpiry(duration) {
   return now + (map[duration] || 0);
 }
 
+// Expoe markPaid pra reconciliacao reusar o mesmo fluxo
+router._markPaid = markPaid;
 module.exports = router;
