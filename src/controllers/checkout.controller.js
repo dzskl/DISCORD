@@ -250,6 +250,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         stripe_payment_intent=?, expires_at=? WHERE id=?
       `).run(session.payment_intent || null, expiresAt, sale.id);
 
+      // Taxa da plataforma 6.5% — debita do amount, owner recebe net
+      try { require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
+
       // Conquistas (premiacoes por marcos)
       try {
         const updated = db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id);

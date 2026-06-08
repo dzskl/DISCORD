@@ -162,6 +162,9 @@ async function markPaid(sale, txId) {
   db.prepare(`UPDATE sales SET status='paid', paid_at=strftime('%s','now'), expires_at=? WHERE id=?`)
     .run(expiresAt, sale.id);
 
+  // Taxa da plataforma 6.5%
+  try { require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch {}
+
   const cfg = getConfig();
   const valueStr = `R$${(sale.amount_cents / 100).toFixed(2).replace('.', ',')}`;
   let hasManualDelivery = false;

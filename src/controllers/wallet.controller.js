@@ -17,9 +17,20 @@ function balanceFor(userId, guildId) {
   const gFilter = guildId ? 'AND (s.guild_id = ? OR s.guild_id IS NULL)' : '';
   const gArgs = guildId ? [guildId] : [];
 
+  // Receita = NET pro dono (apos taxa da plataforma 6.5%) - custo do produto
+  // COALESCE: vendas antigas sem net_to_owner_cents usam amount_cents (compat)
   const earned = db.prepare(`
-    SELECT COALESCE(SUM(s.amount_cents - COALESCE(p.cost_cents,0)), 0) AS v
+    SELECT COALESCE(SUM(
+      COALESCE(NULLIF(s.net_to_owner_cents, 0), s.amount_cents) - COALESCE(p.cost_cents, 0)
+    ), 0) AS v
     FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE s.status = 'paid' ${gFilter}
+  `).get(...gArgs).v;
+
+  // Soma de taxas pagas pra plataforma (transparencia pro owner)
+  const platformFees = db.prepare(`
+    SELECT COALESCE(SUM(s.platform_fee_cents), 0) AS v
+    FROM sales s
     WHERE s.status = 'paid' ${gFilter}
   `).get(...gArgs).v;
 
@@ -30,7 +41,13 @@ function balanceFor(userId, guildId) {
     FROM withdrawals WHERE user_id = ? AND status IN ('pending','approved','paid') ${wFilter}
   `).get(userId, ...wArgs).v;
 
-  return { earned_cents: earned, withdrawn_cents: withdrawn, available_cents: Math.max(0, earned - withdrawn) };
+  return {
+    earned_cents: earned,
+    withdrawn_cents: withdrawn,
+    available_cents: Math.max(0, earned - withdrawn),
+    platform_fees_cents: platformFees,
+    platform_fee_rate: require('../config/platform-fee').PLATFORM_FEE_RATE
+  };
 }
 
 router.get('/balance', (req, res) => {
@@ -167,6 +184,23 @@ router.post('/admin/withdrawals/:id/review', requireOwner, (req, res) => {
   }
   audit.log({ req, action: `wallet.${action}`, target_type: 'withdrawal', target_id: w.id });
   res.json({ ok: true });
+});
+
+// Receita total da plataforma (taxa 6.5% acumulada)
+router.get('/admin/platform-revenue', requireOwner, (req, res) => {
+  const total = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
+  const sales = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='paid' AND platform_fee_cents > 0`).get().c;
+  const gross = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid'`).get().v;
+  const now = Math.floor(Date.now()/1000);
+  const monthStart = now - 30 * 86400;
+  const monthFee = db.prepare(`SELECT COALESCE(SUM(platform_fee_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(monthStart).v;
+  res.json({
+    total_collected_cents: total,
+    sales_with_fee: sales,
+    gross_volume_cents: gross,
+    month_collected_cents: monthFee,
+    fee_rate: require('../config/platform-fee').PLATFORM_FEE_RATE
+  });
 });
 
 // Vendas suspeitas (fraud_score >= threshold)
