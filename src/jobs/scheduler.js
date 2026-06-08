@@ -14,6 +14,8 @@ function start() {
   cron.schedule('*/15 * * * *', followUpAbandonedCarts);
   cron.schedule('* * * * *', rotateBotBios);
   cron.schedule('*/30 * * * *', runReconciliation);
+  // Webhook DLQ drain — a cada 5 minutos
+  cron.schedule('*/5 * * * *', runWebhookDlqDrain);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -29,6 +31,15 @@ async function runReconciliation() {
     await recon.run();
   } catch (e) {
     logger.error({ err: e.message }, 'reconciliacao MysticPay falhou');
+  }
+}
+
+async function runWebhookDlqDrain() {
+  try {
+    const dlq = require('../services/webhook-dlq.service');
+    await dlq.drain(20);
+  } catch (e) {
+    logger.error({ err: e.message }, 'webhook DLQ drain falhou');
   }
 }
 

@@ -203,6 +203,8 @@ router.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), async (req, 
     require('../utils/logger').error({ err: e }, 'misticpay webhook erro');
     if (eventRowId) {
       try { wh.markFailed(eventRowId, e.message); } catch {}
+      // Joga na DLQ pra retry
+      try { require('../services/webhook-dlq.service').enqueue(eventRowId, 'misticpay', e.message); } catch {}
     }
     res.status(500).send('erro');
   }
