@@ -16,8 +16,9 @@ const WITHDRAW_MIN_CENTS = 1000;      // R$10 minimo
 function balanceFor(userId, guildId) {
   const gFilter = guildId ? 'AND (s.guild_id = ? OR s.guild_id IS NULL)' : '';
   const gArgs = guildId ? [guildId] : [];
+  const now = Math.floor(Date.now() / 1000);
 
-  // Receita = NET pro dono (apos taxa da plataforma 6.5%) - custo do produto
+  // Receita TOTAL = NET pro dono (apos % + fixa) - custo do produto
   // COALESCE: vendas antigas sem net_to_owner_cents usam amount_cents (compat)
   const earned = db.prepare(`
     SELECT COALESCE(SUM(
@@ -27,8 +28,25 @@ function balanceFor(userId, guildId) {
     WHERE s.status = 'paid' ${gFilter}
   `).get(...gArgs).v;
 
+  // Receita LIBERADA = vendas em que ja passou o hold period (available_at <= now ou nulo)
+  const released = db.prepare(`
+    SELECT COALESCE(SUM(
+      COALESCE(NULLIF(s.net_to_owner_cents, 0), s.amount_cents) - COALESCE(p.cost_cents, 0)
+    ), 0) AS v
+    FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE s.status = 'paid' AND (s.available_at IS NULL OR s.available_at <= ?) ${gFilter}
+  `).get(now, ...gArgs).v;
+
+  // Receita EM HOLD = vendas pagas mas ainda em hold period
+  const pendingRelease = db.prepare(`
+    SELECT COALESCE(SUM(
+      COALESCE(NULLIF(s.net_to_owner_cents, 0), s.amount_cents) - COALESCE(p.cost_cents, 0)
+    ), 0) AS v
+    FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE s.status = 'paid' AND s.available_at > ? ${gFilter}
+  `).get(now, ...gArgs).v;
+
   // Soma de taxas pagas pra plataforma (transparencia pro owner)
-  // Inclui % + taxa fixa
   const platformFees = db.prepare(`
     SELECT COALESCE(SUM(s.platform_fee_cents + COALESCE(s.platform_fixed_fee_cents, 0)), 0) AS v
     FROM sales s
@@ -43,13 +61,17 @@ function balanceFor(userId, guildId) {
   `).get(userId, ...wArgs).v;
 
   const pf = require('../config/platform-fee');
+  const hp = require('../config/hold-period');
   return {
     earned_cents: earned,
     withdrawn_cents: withdrawn,
-    available_cents: Math.max(0, earned - withdrawn),
+    available_cents: Math.max(0, released - withdrawn),
+    pending_release_cents: Math.max(0, pendingRelease),
     platform_fees_cents: platformFees,
     platform_fee_rate: pf.PLATFORM_FEE_RATE,
-    platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS
+    platform_fixed_fee_cents: pf.PLATFORM_FIXED_FEE_CENTS,
+    hold_days_new: hp.HOLD_DAYS_NEW,
+    hold_days_established: hp.HOLD_DAYS_ESTABLISHED
   };
 }
 
@@ -96,6 +118,21 @@ router.post('/extract-email', (req, res) => {
 
 router.get('/withdrawals', (req, res) => {
   const rows = db.prepare(`SELECT * FROM withdrawals WHERE user_id=? ORDER BY requested_at DESC LIMIT 100`).all(req.appUser.id);
+  res.json(rows);
+});
+
+// Vendas em hold (proximas liberacoes) pro vendedor
+router.get('/holds', (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const gFilter = req.guildId ? 'AND (s.guild_id = ? OR s.guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+  const rows = db.prepare(`
+    SELECT s.id, s.amount_cents, s.net_to_owner_cents, s.paid_at, s.available_at, s.hold_days, s.seller_tier,
+           p.name AS product_name
+    FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE s.status = 'paid' AND s.available_at IS NOT NULL AND s.available_at > ? ${gFilter}
+    ORDER BY s.available_at ASC LIMIT 200
+  `).all(now, ...gArgs);
   res.json(rows);
 });
 
