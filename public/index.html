@@ -6,41 +6,41 @@
 <title>BotDash — Bot Discord para sua loja</title>
 <meta name="description" content="Bot Discord completo para vender produtos: Stripe + PIX, dashboard com vendas, cargos automáticos, cupons, sorteios, tickets e mais.">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 :root {
   --bg: #0a0a0a; --surface: #111; --surface-2: #161616; --surface-3: #1a1a1a;
   --border: #1f1f1f; --border-strong: #2a2a2a;
   --text: #e8e8e8; --text-dim: #888; --text-faint: #555; --text-mute: #333;
-  --primary: #5865f2; --primary-hov: #4752c4; --primary-glow: rgba(88,101,242,0.18);
-  --success: #5fff5f; --success-bg: #0a1f0a; --success-bd: #1a4a1a;
-  --warn: #ffdf5f; --danger: #ff5f5f;
+  --primary: #8b6fff; --primary-hov: #7758ff; --primary-glow: rgba(139,111,255,0.35);
+  --success: #22c55e; --success-soft: #7dd3a4; --success-bg: rgba(34,197,94,0.08); --success-bd: rgba(34,197,94,0.25);
+  --warn: #f5c542; --danger: #ef4444;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
-body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
 
 /* Backgrounds animated */
 .bg-hero{position:absolute;inset:0;z-index:0;pointer-events:none;background:
-  radial-gradient(circle at 20% 30%, rgba(88,101,242,0.15), transparent 50%),
-  radial-gradient(circle at 80% 70%, rgba(255,95,193,0.06), transparent 50%);}
+  radial-gradient(circle at 20% 30%, rgba(139,111,255,0.18), transparent 50%),
+  radial-gradient(circle at 80% 70%, rgba(168,85,247,0.06), transparent 50%);}
 .bg-grid{position:absolute;inset:0;z-index:0;pointer-events:none;background-image:
-  linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size:48px 48px;mask-image:radial-gradient(ellipse at center top, #000 30%, transparent 70%);}
 
 /* Navbar */
 nav.top{position:sticky;top:0;z-index:50;background:rgba(10,10,10,0.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .nav-wrap{max-width:1180px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
 .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;}
-.brand-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;box-shadow:0 6px 16px var(--primary-glow);}
-.brand-name{font-weight:700;letter-spacing:.02em;font-size:16px;}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#5a4ad1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;box-shadow:0 6px 18px var(--primary-glow);}
+.brand-name{font-weight:800;letter-spacing:-.01em;font-size:16px;color:#fff;}
 .nav-links{display:flex;align-items:center;gap:26px;}
 .nav-links a{color:var(--text-dim);text-decoration:none;font-size:13px;font-weight:500;transition:color .15s;}
 .nav-links a:hover{color:#fff;}
-.btn{display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;padding:10px 18px;border-radius:7px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;letter-spacing:.02em;transition:all .15s;}
-.btn:hover{background:var(--primary-hov);transform:translateY(-1px);box-shadow:0 6px 16px var(--primary-glow);}
+.btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,var(--primary),var(--primary-hov));color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;letter-spacing:-.01em;transition:all .15s;}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 8px 24px var(--primary-glow);}
 .btn-ghost{background:transparent;border:1px solid var(--border-strong);color:var(--text);padding:10px 18px;}
-.btn-ghost:hover{border-color:var(--text-dim);background:var(--surface);transform:none;box-shadow:none;}
+.btn-ghost:hover{border-color:var(--primary);background:var(--surface);transform:none;box-shadow:none;filter:none;}
 
 /* Sections */
 section{position:relative;}
