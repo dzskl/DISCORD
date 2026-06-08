@@ -2,10 +2,27 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const DB_FILE = process.env.DATABASE_FILE || path.join(__dirname, '..', 'data', 'botdash.sqlite');
-fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+// IMPORTANTE: o DB precisa ficar em /app/data quando rodando em prod (Railway)
+// porque o Volume eh montado em /app/data. __dirname aqui eh /app/src/database
+// entao precisamos de TRES '..' pra subir ate /app, e depois 'data'.
+const DB_FILE = process.env.DATABASE_FILE || path.join(__dirname, '..', '..', 'data', 'botdash.sqlite');
+const DB_DIR = path.dirname(DB_FILE);
 
-const db = new Database(DB_FILE);
+try {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+} catch (e) {
+  console.error('[DB] falha criando diretorio', DB_DIR, e.message);
+}
+
+let db;
+try {
+  db = new Database(DB_FILE);
+} catch (e) {
+  console.error('[DB] FALHA ABRINDO DATABASE em', DB_FILE);
+  console.error('[DB] erro:', e.message);
+  console.error('[DB] verifique: 1) o diretorio existe; 2) ha permissao de escrita; 3) o volume do Railway esta montado em ' + DB_DIR);
+  throw e;
+}
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
