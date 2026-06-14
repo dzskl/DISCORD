@@ -3,6 +3,7 @@ const { getCredential, setCredential, listCredentialMeta } = require('../databas
 const { requireAuth } = require('../middlewares/auth.middleware');
 const { maskValue } = require('../utils/encryption');
 const audit = require('../services/audit.service');
+const wallet = require('../config/wallet-providers');
 
 const router = express.Router();
 
@@ -12,10 +13,6 @@ const CREDENTIAL_KEYS = [
   { key: 'DISCORD_CLIENT_SECRET', label: 'Client Secret', group: 'discord', secret: true },
   { key: 'DISCORD_GUILD_ID', label: 'ID do servidor', group: 'discord', secret: false, validate: v => /^\d{15,25}$/.test(v) || 'deve ser numero' },
   { key: 'ADMIN_DISCORD_IDS', label: 'Admins (IDs)', group: 'discord', secret: false, validate: v => /^[\d,\s]+$/.test(v) || 'apenas IDs separados por virgula' },
-  { key: 'STRIPE_SECRET_KEY', label: 'Stripe Secret Key', group: 'stripe', secret: true, validate: v => v.startsWith('sk_') || 'deve comecar com sk_' },
-  { key: 'STRIPE_WEBHOOK_SECRET', label: 'Stripe Webhook Secret', group: 'stripe', secret: true, validate: v => v.startsWith('whsec_') || 'deve comecar com whsec_' },
-  { key: 'MISTICPAY_CLIENT_ID', label: 'MisticPay Client ID', group: 'misticpay', secret: false },
-  { key: 'MISTICPAY_CLIENT_SECRET', label: 'MisticPay Client Secret', group: 'misticpay', secret: true },
   { key: 'STRIPE_PRICE_PRO_MONTHLY', label: 'Stripe Price ID — Plano Pro Mensal', group: 'billing', secret: false, validate: v => v.startsWith('price_') || 'deve começar com price_' },
   { key: 'STRIPE_BILLING_WEBHOOK_SECRET', label: 'Stripe Billing Webhook Secret', group: 'billing', secret: true, validate: v => v.startsWith('whsec_') || 'deve começar com whsec_' },
   { key: 'RESEND_API_KEY', label: 'Resend API Key (recomendado)', group: 'email', secret: true, validate: v => v.startsWith('re_') || 'deve começar com re_' },
@@ -27,6 +24,24 @@ const CREDENTIAL_KEYS = [
   { key: 'SMTP_FROM', label: 'SMTP From email', group: 'email', secret: false },
   { key: 'BRAND_NAME', label: 'Nome da marca (nos emails)', group: 'email', secret: false }
 ];
+
+// Adiciona credenciais dos PSPs do catalogo wallet-providers.js
+// (Stripe, MisticPay e outros agora vem dessa fonte unica)
+for (const p of wallet.listProviders()) {
+  for (const c of p.credentials) {
+    if (CREDENTIAL_KEYS.find(x => x.key === c.key)) continue;   // evita duplicar
+    let validate;
+    if (c.key === 'STRIPE_SECRET_KEY')     validate = v => v.startsWith('sk_') || 'deve comecar com sk_';
+    if (c.key === 'STRIPE_WEBHOOK_SECRET') validate = v => v.startsWith('whsec_') || 'deve comecar com whsec_';
+    CREDENTIAL_KEYS.push({
+      key: c.key,
+      label: `${p.label}: ${c.label}`,
+      group: `psp:${p.id}`,
+      secret: c.type === 'secret',
+      validate
+    });
+  }
+}
 
 router.get('/', requireAuth, (req, res) => {
   const meta = listCredentialMeta();
