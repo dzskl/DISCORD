@@ -16,6 +16,8 @@ function start() {
   cron.schedule('*/30 * * * *', runReconciliation);
   // Webhook DLQ drain — a cada 5 minutos
   cron.schedule('*/5 * * * *', runWebhookDlqDrain);
+  // Wallet polling fallback — a cada 3min, resolve webhooks perdidos das PSPs
+  cron.schedule('*/3 * * * *', runWalletPolling);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -31,6 +33,16 @@ async function runReconciliation() {
     await recon.run();
   } catch (e) {
     logger.error({ err: e.message }, 'reconciliacao MysticPay falhou');
+  }
+}
+
+async function runWalletPolling() {
+  try {
+    const poll = require('./wallet-polling');
+    const r = await poll.run();
+    if (r.checked > 0) logger.info(r, 'wallet polling executou');
+  } catch (e) {
+    logger.error({ err: e.message }, 'wallet polling falhou');
   }
 }
 

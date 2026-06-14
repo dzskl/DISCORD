@@ -53,7 +53,9 @@ const PROVIDERS = {
     country: 'BR',
     credentials: [
       { key: 'ABACATE_API_KEY', label: 'API Key', type: 'secret',
-        hint: 'chave de producao do AbacatePay' }
+        hint: 'chave de producao do AbacatePay' },
+      { key: 'ABACATE_WEBHOOK_SECRET', label: 'Webhook Secret (opcional)', type: 'secret',
+        hint: 'string compartilhada no header x-abacate-webhook-secret' }
     ],
     fee_hint: '0,80% por venda',
     kyc: 'cpf',
@@ -85,7 +87,9 @@ const PROVIDERS = {
     country: 'BR',
     credentials: [
       { key: 'ASAAS_API_KEY', label: 'API Key', type: 'secret',
-        hint: 'gere em Integracoes > API no painel Asaas' }
+        hint: 'gere em Integracoes > API no painel Asaas' },
+      { key: 'ASAAS_WEBHOOK_TOKEN', label: 'Webhook Token (opcional)', type: 'secret',
+        hint: 'token definido no painel Asaas > Notificacoes > Webhooks' }
     ],
     fee_hint: 'R$ 1,99 por PIX',
     kyc: 'cpf',

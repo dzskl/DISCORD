@@ -23,7 +23,9 @@ test('listProviders filtra por country BR (inclui GLOBAL)', () => {
 });
 
 test('cada provider declara credenciais', () => {
+  // Skipa providers de teste (sort >= 99) — sao injetados por outros suites
   for (const p of w.listProviders()) {
+    if (p.sort >= 99) continue;
     assert(Array.isArray(p.credentials) && p.credentials.length > 0,
       `${p.id} tem credentials`);
     for (const c of p.credentials) {

@@ -22,7 +22,9 @@ const logger = require('../utils/logger');
 const HMAC_SECRET_KEY = {
   mercadopago: 'MP_WEBHOOK_SECRET',
   pushinpay:   'PUSHINPAY_WEBHOOK_SECRET',
-  nowpayments: 'NOWPAYMENTS_IPN_SECRET'
+  nowpayments: 'NOWPAYMENTS_IPN_SECRET',
+  asaas:       'ASAAS_WEBHOOK_TOKEN',
+  abacatepay:  'ABACATE_WEBHOOK_SECRET'
 };
 
 // Os webhooks precisam acessar o body cru pra alguns providers. Mas pra MVP

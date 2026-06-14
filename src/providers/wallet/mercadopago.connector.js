@@ -117,6 +117,30 @@ class MercadoPagoConnector extends BaseConnector {
     };
   }
 
+  // Refund total ou parcial. MP: POST /v1/payments/:id/refunds
+  // value (em BRL, reais) opcional — se omitido, refund total.
+  async refundPayment(paymentId, { value, description } = {}) {
+    this.ensureCreds();
+    const body = value != null ? { amount: parseFloat(centsToReaisString(value)) } : {};
+    const r = await fetch(`${MP_API}/v1/payments/${encodeURIComponent(paymentId)}/refunds`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.credentials.MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': crypto.randomUUID()
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const e = new Error(data.message || `MP refund HTTP ${r.status}`);
+      e.code = 'mp_refund_failed';
+      e.raw = data;
+      throw e;
+    }
+    return data;
+  }
+
   // Mapeia status do MP pra evento canonico (chamado apos fetchPayment)
   mapStatus(payment) {
     const s = payment.status;

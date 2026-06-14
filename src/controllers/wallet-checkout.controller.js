@@ -130,4 +130,45 @@ router.get('/status/:sale_id', (req, res) => {
   res.json(s);
 });
 
+// Refund: vendedor solicita estorno via API da PSP (so MP e Asaas suportam
+// nesta versao — NOWPayments cripto nao tem refund).
+const { requireAuth } = require('../middlewares/auth.middleware');
+router.post('/refund/:sale_id', requireAuth, async (req, res) => {
+  const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
+  if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
+  if (sale.status !== 'paid') return res.status(400).json({ error: 'sale nao esta paga' });
+  if (!sale.provider || !sale.provider_charge_id) return res.status(400).json({ error: 'sale sem provider associado' });
+
+  // Garante que o usuario eh dono da guild dessa sale
+  if (req.guildId && sale.guild_id && sale.guild_id !== req.guildId) {
+    return res.status(403).json({ error: 'sale de outra guild' });
+  }
+
+  if (!registry.isSupported(sale.provider) || !registry.isConfigured(sale.provider)) {
+    return res.status(503).json({ error: 'provider nao configurado' });
+  }
+
+  const connector = registry.instantiate(sale.provider);
+  if (typeof connector.refundPayment !== 'function') {
+    return res.status(501).json({ error: `provider ${sale.provider} nao suporta refund via API` });
+  }
+
+  try {
+    const r = await connector.refundPayment(sale.provider_charge_id, {
+      value: req.body?.value || undefined,
+      description: req.body?.reason || 'refund via BotDash'
+    });
+    db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
+    require('../services/audit.service').log({
+      req, action: 'sale.refund',
+      target_type: 'sale', target_id: sale.id,
+      details: { provider: sale.provider, charge_id: sale.provider_charge_id }
+    });
+    res.json({ ok: true, raw: r });
+  } catch (e) {
+    logger.warn({ err: e.message, sale_id: sale.id }, 'refund falhou');
+    res.status(502).json({ error: e.message, code: e.code });
+  }
+});
+
 module.exports = router;

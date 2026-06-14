@@ -42,6 +42,63 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/payment-providers/stats — receita por PSP (vendedor logado)
+const { db } = require('../database/connection');
+router.get('/stats', requireAuth, (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const monthStart = now - 30 * 86400;
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs   = req.guildId ? [req.guildId] : [];
+
+  const rows = db.prepare(`
+    SELECT
+      provider,
+      COUNT(*)                          AS sales_count,
+      COALESCE(SUM(amount_cents), 0)    AS gross_cents,
+      COALESCE(SUM(CASE WHEN paid_at >= ? THEN amount_cents END), 0) AS gross_month_cents,
+      COALESCE(SUM(CASE WHEN paid_at >= ? THEN 1 END), 0)            AS sales_month
+    FROM sales
+    WHERE provider IS NOT NULL
+      AND status = 'paid'
+      ${gFilter}
+    GROUP BY provider
+    ORDER BY gross_cents DESC
+  `).all(monthStart, monthStart, ...gArgs);
+
+  // Pending por PSP (cobrancas aguardando)
+  const pending = db.prepare(`
+    SELECT provider, COUNT(*) AS pending_count
+    FROM sales
+    WHERE provider IS NOT NULL
+      AND status = 'pending'
+      ${gFilter}
+    GROUP BY provider
+  `).all(...gArgs);
+  const pendingMap = Object.fromEntries(pending.map(p => [p.provider, p.pending_count]));
+
+  const wallet = require('../config/wallet-providers');
+  const out = rows.map(r => ({
+    provider: r.provider,
+    label:    wallet.getProvider(r.provider)?.label || r.provider,
+    method:   wallet.getProvider(r.provider)?.method || 'unknown',
+    sales_count:       r.sales_count,
+    gross_cents:       r.gross_cents,
+    gross_month_cents: r.gross_month_cents,
+    sales_month:       r.sales_month,
+    pending_count:     pendingMap[r.provider] || 0
+  }));
+
+  // Totalizadores
+  const total_gross = out.reduce((a, p) => a + p.gross_cents, 0);
+  const total_month = out.reduce((a, p) => a + p.gross_month_cents, 0);
+  const total_sales = out.reduce((a, p) => a + p.sales_count, 0);
+
+  res.json({
+    providers: out,
+    totals: { gross_cents: total_gross, gross_month_cents: total_month, sales_count: total_sales }
+  });
+});
+
 // GET /api/payment-providers/public — pra loja (sem auth) listar opcoes
 // de pagamento que o vendedor ja configurou
 router.get('/public', (req, res) => {

@@ -7,8 +7,10 @@ const { getProvider } = require('../../config/wallet-providers');
 const CONNECTORS = {
   mercadopago: require('./mercadopago.connector'),
   pushinpay:   require('./pushinpay.connector'),
-  nowpayments: require('./nowpayments.connector')
-  // stripe / misticpay / asaas / efi / abacatepay — vem nas proximas rodadas
+  nowpayments: require('./nowpayments.connector'),
+  asaas:       require('./asaas.connector'),
+  abacatepay:  require('./abacatepay.connector')
+  // stripe / misticpay / efi — vem nas proximas rodadas
 };
 
 function isSupported(providerId) {

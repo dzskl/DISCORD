@@ -98,6 +98,11 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
 
   <div id="alert" class="alert"></div>
 
+  <div class="section-title">Receita por gateway (ultimos 30 dias)</div>
+  <div id="stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:8px;">
+    <div class="empty-state" style="padding:24px;">carregando...</div>
+  </div>
+
   <div class="section-title">PIX nacional</div>
   <div class="providers" id="pix-list"></div>
 
@@ -135,9 +140,41 @@ async function load() {
     state = data;
     document.getElementById('plan-name').textContent = data.plan_name + ' (' + data.plan_id + ')';
     render();
+    loadStats();
   } catch (e) {
     showAlert('erro ao carregar providers', 'err');
   }
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/payment-providers/stats', { credentials: 'include' });
+    if (!r.ok) return;
+    const data = await r.json();
+    const row = document.getElementById('stats-row');
+    if (!data.providers.length) {
+      row.innerHTML = `<div class="empty-state" style="padding:24px;grid-column:1/-1;">ainda nenhuma venda processada</div>`;
+      return;
+    }
+    const total30 = data.totals.gross_month_cents;
+    const cards = data.providers.map(p => {
+      const share = total30 > 0 ? Math.round(p.gross_month_cents / total30 * 100) : 0;
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;">
+        <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;">${esc(p.label)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:#fff;margin-top:6px;">R$ ${(p.gross_month_cents/100).toFixed(2).replace('.', ',')}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+          ${p.sales_month} venda${p.sales_month === 1 ? '' : 's'} · ${share}% do mes
+          ${p.pending_count ? ` · <span style="color:#f5c542">${p.pending_count} pendente${p.pending_count === 1 ? '' : 's'}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    const totalCard = `<div style="background:rgba(88,101,242,0.04);border:1px solid rgba(88,101,242,0.3);border-radius:11px;padding:14px 16px;">
+      <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:#a0bfff;text-transform:uppercase;letter-spacing:.07em;">total 30d</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:#fff;margin-top:6px;">R$ ${(total30/100).toFixed(2).replace('.', ',')}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${data.totals.sales_count} venda${data.totals.sales_count === 1 ? '' : 's'} no historico</div>
+    </div>`;
+    row.innerHTML = totalCard + cards;
+  } catch {}
 }
 
 function render() {
