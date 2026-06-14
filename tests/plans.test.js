@@ -8,9 +8,9 @@ applyMigrations();
 
 test('PLAN free tem limites', () => {
   const p = plans.getPlan('free');
-  assertEq(p.features.max_products, 10);  // pricing v2: subiu de 5 pra 10
+  assertEq(p.features.max_products, 10);
   assertEq(p.features.autoreply, false);
-  assertEq(p.commission_rate, 0.079);
+  assertEq(p.commission_rate, 0, 'pricing v3: sem comissao');
   assertEq(p.branding_required, true);
 });
 
@@ -18,19 +18,22 @@ test('PLAN pro libera tudo', () => {
   const p = plans.getPlan('pro');
   assertEq(p.features.max_products, Infinity);
   assertEq(p.features.autoreply, true);
-  assertEq(p.commission_rate, 0.039);
+  assertEq(p.commission_rate, 0, 'pricing v3: sem comissao');
+  assertEq(p.features.crypto_checkout, true, 'pro libera cripto');
 });
 
-test('PLAN starter existe (pricing v2)', () => {
+test('PLAN starter existe', () => {
   const p = plans.getPlan('starter');
   assertEq(p.id, 'starter');
-  assertEq(p.commission_rate, 0.059);
+  assertEq(p.commission_rate, 0);
+  assertEq(p.price_monthly_brl, 29);
 });
 
-test('PLAN scale existe (pricing v2)', () => {
+test('PLAN scale existe', () => {
   const p = plans.getPlan('scale');
   assertEq(p.id, 'scale');
-  assertEq(p.commission_rate, 0.029);
+  assertEq(p.commission_rate, 0);
+  assertEq(p.features.white_label, true);
 });
 
 test('withinLimit respeita limite', () => {

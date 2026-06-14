@@ -1,5 +1,11 @@
-// Planos do SaaS — pricing v2 (4 tiers).
-// Owner = vendedor. Cada plano define comissao, taxa fixa, hold, features e limites.
+// Planos do SaaS — pricing v3 (intermediario, sem custodia).
+//
+// MODELO: BotDash nao toca em dinheiro. O vendedor conecta a propria PSP
+// (MercadoPago, PushinPay, Stripe, Asaas, NOWPayments, etc.) e recebe direto
+// na conta dele. BotDash cobra so mensalidade pelo bot + features.
+//
+// commission_rate e fixed_fee_cents ficam ZERADOS (compat com platform-fee.js
+// e codigo legado — quando 0, nenhum desconto eh aplicado na venda).
 
 const PLANS = {
   trial_24h: {
@@ -8,18 +14,19 @@ const PLANS = {
     price_monthly_brl: 0,
     description: 'tudo liberado por 24h pra testar',
     duration_hours: 24,
-    commission_rate: 0.039,        // mesmo que Pro no trial
-    fixed_fee_cents: 99,
+    commission_rate: 0,
+    fixed_fee_cents: 0,
     branding_required: false,
-    advance_fee_rate: 0.0199,
-    hold_days_override: 2,
     features: {
       max_products: Infinity,
       max_coupons: Infinity,
       max_affiliates: Infinity,
       max_giveaways_active: Infinity,
+      max_sales_month: Infinity,
       autoreply: true, tickets: true, manual_delivery: true,
       stripe_checkout: true, misticpay_checkout: true,
+      mercadopago_checkout: true, pushinpay_checkout: true,
+      asaas_checkout: true, crypto_checkout: true,
       custom_branding: true, daily_report: true, audit_log: true,
       api_webhooks: true, multi_bot: false, white_label: false
     }
@@ -30,20 +37,20 @@ const PLANS = {
     name: 'Free',
     price_monthly_brl: 0,
     description: 'pra testar e operar pequeno',
-    commission_rate: 0.079,        // 7,9%
-    fixed_fee_cents: 149,           // R$ 1,49
-    branding_required: true,        // "Powered by BotDash" obrigatorio
-    advance_fee_rate: 0.0299,
-    hold_days_new: 14,
-    hold_days_established: 14,      // free sempre D+14
-    withdraw_min_cents: 5000,
+    commission_rate: 0,
+    fixed_fee_cents: 0,
+    branding_required: true,                // "Powered by BotDash" obrigatorio
     features: {
       max_products: 10,
       max_coupons: 3,
       max_affiliates: 0,
       max_giveaways_active: 1,
+      max_sales_month: 30,                  // limite gentil pra forcar upgrade
       autoreply: false, tickets: true, manual_delivery: false,
-      stripe_checkout: true, misticpay_checkout: true,
+      // gateways: free so com PIX nacional (MP/PushinPay)
+      stripe_checkout: false, misticpay_checkout: true,
+      mercadopago_checkout: true, pushinpay_checkout: true,
+      asaas_checkout: false, crypto_checkout: false,
       custom_branding: false, daily_report: true, audit_log: false,
       api_webhooks: false, multi_bot: false, white_label: false
     }
@@ -52,23 +59,22 @@ const PLANS = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    price_monthly_brl: 47,
-    description: 'pra quem vende R$ 1k-5k/mes',
-    commission_rate: 0.059,        // 5,9%
-    fixed_fee_cents: 149,
+    price_monthly_brl: 29,
+    description: 'pra quem vende ate ~R$ 5k/mes',
+    commission_rate: 0,
+    fixed_fee_cents: 0,
     branding_required: false,
-    advance_fee_rate: 0.0249,
-    hold_days_new: 7,
-    hold_days_established: 2,
-    withdraw_min_cents: 3000,
     includes_verified_badge: true,
     features: {
       max_products: Infinity,
       max_coupons: Infinity,
       max_affiliates: 5,
       max_giveaways_active: Infinity,
+      max_sales_month: 300,
       autoreply: true, tickets: true, manual_delivery: true,
       stripe_checkout: true, misticpay_checkout: true,
+      mercadopago_checkout: true, pushinpay_checkout: true,
+      asaas_checkout: true, crypto_checkout: false,
       custom_branding: true, daily_report: true, audit_log: true,
       api_webhooks: false, multi_bot: false, white_label: false
     }
@@ -77,15 +83,11 @@ const PLANS = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price_monthly_brl: 97,
+    price_monthly_brl: 79,
     description: 'pra vendedor serio escalando',
-    commission_rate: 0.039,        // 3,9%
-    fixed_fee_cents: 99,
+    commission_rate: 0,
+    fixed_fee_cents: 0,
     branding_required: false,
-    advance_fee_rate: 0.0199,
-    hold_days_new: 2,
-    hold_days_established: 2,
-    withdraw_min_cents: 1000,
     includes_verified_badge: true,
     includes_featured_slots: 1,
     multi_bot_limit: 3,
@@ -94,8 +96,11 @@ const PLANS = {
       max_coupons: Infinity,
       max_affiliates: Infinity,
       max_giveaways_active: Infinity,
+      max_sales_month: Infinity,
       autoreply: true, tickets: true, manual_delivery: true,
       stripe_checkout: true, misticpay_checkout: true,
+      mercadopago_checkout: true, pushinpay_checkout: true,
+      asaas_checkout: true, crypto_checkout: true,   // cripto liberado no Pro
       custom_branding: true, daily_report: true, audit_log: true,
       api_webhooks: true, multi_bot: true, white_label: false
     }
@@ -104,15 +109,11 @@ const PLANS = {
   scale: {
     id: 'scale',
     name: 'Scale',
-    price_monthly_brl: 297,
-    description: 'enterprise leve — alta margem, account manager',
-    commission_rate: 0.029,        // 2,9%
-    fixed_fee_cents: 49,
+    price_monthly_brl: 199,
+    description: 'enterprise leve — white-label + account manager',
+    commission_rate: 0,
+    fixed_fee_cents: 0,
     branding_required: false,
-    advance_fee_rate: 0.0149,
-    hold_days_new: 1,
-    hold_days_established: 1,
-    withdraw_min_cents: 500,
     includes_verified_badge: true,
     includes_featured_slots: 3,
     multi_bot_limit: Infinity,
@@ -122,8 +123,11 @@ const PLANS = {
       max_coupons: Infinity,
       max_affiliates: Infinity,
       max_giveaways_active: Infinity,
+      max_sales_month: Infinity,
       autoreply: true, tickets: true, manual_delivery: true,
       stripe_checkout: true, misticpay_checkout: true,
+      mercadopago_checkout: true, pushinpay_checkout: true,
+      asaas_checkout: true, crypto_checkout: true,
       custom_branding: true, daily_report: true, audit_log: true,
       api_webhooks: true, multi_bot: true, white_label: true
     }
@@ -131,12 +135,11 @@ const PLANS = {
 };
 
 const ADDONS = {
-  domain:        { id: 'domain',        label: 'Dominio proprio',     price_monthly_cents: 2900, applies_to: ['starter','pro','scale'] },
+  domain:        { id: 'domain',        label: 'Dominio proprio',     price_monthly_cents: 1900, applies_to: ['starter','pro','scale'] },
   webhooks:      { id: 'webhooks',      label: 'Webhooks avancados',  price_monthly_cents: 1900, applies_to: ['starter','pro','scale'] },
   emails:        { id: 'emails',        label: 'Emails transacionais',price_monthly_cents: 1900, applies_to: ['starter','pro','scale'] },
-  insurance:     { id: 'insurance',     label: 'Insurance chargeback',price_monthly_cents: 4900, applies_to: ['pro','scale'] },
-  setup_helper:  { id: 'setup_helper',  label: 'Setup assistido 1h',  one_time_cents: 29700, applies_to: ['*'] },
-  migration:     { id: 'migration',     label: 'Migracao de plataforma',one_time_cents: 49700, applies_to: ['*'] }
+  setup_helper:  { id: 'setup_helper',  label: 'Setup assistido 1h',  one_time_cents: 19700, applies_to: ['*'] },
+  migration:     { id: 'migration',     label: 'Migracao de plataforma',one_time_cents: 39700, applies_to: ['*'] }
 };
 
 function getPlan(id) { return PLANS[id] || PLANS.free; }

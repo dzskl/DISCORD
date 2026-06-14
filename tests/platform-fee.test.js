@@ -1,3 +1,8 @@
+// Pricing v3 (intermediario): BotDash nao cobra comissao sobre vendas.
+// platform-fee.js retorna fees=0 em todos os planos. Os testes garantem
+// que (a) o vendedor recebe o valor cheio e (b) o codigo legado nao quebra
+// quando rate=0 e fixed=0.
+
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
@@ -29,42 +34,43 @@ function setupSeller(db, id, plan) {
 
 const pf = require('../src/config/platform-fee');
 
-test('Free: 7,9% + R$ 1,49', () => {
+test('Free: vendedor recebe valor cheio (sem comissao)', () => {
   const db = makeDb();
   setupSeller(db, 1, 'free');
   const sId = db.prepare("INSERT INTO sales (amount_cents, guild_id, status, paid_at, discord_id) VALUES (10000, 'g1', 'paid', strftime('%s','now'), '1')").run().lastInsertRowid;
   const r = pf.applyFeeToSale(db, sId);
-  assertEq(r.percent_fee_cents, 790, 'percent fee Free');
-  assertEq(r.fixed_fee_cents, 149, 'fixed fee Free');
-  assertEq(r.net_to_owner_cents, 10000 - 790 - 149);
+  assertEq(r.percent_fee_cents, 0, 'sem comissao percentual');
+  assertEq(r.fixed_fee_cents, 0, 'sem taxa fixa');
+  assertEq(r.net_to_owner_cents, 10000, 'vendedor recebe tudo');
   assertEq(r.seller_plan, 'free');
 });
 
-test('Pro: 3,9% + R$ 0,99', () => {
+test('Pro: vendedor recebe valor cheio (sem comissao)', () => {
   const db = makeDb();
   setupSeller(db, 2, 'pro');
   const sId = db.prepare("INSERT INTO sales (amount_cents, guild_id, status, paid_at, discord_id) VALUES (10000, 'g2', 'paid', strftime('%s','now'), '1')").run().lastInsertRowid;
   const r = pf.applyFeeToSale(db, sId);
-  assertEq(r.percent_fee_cents, 390);
-  assertEq(r.fixed_fee_cents, 99);
+  assertEq(r.percent_fee_cents, 0);
+  assertEq(r.fixed_fee_cents, 0);
+  assertEq(r.net_to_owner_cents, 10000);
   assertEq(r.seller_plan, 'pro');
 });
 
-test('Scale: 2,9% + R$ 0,49', () => {
+test('Scale: vendedor recebe valor cheio (sem comissao)', () => {
   const db = makeDb();
   setupSeller(db, 3, 'scale');
   const sId = db.prepare("INSERT INTO sales (amount_cents, guild_id, status, paid_at, discord_id) VALUES (10000, 'g3', 'paid', strftime('%s','now'), '1')").run().lastInsertRowid;
   const r = pf.applyFeeToSale(db, sId);
-  assertEq(r.percent_fee_cents, 290);
-  assertEq(r.fixed_fee_cents, 49);
+  assertEq(r.percent_fee_cents, 0);
+  assertEq(r.fixed_fee_cents, 0);
+  assertEq(r.net_to_owner_cents, 10000);
 });
 
-test('Cap em venda micro nao zera vendedor', () => {
+test('Venda micro nao perde precisao (rate=0 nao quebra cap)', () => {
   const db = makeDb();
   setupSeller(db, 4, 'free');
-  // Venda R$ 1,00 — taxa fixa de R$ 1,49 zeraria o vendedor
   const sId = db.prepare("INSERT INTO sales (amount_cents, guild_id, status, paid_at, discord_id) VALUES (100, 'g4', 'paid', strftime('%s','now'), '1')").run().lastInsertRowid;
   const r = pf.applyFeeToSale(db, sId);
-  assert(r.net_to_owner_cents >= 1, 'vendedor sempre recebe >= R$ 0,01');
-  assert(r.net_to_owner_cents + r.percent_fee_cents + r.fixed_fee_cents === 100, 'soma fecha');
+  assertEq(r.net_to_owner_cents, 100, 'vendedor recebe os 100 centavos cheios');
+  assertEq(r.percent_fee_cents + r.fixed_fee_cents, 0);
 });
