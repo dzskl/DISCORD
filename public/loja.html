@@ -140,6 +140,12 @@ footer{text-align:center;margin-top:40px;font-size:11px;font-family:'IBM Plex Mo
     <div class="id-help" id="coupon-status">se voce tem um codigo, aplique antes de fechar o carrinho.</div>
   </div>
 
+  <div class="id-box" id="provider-box" style="display:none;">
+    <div class="id-label">forma de pagamento</div>
+    <div id="provider-list" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <div class="id-help" id="provider-help">escolha como quer pagar.</div>
+  </div>
+
   <div id="grid" class="grid"></div>
   <footer>BotDash · pagamentos processados via Stripe</footer>
 </div>
@@ -347,8 +353,8 @@ async function checkout() {
   const btn = document.getElementById('checkout-btn');
   btn.disabled = true; btn.textContent = 'redirecionando...';
 
-  const gateway = window.__gateway || 'stripe';
-  const endpoint = gateway === 'misticpay' ? '/api/checkout/pix/create' : '/api/checkout/create-session';
+  // Provider selecionado (Wallet) tem prioridade. Cai pro gateway legado se nenhum.
+  const provider = window.__selectedProvider;
   const payload = {
     items: cart.map(it => ({ product_id: it.id, quantity: it.q })),
     discord_id,
@@ -357,6 +363,27 @@ async function checkout() {
   };
 
   try {
+    if (provider) {
+      payload.provider = provider;
+      const r = await fetch('/api/checkout/wallet/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+      if (r.qr_code || r.pay_url) {
+        if (r.qr_image) sessionStorage.setItem('pix_qr_' + r.sale_id, r.qr_image.startsWith('data:') ? r.qr_image : 'data:image/png;base64,' + r.qr_image);
+        if (r.qr_code) sessionStorage.setItem('pix_code_' + r.sale_id, r.qr_code);
+        if (r.pay_url && !r.qr_code) { location.href = r.pay_url; return; }
+        location.href = `/checkout-pix.html?tx=${encodeURIComponent(r.sale_id)}&amount=${r.amount_cents}&provider=${encodeURIComponent(provider)}`;
+        return;
+      }
+      flash(r.error || 'Erro ao iniciar pagamento.', 'err');
+      btn.disabled = false; btn.textContent = 'finalizar compra';
+      return;
+    }
+
+    // Fallback: gateway legado (Stripe / MisticPay)
+    const gateway = window.__gateway || 'stripe';
+    const endpoint = gateway === 'misticpay' ? '/api/checkout/pix/create' : '/api/checkout/create-session';
     const r = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -377,7 +404,42 @@ async function checkout() {
   } catch { flash('Erro de conexao.', 'err'); btn.disabled = false; btn.textContent = 'finalizar compra'; }
 }
 
-// Detecta gateway disponivel
+// Carrega PSPs configurados pelo vendedor (modelo Wallet)
+async function loadProviders() {
+  try {
+    const list = await fetch('/api/payment-providers/public').then(r => r.json());
+    if (!Array.isArray(list) || !list.length) return;
+    const box = document.getElementById('provider-box');
+    const ul  = document.getElementById('provider-list');
+    const methodIcon = { pix: '💸 PIX', card: '💳 Cartao', crypto: '₿ Cripto' };
+    ul.innerHTML = list.map((p, i) => `
+      <button type="button" class="prov-btn" data-id="${esc(p.id)}" onclick="pickProvider('${esc(p.id)}')"
+              style="flex:1;min-width:120px;background:#161616;border:1px solid #2a2a2a;color:#fff;padding:11px 12px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;transition:all .15s;text-align:left;">
+        <div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">${methodIcon[p.method] || p.method}</div>
+        <div>${esc(p.label)}</div>
+      </button>
+    `).join('');
+    // Seleciona o primeiro por default
+    if (list[0]) pickProvider(list[0].id);
+    box.style.display = 'block';
+  } catch {}
+}
+function pickProvider(id) {
+  window.__selectedProvider = id;
+  document.querySelectorAll('.prov-btn').forEach(b => {
+    if (b.dataset.id === id) {
+      b.style.borderColor = '#8b6fff';
+      b.style.background = 'rgba(139,111,255,0.08)';
+    } else {
+      b.style.borderColor = '#2a2a2a';
+      b.style.background = '#161616';
+    }
+  });
+}
+
+loadProviders();
+
+// Detecta gateway legado disponivel
 fetch('/api/checkout/gateway').then(r => r.json()).then(d => { window.__gateway = d.gateway || 'stripe'; }).catch(() => {});
 
 function flash(msg, type) {

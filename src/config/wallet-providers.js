@@ -19,7 +19,9 @@ const PROVIDERS = {
     country: 'BR',
     credentials: [
       { key: 'MP_ACCESS_TOKEN', label: 'Access Token',  type: 'secret',
-        hint: 'production access token (APP_USR-...)' }
+        hint: 'production access token (APP_USR-...)' },
+      { key: 'MP_WEBHOOK_SECRET', label: 'Webhook Secret (opcional)', type: 'secret',
+        hint: 'configure em Suas integracoes > Webhooks > Detalhes' }
     ],
     fee_hint: '0,99% (PIX) · sem mensalidade',
     kyc: 'cpf',
@@ -34,7 +36,9 @@ const PROVIDERS = {
     country: 'BR',
     credentials: [
       { key: 'PUSHINPAY_TOKEN', label: 'API Token', type: 'secret',
-        hint: 'token de producao do painel da PushinPay' }
+        hint: 'token de producao do painel da PushinPay' },
+      { key: 'PUSHINPAY_WEBHOOK_SECRET', label: 'Webhook Secret (opcional)', type: 'secret',
+        hint: 'string definida por voce, envie no header x-pushinpay-webhook-secret' }
     ],
     fee_hint: 'R$ 0,99 ou 2,99% (o que for menor)',
     kyc: 'cpf',

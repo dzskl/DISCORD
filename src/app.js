@@ -32,6 +32,10 @@ function buildApp() {
   app.use('/api/checkout/pix', require('./controllers/checkout_misticpay.controller'));
   app.use('/api/billing/webhook', require('./controllers/billing.controller'));
 
+  // Webhooks dos providers do Wallet (MercadoPago / PushinPay / NOWPayments).
+  // Aceitam JSON (cada connector valida HMAC sobre req.body ja parseado).
+  app.use('/webhooks/wallet', require('./controllers/wallet-webhook.controller'));
+
   // === BODY PARSING ===
   app.use(express.json({ limit: '128kb' }));
   app.use(express.urlencoded({ extended: true, limit: '128kb' }));
@@ -43,6 +47,7 @@ function buildApp() {
   app.use('/auth', limits.auth);
   app.use('/api/checkout/create-session', limits.checkout);
   app.use('/api/checkout/pix/create', limits.checkout);
+  app.use('/api/checkout/wallet/create', limits.checkout);
   app.use('/api/coupons/validate', limits.coupon);
   app.use('/api/', limits.api);
 
@@ -51,6 +56,7 @@ function buildApp() {
   // Por guild: 60 checkouts/min, 30 criacoes de produto/min
   app.use('/api/checkout/pix/create', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
   app.use('/api/checkout/create-session', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
+  app.use('/api/checkout/wallet/create', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
   app.use('/api/products', tenantLimiter({ scope: 'guild', capacity: 30, windowMs: 60_000 }));
   // Por user: 10 saques/min, 5 antecipacoes/min
   app.use('/api/wallet/withdraw', tenantLimiter({ scope: 'user', capacity: 10, windowMs: 60_000 }));

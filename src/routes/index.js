@@ -8,6 +8,7 @@ function register(app) {
   app.use('/api/onboarding', require('../controllers/onboarding.controller'));
   app.use('/api/credentials', require('../controllers/credentials.controller'));
   app.use('/api/payment-providers', require('../controllers/payment-providers.controller'));
+  app.use('/api/checkout/wallet', require('../controllers/wallet-checkout.controller'));
   app.use('/api/billing', require('../controllers/billing.controller'));
   app.use('/api/guilds', require('../controllers/guilds.controller'));
   app.use('/api/wallet', require('../controllers/wallet.controller'));

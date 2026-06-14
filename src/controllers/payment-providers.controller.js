@@ -42,6 +42,21 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/payment-providers/public — pra loja (sem auth) listar opcoes
+// de pagamento que o vendedor ja configurou
+router.get('/public', (req, res) => {
+  const items = wallet.listProviders()
+    .map(p => ({
+      id: p.id,
+      label: p.label,
+      method: p.method,
+      country: p.country,
+      configured: registry.isSupported(p.id) && registry.isConfigured(p.id)
+    }))
+    .filter(p => p.configured);   // so retorna o que o vendedor ja plugou
+  res.json(items);
+});
+
 // GET /api/payment-providers/:id — detalhes de um provider
 router.get('/:id', requireAuth, (req, res) => {
   const p = wallet.getProvider(req.params.id);

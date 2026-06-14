@@ -197,6 +197,7 @@ footer{
 <script>
 const params = new URLSearchParams(location.search);
 const txId = params.get('tx');
+const provider = params.get('provider');     // se setado, eh sale_id do Wallet
 const amount = parseInt(params.get('amount') || '0');
 const qrBase64 = sessionStorage.getItem('pix_qr_' + txId);
 const copyCode = sessionStorage.getItem('pix_code_' + txId);
@@ -219,9 +220,14 @@ async function pollStatus() {
   pollCount++;
   if (pollCount > 200) return;
   try {
-    const r = await fetch('/api/checkout/pix/status/' + encodeURIComponent(txId)).then(r => r.json());
-    if (r.status === 'paid') {
-      showSuccess();
+    const url = provider
+      ? '/api/checkout/wallet/status/' + encodeURIComponent(txId)
+      : '/api/checkout/pix/status/' + encodeURIComponent(txId);
+    const r = await fetch(url).then(r => r.json());
+    if (r.status === 'paid') { showSuccess(); return; }
+    if (r.status === 'expired') {
+      document.getElementById('status').className = 'status err';
+      document.getElementById('status').innerHTML = '<span>cobranca expirada</span>';
       return;
     }
   } catch {}

@@ -1,0 +1,133 @@
+// Checkout via "Wallet" (PSP do vendedor, modelo intermediario).
+//
+// POST /api/checkout/wallet/create
+//   body: { provider, items: [{product_id, quantity}], discord_id, coupon_code?, affiliate_code?, pay_currency? }
+//   resp: { sale_id, provider, charge_id, qr_code, qr_image, pay_url, expires_at, amount_cents }
+//
+// Cria a `sale` em status='pending' com o provider/charge_id e retorna os
+// dados pro frontend renderizar (QR PIX, endereco cripto, link Stripe, etc.).
+//
+// Pagamento eh confirmado depois pelo /webhooks/wallet/:provider, que chama
+// fulfillment.service.fulfillSale(saleId).
+
+const express = require('express');
+const { db } = require('../database/connection');
+const registry = require('../providers/wallet');
+const wallet = require('../config/wallet-providers');
+const plans = require('../config/plans');
+const logger = require('../utils/logger');
+
+const router = express.Router();
+
+router.post('/create', async (req, res) => {
+  const { provider, items, discord_id, coupon_code, affiliate_code, pay_currency } = req.body || {};
+
+  // 1. Valida provider
+  const meta = wallet.getProvider(provider);
+  if (!meta) return res.status(400).json({ error: 'provider invalido' });
+  if (!registry.isSupported(provider)) return res.status(400).json({ error: 'provider ainda nao suportado nesta versao' });
+  if (!registry.isConfigured(provider)) return res.status(503).json({ error: 'provider nao configurado pelo vendedor', provider });
+
+  // 2. Trava por plano
+  const plan = plans.planFor(req);
+  const featureKey = wallet.providerFeature(provider);
+  if (featureKey && !plan.features[featureKey]) {
+    return res.status(402).json({ error: 'provider exige upgrade de plano', required_feature: featureKey });
+  }
+
+  // 3. Valida items
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'items vazio' });
+  if (!/^\d{16,20}$/.test(String(discord_id || ''))) return res.status(400).json({ error: 'discord_id invalido' });
+
+  let amount = 0;
+  const cartDetail = [];
+  for (const it of items) {
+    const p = db.prepare('SELECT * FROM products WHERE id=? AND active=1').get(it.product_id);
+    if (!p) return res.status(404).json({ error: `produto ${it.product_id} nao existe` });
+    if (p.stock != null && p.stock < (it.quantity || 1)) {
+      return res.status(409).json({ error: `produto "${p.name}" sem estoque`, product_id: p.id });
+    }
+    amount += p.price_cents * (it.quantity || 1);
+    cartDetail.push({ id: p.id, q: it.quantity || 1 });
+  }
+
+  // 4. Cupom (opcional)
+  let couponId = null;
+  if (coupon_code) {
+    const c = db.prepare(`SELECT * FROM coupons WHERE UPPER(code)=UPPER(?) AND active=1`).get(coupon_code);
+    if (c) {
+      const discount = Math.round(amount * c.discount_percent / 100);
+      amount = Math.max(100, amount - discount);
+      couponId = c.id;
+    }
+  }
+
+  // 5. Afiliado (opcional)
+  let affiliateId = null;
+  if (affiliate_code) {
+    const aff = db.prepare(`SELECT id FROM affiliates WHERE UPPER(code)=UPPER(?) AND active=1`).get(affiliate_code);
+    if (aff) affiliateId = aff.id;
+  }
+
+  // 6. Cria sale pendente
+  const guildId = req.guildId || null;
+  const firstProductId = cartDetail[0]?.id || null;
+  const info = db.prepare(`
+    INSERT INTO sales (product_id, discord_id, amount_cents, status, cart_items, guild_id, affiliate_id, provider, provider_pay_currency)
+    VALUES (?,?,?,'pending',?,?,?,?,?)
+  `).run(firstProductId, discord_id, amount, JSON.stringify(cartDetail), guildId, affiliateId, provider, pay_currency || null);
+  const saleId = info.lastInsertRowid;
+
+  // 7. Cria cobranca no provider
+  const baseUrl = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+  const webhookUrl = baseUrl ? `${baseUrl}/webhooks/wallet/${provider}` : undefined;
+
+  try {
+    const connector = registry.instantiate(provider);
+    const charge = await connector.createCharge({
+      amount_cents: amount,
+      description: `BotDash #${saleId}`,
+      external_reference: `sale-${saleId}`,
+      order_id: `sale-${saleId}`,
+      order_description: `BotDash #${saleId}`,
+      webhook_url: webhookUrl,
+      ipn_callback_url: webhookUrl,
+      pay_currency: pay_currency || undefined,
+      payer: { email: req.body?.email || undefined }
+    });
+
+    db.prepare(`
+      UPDATE sales SET
+        provider_charge_id = ?,
+        provider_expires_at = ?,
+        provider_raw = ?
+      WHERE id = ?
+    `).run(charge.external_id, charge.expires_at || null, JSON.stringify(charge.raw || {}), saleId);
+
+    res.json({
+      sale_id: saleId,
+      provider,
+      charge_id: charge.external_id,
+      qr_code: charge.qr_code,
+      qr_image: charge.qr_image,
+      pay_url: charge.pay_url,
+      expires_at: charge.expires_at,
+      amount_cents: amount,
+      pay_currency: charge.pay_currency || null,
+      pay_amount: charge.pay_amount || null
+    });
+  } catch (e) {
+    db.prepare(`UPDATE sales SET status='failed' WHERE id=?`).run(saleId);
+    logger.warn({ err: e.message, code: e.code, provider, sale_id: saleId }, 'wallet checkout falhou');
+    res.status(502).json({ error: e.message || 'erro ao criar cobranca', code: e.code });
+  }
+});
+
+// Status polling: cliente consulta status da sale enquanto aguarda pagamento
+router.get('/status/:sale_id', (req, res) => {
+  const s = db.prepare(`SELECT id, status, provider, provider_charge_id, paid_at FROM sales WHERE id=?`).get(req.params.sale_id);
+  if (!s) return res.status(404).json({ error: 'sale nao encontrada' });
+  res.json(s);
+});
+
+module.exports = router;
