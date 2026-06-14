@@ -9,8 +9,10 @@ const CONNECTORS = {
   pushinpay:   require('./pushinpay.connector'),
   nowpayments: require('./nowpayments.connector'),
   asaas:       require('./asaas.connector'),
-  abacatepay:  require('./abacatepay.connector')
-  // stripe / misticpay / efi — vem nas proximas rodadas
+  abacatepay:  require('./abacatepay.connector'),
+  stripe:      require('./stripe.connector'),
+  misticpay:   require('./misticpay.connector')
+  // efi — pendente (mTLS ICP-Brasil)
 };
 
 function isSupported(providerId) {

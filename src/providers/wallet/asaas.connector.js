@@ -94,6 +94,7 @@ class AsaasConnector extends BaseConnector {
     const evt = String(b.event || '').toUpperCase();
     let event = 'pending_fetch';
     let paid_at = null;
+    let reason = null;
     if (evt === 'PAYMENT_CONFIRMED' || evt === 'PAYMENT_RECEIVED') {
       event = 'paid';
       paid_at = b.payment.paymentDate
@@ -101,7 +102,10 @@ class AsaasConnector extends BaseConnector {
         : Math.floor(Date.now() / 1000);
     } else if (evt === 'PAYMENT_OVERDUE' || evt === 'PAYMENT_DELETED') {
       event = 'expired';
-    } else if (evt === 'PAYMENT_REFUNDED' || evt === 'PAYMENT_CHARGEBACK_REQUESTED') {
+    } else if (evt === 'PAYMENT_CHARGEBACK_REQUESTED' || evt === 'PAYMENT_CHARGEBACK_DISPUTE' || evt === 'PAYMENT_REFUND_IN_PROGRESS') {
+      event = 'med_returned';
+      reason = `Asaas ${evt}`;
+    } else if (evt === 'PAYMENT_REFUNDED') {
       event = 'refunded';
     }
 
@@ -110,6 +114,7 @@ class AsaasConnector extends BaseConnector {
       external_id: String(id),
       amount_cents: typeof b.payment.value === 'number' ? Math.round(b.payment.value * 100) : null,
       paid_at,
+      reason,
       raw: b
     };
   }

@@ -121,7 +121,9 @@ const PROVIDERS = {
     country: 'BR',
     credentials: [
       { key: 'MISTICPAY_CLIENT_ID',     label: 'Client ID',     type: 'secret' },
-      { key: 'MISTICPAY_CLIENT_SECRET', label: 'Client Secret', type: 'secret' }
+      { key: 'MISTICPAY_CLIENT_SECRET', label: 'Client Secret', type: 'secret' },
+      { key: 'MISTICPAY_WEBHOOK_SECRET', label: 'Webhook Secret (opcional)', type: 'secret',
+        hint: 'usado pra HMAC-SHA256 do webhook (x-misticpay-signature)' }
     ],
     fee_hint: 'taxa do contrato MisticPay',
     kyc: 'cpf',

@@ -24,12 +24,29 @@ const HMAC_SECRET_KEY = {
   pushinpay:   'PUSHINPAY_WEBHOOK_SECRET',
   nowpayments: 'NOWPAYMENTS_IPN_SECRET',
   asaas:       'ASAAS_WEBHOOK_TOKEN',
-  abacatepay:  'ABACATE_WEBHOOK_SECRET'
+  abacatepay:  'ABACATE_WEBHOOK_SECRET',
+  stripe:      'STRIPE_WEBHOOK_SECRET',
+  misticpay:   'MISTICPAY_WEBHOOK_SECRET'
 };
 
-// Os webhooks precisam acessar o body cru pra alguns providers. Mas pra MVP
-// usamos express.json — todos esses providers aceitam JSON.
-router.post('/:provider', express.json({ limit: '256kb' }), async (req, res) => {
+// Body parser dinamico: Stripe assina raw body, os outros aceitam JSON.
+// Pra Stripe: express.raw + JSON.parse manual + req.rawBody pra verifySignature.
+const stripeRaw = express.raw({ type: 'application/json', limit: '256kb' });
+const jsonParser = express.json({ limit: '256kb' });
+
+function bodyParser(req, res, next) {
+  if (req.params.provider === 'stripe') {
+    return stripeRaw(req, res, () => {
+      req.rawBody = req.body;
+      try { req.body = JSON.parse(req.body.toString('utf8') || '{}'); }
+      catch { req.body = {}; }
+      next();
+    });
+  }
+  return jsonParser(req, res, next);
+}
+
+router.post('/:provider', bodyParser, async (req, res) => {
   const provider = req.params.provider;
   if (!registry.isSupported(provider)) return res.status(404).json({ error: 'provider desconhecido' });
 
@@ -129,6 +146,19 @@ router.post('/:provider', express.json({ limit: '256kb' }), async (req, res) => 
     db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
     markEventStatus(webhookEventId, 'processed', sale.id);
     return res.status(200).json({ ok: true, refunded: true });
+  }
+
+  if (event === 'med_returned') {
+    try {
+      const med = require('../services/med.service');
+      const r = await med.handleMedReturn(sale.id, { reason: parsed.reason });
+      markEventStatus(webhookEventId, 'processed', sale.id);
+      return res.status(200).json({ ok: true, med_returned: true, already: !!r.already_processed });
+    } catch (e) {
+      logger.error({ err: e.message, sale_id: sale.id }, 'med handler falhou');
+      markEventStatus(webhookEventId, 'failed', sale.id, e.message);
+      return res.status(500).json({ error: 'med falhou' });
+    }
   }
 
   // pending / partial — registra mas nao age
