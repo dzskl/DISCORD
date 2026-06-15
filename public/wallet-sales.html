@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendas — Wallet — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
+:root {
+  --bg: #0a0a0a; --surface: #111; --surface-2: #161616; --surface-3: #1a1a1a;
+  --border: #1f1f1f; --border-strong: #2a2a2a;
+  --text: #e8e8e8; --text-dim: #888; --text-faint: #555; --text-mute: #333;
+  --primary: #5865f2; --primary-hov: #4752c4; --primary-glow: rgba(88,101,242,0.18);
+  --success: #5fff5f; --success-bg: #0a1f0a; --success-bd: #1a4a1a;
+  --warn: #f5c542; --warn-bg: #1f1900;
+  --danger: #ff5f5f; --danger-bg: #1f0a0a; --danger-bd: #3a1010;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:40px 20px 80px;}
+.wrap{max-width:1100px;margin:0 auto;}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-faint);text-decoration:none;margin-bottom:16px;font-family:'IBM Plex Mono',monospace;}
+.back:hover{color:var(--text);}
+h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:6px;}
+.sub{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);}
+
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:28px 0 18px;}
+.tab{padding:10px 16px;font-size:12.5px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:.12s;font-family:'Syne',sans-serif;background:none;border-top:0;border-left:0;border-right:0;}
+.tab.active{color:#fff;border-bottom-color:var(--primary);}
+.tab .count{margin-left:6px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);background:var(--surface);padding:2px 7px;border-radius:20px;}
+.tab.active .count{color:#fff;background:var(--primary);}
+
+.sales-list{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.sales-list table{width:100%;border-collapse:collapse;}
+.sales-list th{background:var(--surface-2);color:var(--text-faint);font-size:10.5px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:10px 14px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);}
+.sales-list td{padding:11px 14px;border-bottom:1px solid var(--surface-3);font-size:12.5px;}
+.sales-list tr:last-child td{border-bottom:0;}
+.sales-list tr:hover{background:var(--surface-2);}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:3px 9px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.chip.paid{background:var(--success-bg);color:var(--success);border:1px solid var(--success-bd);}
+.chip.refunded{background:rgba(245,197,66,0.08);color:var(--warn);border:1px solid rgba(245,197,66,0.25);}
+.chip.med_returned{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-bd);}
+.chip.pending{background:var(--surface-3);color:var(--text-faint);border:1px solid var(--border);}
+
+.amount{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.discord-tag{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);}
+.charge-id{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-mute);}
+.actions{display:flex;gap:6px;}
+.btn{background:transparent;border:1px solid var(--border-strong);color:var(--text);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Syne',sans-serif;transition:all .12s;}
+.btn:hover{border-color:var(--primary);}
+.btn.danger{color:var(--danger);border-color:var(--danger-bd);}
+.btn.danger:hover{background:var(--danger-bg);border-color:var(--danger);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.empty{padding:60px 20px;text-align:center;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+
+.alert{padding:11px 14px;border-radius:9px;font-size:12.5px;margin-bottom:16px;display:none;line-height:1.5;border:1px solid;}
+.alert.ok{background:var(--success-bg);color:var(--success);border-color:var(--success-bd);display:block;}
+.alert.err{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-bd);display:block;}
+
+/* Modal de refund */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal.open{display:flex;}
+.modal-card{background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:28px;max-width:440px;width:100%;}
+.modal h2{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;}
+.modal-sub{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.flabel{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;font-weight:600;}
+.inp{width:100%;background:#0a0a0a;border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#fff;outline:none;}
+.inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.btn.primary:hover{background:var(--primary-hov);border-color:var(--primary-hov);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/app.html">← voltar pro painel</a>
+  <h1>Vendas processadas</h1>
+  <div class="sub">vendas pagas, reembolsos manuais e devolucoes bancarias (MED) dos seus PSPs conectados</div>
+
+  <div id="alert" class="alert"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-status="paid"          onclick="pick('paid', this)">pagas <span class="count" id="c-paid">0</span></button>
+    <button class="tab"        data-status="refunded"      onclick="pick('refunded', this)">reembolsadas <span class="count" id="c-refunded">0</span></button>
+    <button class="tab"        data-status="med_returned"  onclick="pick('med_returned', this)">MED <span class="count" id="c-med">0</span></button>
+  </div>
+
+  <div class="sales-list">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>cliente</th><th>produto</th><th>valor</th><th>PSP</th><th>data</th><th>status</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="sales-tbody">
+        <tr><td colspan="8"><div class="empty">carregando...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h2 id="modal-title">Reembolsar venda</h2>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="alert" id="modal-alert"></div>
+    <form onsubmit="doRefund(event)">
+      <div class="field">
+        <div class="flabel">motivo</div>
+        <input class="inp" id="refund-reason" placeholder="solicitado pelo cliente" autocomplete="off">
+      </div>
+      <div class="field">
+        <div class="flabel">valor (R$) — em branco = total</div>
+        <input class="inp" id="refund-value" placeholder="0,00" inputmode="decimal">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal()">cancelar</button>
+        <button type="submit" class="btn primary danger" id="refund-btn">reembolsar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let currentStatus = 'paid';
+let refundSale = null;
+
+function pick(status, btn) {
+  currentStatus = status;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  load();
+}
+
+async function load() {
+  try {
+    const url = `/api/checkout/wallet/sales?status=${encodeURIComponent(currentStatus)}&limit=100`;
+    const r = await fetch(url, { credentials: 'include' });
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    const data = await r.json();
+    render(data.sales || []);
+    // Atualiza counts (carrega cada status em paralelo)
+    const statuses = ['paid', 'refunded', 'med_returned'];
+    for (const s of statuses) {
+      fetch(`/api/checkout/wallet/sales?status=${s}&limit=200`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+          const el = document.getElementById('c-' + (s === 'med_returned' ? 'med' : s));
+          if (el) el.textContent = (d.sales || []).length;
+        }).catch(() => {});
+    }
+  } catch {
+    showAlert('erro ao carregar vendas', 'err');
+  }
+}
+
+function render(sales) {
+  const body = document.getElementById('sales-tbody');
+  if (!sales.length) { body.innerHTML = `<tr><td colspan="8"><div class="empty">nenhuma venda ${esc(currentStatus)}</div></td></tr>`; return; }
+  body.innerHTML = sales.map(s => {
+    const amount = `R$ ${(s.amount_cents / 100).toFixed(2).replace('.', ',')}`;
+    const when = s.paid_at ? new Date(s.paid_at * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) :
+                 new Date(s.created_at * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const canRefund = s.status === 'paid' && ['mercadopago', 'asaas', 'stripe'].includes(s.provider);
+    const actions = canRefund
+      ? `<button class="btn danger" onclick='openRefund(${JSON.stringify(s)})'>reembolsar</button>`
+      : (s.status === 'med_returned'
+          ? `<span class="discord-tag" title="bloqueado pelo banco emissor">bloqueado</span>`
+          : '');
+    return `<tr>
+      <td>#${s.id}</td>
+      <td><span class="discord-tag">${esc(s.discord_tag || s.discord_id)}</span></td>
+      <td>${esc(s.product_name || '—')}</td>
+      <td><span class="amount">${amount}</span>${s.provider_pay_currency ? `<br><span class="charge-id">${esc(s.provider_pay_currency)}</span>` : ''}</td>
+      <td>${esc(s.provider)}<br><span class="charge-id">${esc((s.provider_charge_id || '').slice(0, 20))}</span></td>
+      <td><span class="discord-tag">${esc(when)}</span></td>
+      <td><span class="chip ${s.status}">${esc(s.status)}</span></td>
+      <td><div class="actions">${actions}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openRefund(sale) {
+  refundSale = sale;
+  document.getElementById('modal-title').textContent = `Reembolsar venda #${sale.id}`;
+  document.getElementById('modal-sub').textContent = `${sale.provider} · R$ ${(sale.amount_cents/100).toFixed(2).replace('.', ',')} · ${sale.discord_tag || sale.discord_id}`;
+  document.getElementById('refund-value').value = '';
+  document.getElementById('refund-reason').value = '';
+  document.getElementById('modal-alert').className = 'alert';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); refundSale = null; }
+
+async function doRefund(e) {
+  e.preventDefault();
+  if (!refundSale) return;
+  const btn = document.getElementById('refund-btn');
+  const alertEl = document.getElementById('modal-alert');
+  const valueStr = document.getElementById('refund-value').value.trim();
+  const reason = document.getElementById('refund-reason').value.trim();
+  const body = { reason: reason || undefined };
+  if (valueStr) {
+    const v = Math.round(parseFloat(valueStr.replace(',', '.')) * 100);
+    if (v > 0) body.value = v;
+  }
+
+  btn.disabled = true; btn.textContent = 'enviando...';
+  try {
+    const r = await fetch(`/api/checkout/wallet/refund/${refundSale.id}`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      alertEl.className = 'alert err'; alertEl.textContent = '✗ ' + (d.error || 'falha');
+      btn.disabled = false; btn.textContent = 'reembolsar';
+      return;
+    }
+    alertEl.className = 'alert ok'; alertEl.textContent = '✓ reembolso enviado pra PSP';
+    btn.disabled = false; btn.textContent = 'reembolsar';
+    setTimeout(() => { closeModal(); load(); }, 1200);
+  } catch {
+    alertEl.className = 'alert err'; alertEl.textContent = 'erro de conexao';
+    btn.disabled = false; btn.textContent = 'reembolsar';
+  }
+}
+
+function showAlert(msg, type) {
+  const a = document.getElementById('alert');
+  a.className = 'alert ' + type;
+  a.textContent = msg;
+  setTimeout(() => { a.className = 'alert'; a.textContent = ''; }, 4000);
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+load();
+</script>
+</body>
+</html>

@@ -171,4 +171,31 @@ router.post('/refund/:sale_id', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/checkout/wallet/sales — lista vendas processadas via Wallet
+// (paid / refunded / med_returned) com filtros pra UI de disputa
+router.get('/sales', requireAuth, (req, res) => {
+  const status = String(req.query.status || '').trim() || null;   // paid | refunded | med_returned
+  const provider = String(req.query.provider || '').trim() || null;
+  const limit = Math.min(100, parseInt(req.query.limit) || 50);
+
+  const wheres = ['provider IS NOT NULL'];
+  const args = [];
+  if (req.guildId) { wheres.push('(guild_id = ? OR guild_id IS NULL)'); args.push(req.guildId); }
+  if (status)      { wheres.push('status = ?'); args.push(status); }
+  if (provider)    { wheres.push('provider = ?'); args.push(provider); }
+
+  const rows = db.prepare(`
+    SELECT s.id, s.discord_id, s.discord_tag, s.amount_cents, s.net_to_owner_cents,
+           s.status, s.provider, s.provider_charge_id, s.provider_pay_currency,
+           s.paid_at, s.created_at, s.guild_id,
+           p.name AS product_name
+    FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE ${wheres.join(' AND ')}
+    ORDER BY COALESCE(s.paid_at, s.created_at) DESC
+    LIMIT ?
+  `).all(...args, limit);
+
+  res.json({ sales: rows });
+});
+
 module.exports = router;

@@ -72,7 +72,11 @@ const PROVIDERS = {
       { key: 'EFI_CLIENT_ID',     label: 'Client ID',     type: 'text' },
       { key: 'EFI_CLIENT_SECRET', label: 'Client Secret', type: 'secret' },
       { key: 'EFI_CERTIFICATE',   label: 'Certificado .p12 (base64)', type: 'secret',
-        hint: 'cole o conteudo do .p12 em base64' }
+        hint: 'gere o .p12 no painel da Efi e cole em base64 (base64 -w0)' },
+      { key: 'EFI_PIX_KEY',       label: 'Chave PIX de recebimento', type: 'text',
+        hint: 'CPF/CNPJ/email/telefone/aleatoria que recebe os pagamentos' },
+      { key: 'EFI_WEBHOOK_SECRET', label: 'Webhook Secret (opcional)', type: 'secret',
+        hint: 'string compartilhada no header x-efi-webhook-secret' }
     ],
     fee_hint: 'a partir de R$ 0,09 por PIX',
     kyc: 'cnpj',

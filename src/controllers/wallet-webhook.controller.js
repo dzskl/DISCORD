@@ -26,7 +26,8 @@ const HMAC_SECRET_KEY = {
   asaas:       'ASAAS_WEBHOOK_TOKEN',
   abacatepay:  'ABACATE_WEBHOOK_SECRET',
   stripe:      'STRIPE_WEBHOOK_SECRET',
-  misticpay:   'MISTICPAY_WEBHOOK_SECRET'
+  misticpay:   'MISTICPAY_WEBHOOK_SECRET',
+  efi:         'EFI_WEBHOOK_SECRET'
 };
 
 // Body parser dinamico: Stripe assina raw body, os outros aceitam JSON.

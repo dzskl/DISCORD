@@ -145,7 +145,18 @@ class MercadoPagoConnector extends BaseConnector {
   mapStatus(payment) {
     const s = payment.status;
     if (s === 'approved')   return 'paid';
-    if (s === 'refunded')   return 'refunded';
+    if (s === 'refunded') {
+      // refund pode ser manual ou MED (dispute). Refunds list disponivel
+      // em payment.refunds — se algum tem reason='disputa' / status='approved'
+      // vindo de chargeback, eh MED.
+      const refunds = payment.refunds || [];
+      const isDispute = refunds.some(r => {
+        const reason = String(r.reason || r.refund_mode || '').toLowerCase();
+        return reason.includes('disput') || reason.includes('chargeback') || reason.includes('med');
+      });
+      return isDispute ? 'med_returned' : 'refunded';
+    }
+    if (s === 'charged_back') return 'med_returned';  // chargeback explicito
     if (s === 'cancelled')  return 'expired';
     if (s === 'rejected')   return 'expired';
     if (s === 'pending' || s === 'in_process' || s === 'authorized') return 'pending';

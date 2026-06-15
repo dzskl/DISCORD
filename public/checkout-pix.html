@@ -199,6 +199,8 @@ const params = new URLSearchParams(location.search);
 const txId = params.get('tx');
 const provider = params.get('provider');     // se setado, eh sale_id do Wallet
 const amount = parseInt(params.get('amount') || '0');
+const payCurrency = params.get('pay_currency');     // cripto: usdttrc20, btc, ...
+const payAmount   = params.get('pay_amount');       // valor em cripto (string)
 const qrBase64 = sessionStorage.getItem('pix_qr_' + txId);
 const copyCode = sessionStorage.getItem('pix_code_' + txId);
 
@@ -206,6 +208,16 @@ if (!txId) {
   document.body.innerHTML = '<div class="wrap"><div class="card"><h1>Transação inválida</h1><a href="/loja.html" class="back">← voltar pra loja</a></div></div>';
 } else {
   document.getElementById('amount').textContent = 'R$ ' + (amount / 100).toFixed(2).replace('.', ',');
+  // Se for cripto, mostra valor nativo (USDT/BTC) abaixo do BRL
+  if (payCurrency && payAmount) {
+    const sub = document.querySelector('.sub');
+    if (sub) {
+      sub.innerHTML = `≈ <b>${payAmount} ${payCurrency.toUpperCase()}</b> · cotacao congelada por 15min`;
+    }
+    // Atualiza titulo do passo a passo
+    const title = document.getElementById('title');
+    if (title) title.textContent = 'Pague com ' + payCurrency.toUpperCase();
+  }
   if (qrBase64) {
     document.getElementById('qr-img').src = qrBase64.startsWith('data:') ? qrBase64 : 'data:image/png;base64,' + qrBase64;
   }

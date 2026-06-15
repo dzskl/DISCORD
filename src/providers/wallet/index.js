@@ -11,8 +11,8 @@ const CONNECTORS = {
   asaas:       require('./asaas.connector'),
   abacatepay:  require('./abacatepay.connector'),
   stripe:      require('./stripe.connector'),
-  misticpay:   require('./misticpay.connector')
-  // efi — pendente (mTLS ICP-Brasil)
+  misticpay:   require('./misticpay.connector'),
+  efi:         require('./efi.connector')
 };
 
 function isSupported(providerId) {

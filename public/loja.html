@@ -373,7 +373,10 @@ async function checkout() {
         if (r.qr_image) sessionStorage.setItem('pix_qr_' + r.sale_id, r.qr_image.startsWith('data:') ? r.qr_image : 'data:image/png;base64,' + r.qr_image);
         if (r.qr_code) sessionStorage.setItem('pix_code_' + r.sale_id, r.qr_code);
         if (r.pay_url && !r.qr_code) { location.href = r.pay_url; return; }
-        location.href = `/checkout-pix.html?tx=${encodeURIComponent(r.sale_id)}&amount=${r.amount_cents}&provider=${encodeURIComponent(provider)}`;
+        let pixUrl = `/checkout-pix.html?tx=${encodeURIComponent(r.sale_id)}&amount=${r.amount_cents}&provider=${encodeURIComponent(provider)}`;
+        if (r.pay_currency) pixUrl += `&pay_currency=${encodeURIComponent(r.pay_currency)}`;
+        if (r.pay_amount)   pixUrl += `&pay_amount=${encodeURIComponent(r.pay_amount)}`;
+        location.href = pixUrl;
         return;
       }
       flash(r.error || 'Erro ao iniciar pagamento.', 'err');
