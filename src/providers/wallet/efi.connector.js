@@ -154,6 +154,19 @@ class EfiConnector extends BaseConnector {
     return data;
   }
 
+  async testConnection() {
+    this.ensureCreds();
+    this.cert();
+    // OAuth ja valida creds + cert
+    try {
+      await this.getToken();
+      return { ok: true };
+    } catch (e) {
+      e.code = 'efi_test_failed';
+      throw e;
+    }
+  }
+
   parseWebhook(req) {
     const b = req.body || {};
     const pix = (b.pix || [])[0];

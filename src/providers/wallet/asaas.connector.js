@@ -139,6 +139,13 @@ class AsaasConnector extends BaseConnector {
     try { return crypto.timingSafeEqual(a, b); } catch { return false; }
   }
 
+  // GET /v3/myAccount — valida API key e retorna info da conta
+  async testConnection() {
+    this.ensureCreds();
+    const data = await this.api('GET', '/v3/myAccount');
+    return { ok: true, account: { name: data.name, email: data.email, cpfCnpj: data.cpfCnpj, balance: data.totalBalance } };
+  }
+
   async api(method, path, body) {
     const r = await fetch(`${this.baseUrl()}${path}`, {
       method,

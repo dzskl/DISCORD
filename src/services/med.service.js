@@ -55,19 +55,34 @@ async function handleMedReturn(saleId, opts = {}) {
     `).run(sale.net_to_owner_cents || sale.amount_cents, sale.guild_id || '');
   } catch {}
 
-  // 4. Notifica vendedor
+  // 4. Notifica vendedor (in-app + DM no Discord se possivel)
   try {
     const sellerId = findSellerId(sale);
+    const amountStr = `R$ ${((sale.net_to_owner_cents || sale.amount_cents) / 100).toFixed(2).replace('.', ',')}`;
     if (sellerId) {
       db.prepare(`
         INSERT INTO notifications (user_id, guild_id, kind, title, body, link)
-        VALUES (?, ?, 'warning', ?, ?, '/app.html#vendas')
+        VALUES (?, ?, 'warning', ?, ?, '/wallet-sales.html')
       `).run(
         sellerId,
         sale.guild_id || null,
         `⚠️ Devolucao MED na venda #${sale.id}`,
-        `O banco emissor solicitou devolucao da venda de R$ ${((sale.net_to_owner_cents || sale.amount_cents) / 100).toFixed(2).replace('.', ',')}. Motivo: ${reason}. Saque correspondente foi bloqueado.`
+        `O banco emissor solicitou devolucao da venda de ${amountStr}. Motivo: ${reason}. Saque correspondente foi bloqueado.`
       );
+
+      // DM Discord pro vendedor (se tiver discord_id linkado)
+      try {
+        const u = db.prepare('SELECT discord_id FROM users WHERE id=?').get(sellerId);
+        if (u?.discord_id) {
+          const bot = require('./bot.service');
+          const dmBody = `⚠️ **Devolucao MED na venda #${sale.id}**\n` +
+            `Valor: ${amountStr}\n` +
+            `Cliente: ${sale.discord_tag || sale.discord_id}\n` +
+            `Motivo: ${reason}\n` +
+            `Status: saque bloqueado ate decisao. Acesse o painel em /wallet-sales.html`;
+          bot.dmUser(u.discord_id, dmBody).catch(() => {});
+        }
+      } catch {}
     }
   } catch (e) { logger.warn({ err: e.message }, 'med notification falhou'); }
 

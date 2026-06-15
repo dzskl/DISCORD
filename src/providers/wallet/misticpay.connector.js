@@ -57,6 +57,18 @@ class MisticPayConnector extends BaseConnector {
     }
   }
 
+  async testConnection() {
+    this.ensureCreds();
+    try {
+      await this.service().testConnection();
+      return { ok: true };
+    } catch (e) {
+      const err = new Error(e.message);
+      err.code = 'misticpay_test_failed';
+      throw err;
+    }
+  }
+
   parseWebhook(req) {
     const b = req.body || {};
     const id = b.transactionId || b.transaction_id || b.id;

@@ -95,6 +95,19 @@ class NOWPaymentsConnector extends BaseConnector {
     return r.json();
   }
 
+  // GET /v1/status — endpoint publico mas valida que a API key existe
+  async testConnection() {
+    this.ensureCreds();
+    const r = await fetch(`${NOW_API}/v1/auth/me`, {
+      headers: { 'x-api-key': this.credentials.NOWPAYMENTS_API_KEY }
+    });
+    if (r.status === 401 || r.status === 403) {
+      const e = new Error('API key invalida'); e.code = 'now_test_failed'; throw e;
+    }
+    const data = await r.json().catch(() => ({}));
+    return { ok: true, account: data };
+  }
+
   parseWebhook(req) {
     const b = req.body || {};
     const id = b.payment_id;

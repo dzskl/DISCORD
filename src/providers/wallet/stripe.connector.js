@@ -104,6 +104,25 @@ class StripeConnector extends BaseConnector {
     }
   }
 
+  // GET /v1/account — Stripe Account API
+  async testConnection() {
+    this.ensureCreds();
+    try {
+      const acc = await this.stripe().accounts.retrieve();
+      return {
+        ok: true,
+        account: {
+          id: acc.id, email: acc.email, country: acc.country,
+          currency: acc.default_currency, charges_enabled: acc.charges_enabled
+        }
+      };
+    } catch (e) {
+      const err = new Error(e.message || 'Stripe test failed');
+      err.code = 'stripe_test_failed';
+      throw err;
+    }
+  }
+
   // Webhook handler. Stripe ja parseia o tipo do evento.
   parseWebhook(req) {
     const event = req.body || {};

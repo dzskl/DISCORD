@@ -130,9 +130,78 @@ router.get('/status/:sale_id', (req, res) => {
   res.json(s);
 });
 
+const { requireAuth } = require('../middlewares/auth.middleware');
+
+// Timeline da sale: eventos de criacao, pagamento, webhooks recebidos, refund.
+router.get('/sale/:sale_id/timeline', requireAuth, (req, res) => {
+  const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
+  if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
+
+  const events = [];
+  events.push({
+    type: 'created', at: sale.created_at,
+    label: 'Cobranca criada',
+    detail: `${sale.provider || 'legado'} · R$ ${(sale.amount_cents/100).toFixed(2).replace('.', ',')}`
+  });
+  if (sale.paid_at) {
+    events.push({
+      type: 'paid', at: sale.paid_at,
+      label: 'Pagamento confirmado',
+      detail: sale.provider_charge_id ? `charge_id: ${sale.provider_charge_id}` : ''
+    });
+  }
+  if (sale.expires_at && sale.status === 'expired') {
+    events.push({ type: 'expired', at: sale.expires_at, label: 'Cobranca expirada' });
+  }
+  if (sale.status === 'refunded') {
+    events.push({ type: 'refunded', at: sale.paid_at, label: 'Reembolso processado' });
+  }
+  if (sale.status === 'med_returned') {
+    events.push({ type: 'med', at: sale.paid_at, label: 'Devolucao MED (banco emissor)', detail: 'Saque correspondente bloqueado' });
+  }
+
+  // Webhooks recebidos
+  try {
+    const whs = db.prepare(`
+      SELECT id, gateway, event_type, status, received_at, processed_at, error, signature_ok
+      FROM webhook_events
+      WHERE sale_id = ?
+      ORDER BY received_at ASC
+    `).all(sale.id);
+    for (const w of whs) {
+      events.push({
+        type: 'webhook', at: w.received_at,
+        label: `webhook ${w.gateway} (${w.event_type || '?'})`,
+        detail: `${w.status}${w.signature_ok === 0 ? ' · sem HMAC' : ''}${w.error ? ' · ' + w.error : ''}`
+      });
+    }
+  } catch {}
+
+  // Recon cripto
+  if (sale.recon_checked_at) {
+    const ok = sale.recon_status === 'ok';
+    events.push({
+      type: ok ? 'recon_ok' : 'recon_flag',
+      at: sale.recon_checked_at,
+      label: ok ? 'Tx on-chain validada' : '⚠ Recon flagou divergencia',
+      detail: ok ? '' : (sale.recon_status || '').slice(0, 200)
+    });
+  }
+
+  events.sort((a, b) => (a.at || 0) - (b.at || 0));
+
+  res.json({
+    sale: {
+      id: sale.id, status: sale.status, provider: sale.provider,
+      amount_cents: sale.amount_cents, discord_id: sale.discord_id,
+      discord_tag: sale.discord_tag, charge_id: sale.provider_charge_id
+    },
+    events
+  });
+});
+
 // Refund: vendedor solicita estorno via API da PSP (so MP e Asaas suportam
 // nesta versao — NOWPayments cripto nao tem refund).
-const { requireAuth } = require('../middlewares/auth.middleware');
 router.post('/refund/:sale_id', requireAuth, async (req, res) => {
   const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
   if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
@@ -169,6 +238,56 @@ router.post('/refund/:sale_id', requireAuth, async (req, res) => {
     logger.warn({ err: e.message, sale_id: sale.id }, 'refund falhou');
     res.status(502).json({ error: e.message, code: e.code });
   }
+});
+
+// POST /api/checkout/wallet/refund/bulk — reembolsa varias sales de uma vez
+// body: { sale_ids: [1,2,3], reason?: '...' }
+// retorna por sale_id: { ok, error?, code? }
+router.post('/refund/bulk', requireAuth, async (req, res) => {
+  const ids = Array.isArray(req.body?.sale_ids) ? req.body.sale_ids.map(x => parseInt(x)).filter(Boolean) : [];
+  if (!ids.length) return res.status(400).json({ error: 'sale_ids vazio' });
+  if (ids.length > 50) return res.status(400).json({ error: 'maximo 50 por batch' });
+  const reason = String(req.body?.reason || 'bulk refund via BotDash').slice(0, 200);
+
+  const results = {};
+  for (const id of ids) {
+    const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(id);
+    if (!sale)             { results[id] = { ok: false, error: 'nao encontrada' }; continue; }
+    if (sale.status !== 'paid') { results[id] = { ok: false, error: 'nao paga' }; continue; }
+    if (!sale.provider || !sale.provider_charge_id) {
+      results[id] = { ok: false, error: 'sem provider' }; continue;
+    }
+    if (req.guildId && sale.guild_id && sale.guild_id !== req.guildId) {
+      results[id] = { ok: false, error: 'outra guild' }; continue;
+    }
+    if (!registry.isSupported(sale.provider) || !registry.isConfigured(sale.provider)) {
+      results[id] = { ok: false, error: 'provider sem config' }; continue;
+    }
+    const connector = registry.instantiate(sale.provider);
+    if (typeof connector.refundPayment !== 'function') {
+      results[id] = { ok: false, error: 'provider sem refund' }; continue;
+    }
+    try {
+      await connector.refundPayment(sale.provider_charge_id, { description: reason });
+      db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
+      results[id] = { ok: true };
+    } catch (e) {
+      logger.warn({ err: e.message, sale_id: id }, 'bulk refund item falhou');
+      results[id] = { ok: false, error: e.message, code: e.code };
+    }
+  }
+
+  const summary = Object.values(results).reduce(
+    (acc, r) => ({ ok: acc.ok + (r.ok ? 1 : 0), failed: acc.failed + (r.ok ? 0 : 1) }),
+    { ok: 0, failed: 0 }
+  );
+  try {
+    require('../services/audit.service').log({
+      req, action: 'sale.refund.bulk',
+      details: { count: ids.length, ...summary }
+    });
+  } catch {}
+  res.json({ summary, results });
 });
 
 // GET /api/checkout/wallet/sales — lista vendas processadas via Wallet

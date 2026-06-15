@@ -163,6 +163,22 @@ class MercadoPagoConnector extends BaseConnector {
     return 'ignored';
   }
 
+  // GET /users/me — endpoint mais leve pra validar o access token
+  async testConnection() {
+    this.ensureCreds();
+    const r = await fetch(`${MP_API}/users/me`, {
+      headers: { 'Authorization': `Bearer ${this.credentials.MP_ACCESS_TOKEN}` }
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const e = new Error(data.message || `MP HTTP ${r.status}`);
+      e.code = 'mp_test_failed';
+      e.status = r.status;
+      throw e;
+    }
+    return { ok: true, account: { id: data.id, email: data.email, country: data.country_id, nickname: data.nickname } };
+  }
+
   // Validacao opcional do header x-signature (se configurado no painel MP)
   verifySignature(req, secret) {
     if (!secret) return true;   // sem secret = aceita (modo lax)

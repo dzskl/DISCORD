@@ -154,6 +154,23 @@ router.get('/public', (req, res) => {
   res.json(items);
 });
 
+// POST /api/payment-providers/:id/test — smoke test das credenciais
+router.post('/:id/test', requireAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!registry.isSupported(id)) return res.status(404).json({ error: 'provider desconhecido' });
+  if (!registry.isConfigured(id)) return res.status(400).json({ error: 'provider sem credenciais' });
+
+  try {
+    const connector = registry.instantiate(id);
+    const r = await connector.testConnection();
+    res.json({ ok: true, provider: id, ...r });
+  } catch (e) {
+    res.status(e.code === 'test_not_implemented' ? 501 : 400).json({
+      ok: false, provider: id, error: e.message, code: e.code, status: e.status
+    });
+  }
+});
+
 // GET /api/payment-providers/:id — detalhes de um provider
 router.get('/:id', requireAuth, (req, res) => {
   const p = wallet.getProvider(req.params.id);

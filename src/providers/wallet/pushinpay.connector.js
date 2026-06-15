@@ -81,6 +81,18 @@ class PushinPayConnector extends BaseConnector {
     return r.json();
   }
 
+  async testConnection() {
+    this.ensureCreds();
+    // PushinPay nao expoe /me — usamos transactions/list paginada limit=1
+    const r = await fetch(`${PUSHIN_API}/api/transactions?limit=1`, {
+      headers: { 'Authorization': `Bearer ${this.credentials.PUSHINPAY_TOKEN}`, 'Accept': 'application/json' }
+    });
+    if (r.status === 401 || r.status === 403) {
+      const e = new Error('token invalido'); e.code = 'pushin_test_failed'; throw e;
+    }
+    return { ok: true };
+  }
+
   parseWebhook(req) {
     const b = req.body || {};
     const id = b.id || b.transaction_id;

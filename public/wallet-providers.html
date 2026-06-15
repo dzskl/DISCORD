@@ -223,6 +223,9 @@ function card(p) {
   const primaryAction = p.allowed_by_plan && p.supported
     ? `<button class="btn primary" onclick="openModal('${p.id}')">${p.configured ? 'editar' : 'conectar'}</button>`
     : `<button class="btn disabled">${p.allowed_by_plan ? 'em breve' : 'upgrade'}</button>`;
+  const testBtn = p.configured && p.supported
+    ? `<button class="btn" onclick="testConn('${p.id}', this)">testar</button>`
+    : '';
   const removeBtn = p.configured && p.supported
     ? `<button class="btn danger" onclick="disconnect('${p.id}')">desconectar</button>`
     : '';
@@ -235,7 +238,7 @@ function card(p) {
     </div>
     <div class="fee">${esc(p.fee_hint || '')}</div>
     <div class="row" style="justify-content:space-between">${status}${supported}</div>
-    <div class="actions">${primaryAction}${removeBtn}</div>
+    <div class="actions">${primaryAction}${testBtn}${removeBtn}</div>
   </div>`;
 }
 
@@ -306,6 +309,31 @@ async function saveCreds(e) {
     alertEl.className = 'alert ok';
     alertEl.textContent = '✓ salvo';
     setTimeout(() => { closeModal(); load(); }, 800);
+  }
+}
+
+async function testConn(providerId, btn) {
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch(`/api/payment-providers/${encodeURIComponent(providerId)}/test`, {
+      method: 'POST', credentials: 'include'
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      const detail = d.account
+        ? ' · ' + (d.account.email || d.account.name || d.account.id || '')
+        : '';
+      showAlert('✓ ' + providerId + ' conectado' + detail, 'ok');
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+    } else {
+      showAlert('✗ ' + providerId + ': ' + (d.error || 'falha'), 'err');
+      btn.textContent = original; btn.disabled = false;
+    }
+  } catch {
+    showAlert('erro de conexao', 'err');
+    btn.textContent = original; btn.disabled = false;
   }
 }
 

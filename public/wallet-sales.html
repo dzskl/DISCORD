@@ -88,24 +88,40 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
     <button class="tab"        data-status="med_returned"  onclick="pick('med_returned', this)">MED <span class="count" id="c-med">0</span></button>
   </div>
 
+  <div id="bulk-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px;">
+    <span id="bulk-count" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">0 selecionada(s)</span>
+    <button class="btn danger" onclick="bulkRefund()">reembolsar selecionadas</button>
+    <button class="btn" onclick="clearBulk()">limpar</button>
+  </div>
+
   <div class="sales-list">
     <table>
       <thead>
         <tr>
+          <th style="width:30px;"><input type="checkbox" id="select-all" onchange="toggleAll(this)"></th>
           <th>#</th><th>cliente</th><th>produto</th><th>valor</th><th>PSP</th><th>data</th><th>status</th><th></th>
         </tr>
       </thead>
       <tbody id="sales-tbody">
-        <tr><td colspan="8"><div class="empty">carregando...</div></td></tr>
+        <tr><td colspan="9"><div class="empty">carregando...</div></td></tr>
       </tbody>
     </table>
   </div>
 </div>
 
+<div class="modal" id="timeline-modal">
+  <div class="modal-card" style="max-width:560px;">
+    <h2 id="modal-title">Timeline</h2>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-body" style="max-height:400px;overflow-y:auto;"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeTimeline()">fechar</button></div>
+  </div>
+</div>
+
 <div class="modal" id="modal">
   <div class="modal-card">
-    <h2 id="modal-title">Reembolsar venda</h2>
-    <div class="modal-sub" id="modal-sub"></div>
+    <h2 id="refund-title">Reembolsar venda</h2>
+    <div class="modal-sub" id="refund-sub"></div>
     <div class="alert" id="modal-alert"></div>
     <form onsubmit="doRefund(event)">
       <div class="field">
@@ -159,18 +175,22 @@ async function load() {
 
 function render(sales) {
   const body = document.getElementById('sales-tbody');
-  if (!sales.length) { body.innerHTML = `<tr><td colspan="8"><div class="empty">nenhuma venda ${esc(currentStatus)}</div></td></tr>`; return; }
+  if (!sales.length) { body.innerHTML = `<tr><td colspan="9"><div class="empty">nenhuma venda ${esc(currentStatus)}</div></td></tr>`; return; }
   body.innerHTML = sales.map(s => {
     const amount = `R$ ${(s.amount_cents / 100).toFixed(2).replace('.', ',')}`;
     const when = s.paid_at ? new Date(s.paid_at * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) :
                  new Date(s.created_at * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
     const canRefund = s.status === 'paid' && ['mercadopago', 'asaas', 'stripe'].includes(s.provider);
-    const actions = canRefund
-      ? `<button class="btn danger" onclick='openRefund(${JSON.stringify(s)})'>reembolsar</button>`
-      : (s.status === 'med_returned'
-          ? `<span class="discord-tag" title="bloqueado pelo banco emissor">bloqueado</span>`
-          : '');
+    const checkbox = canRefund
+      ? `<input type="checkbox" class="bulk-cb" value="${s.id}" onchange="updateBulkBar()">`
+      : '';
+    const actions = `
+      <button class="btn" onclick="openTimeline(${s.id})">timeline</button>
+      ${canRefund ? `<button class="btn danger" onclick='openRefund(${JSON.stringify(s)})'>reembolsar</button>` : ''}
+      ${s.status === 'med_returned' ? `<span class="discord-tag" title="bloqueado pelo banco emissor">bloqueado</span>` : ''}
+    `;
     return `<tr>
+      <td>${checkbox}</td>
       <td>#${s.id}</td>
       <td><span class="discord-tag">${esc(s.discord_tag || s.discord_id)}</span></td>
       <td>${esc(s.product_name || '—')}</td>
@@ -181,12 +201,76 @@ function render(sales) {
       <td><div class="actions">${actions}</div></td>
     </tr>`;
   }).join('');
+  updateBulkBar();
 }
+
+function updateBulkBar() {
+  const checked = document.querySelectorAll('.bulk-cb:checked');
+  const bar = document.getElementById('bulk-bar');
+  document.getElementById('bulk-count').textContent = `${checked.length} selecionada(s)`;
+  bar.style.display = checked.length ? 'flex' : 'none';
+}
+
+function toggleAll(el) {
+  document.querySelectorAll('.bulk-cb').forEach(cb => cb.checked = el.checked);
+  updateBulkBar();
+}
+
+function clearBulk() {
+  document.querySelectorAll('.bulk-cb').forEach(cb => cb.checked = false);
+  document.getElementById('select-all').checked = false;
+  updateBulkBar();
+}
+
+async function bulkRefund() {
+  const ids = Array.from(document.querySelectorAll('.bulk-cb:checked')).map(cb => parseInt(cb.value));
+  if (!ids.length) return;
+  if (!confirm(`Reembolsar ${ids.length} venda(s)?`)) return;
+  try {
+    const r = await fetch('/api/checkout/wallet/refund/bulk', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sale_ids: ids })
+    });
+    const d = await r.json();
+    if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+    showAlert(`✓ ${d.summary.ok} reembolsadas · ${d.summary.failed} falharam`, d.summary.failed ? 'err' : 'ok');
+    clearBulk();
+    setTimeout(load, 1200);
+  } catch { showAlert('erro de conexao', 'err'); }
+}
+
+async function openTimeline(saleId) {
+  const r = await fetch(`/api/checkout/wallet/sale/${saleId}/timeline`, { credentials: 'include' });
+  if (!r.ok) { showAlert('erro ao carregar timeline', 'err'); return; }
+  const d = await r.json();
+  const dot = (type) => ({
+    created: '#888', paid: '#5fff5f', expired: '#888',
+    refunded: '#f5c542', med: '#ff5f5f', webhook: '#5865f2',
+    recon_ok: '#5fff5f', recon_flag: '#ff5f5f'
+  })[type] || '#666';
+  const rows = (d.events || []).map(e => {
+    const when = new Date((e.at || 0) * 1000).toLocaleString('pt-BR');
+    return `<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #1a1a1a;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dot(e.type)};margin-top:6px;flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;color:#fff;font-size:12.5px;">${esc(e.label)}</div>
+        ${e.detail ? `<div style="font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;margin-top:2px;word-break:break-all;">${esc(e.detail)}</div>` : ''}
+      </div>
+      <span style="font-size:10.5px;color:#666;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${esc(when)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('modal-title').textContent = `Timeline da venda #${d.sale.id}`;
+  document.getElementById('modal-sub').textContent = `${d.sale.provider || ''} · ${d.sale.status} · R$ ${(d.sale.amount_cents/100).toFixed(2).replace('.', ',')}`;
+  document.getElementById('modal-body').innerHTML = rows || '<div class="empty">sem eventos</div>';
+  document.getElementById('timeline-modal').classList.add('open');
+}
+function closeTimeline() { document.getElementById('timeline-modal').classList.remove('open'); }
 
 function openRefund(sale) {
   refundSale = sale;
-  document.getElementById('modal-title').textContent = `Reembolsar venda #${sale.id}`;
-  document.getElementById('modal-sub').textContent = `${sale.provider} · R$ ${(sale.amount_cents/100).toFixed(2).replace('.', ',')} · ${sale.discord_tag || sale.discord_id}`;
+  document.getElementById('refund-title').textContent = `Reembolsar venda #${sale.id}`;
+  document.getElementById('refund-sub').textContent = `${sale.provider} · R$ ${(sale.amount_cents/100).toFixed(2).replace('.', ',')} · ${sale.discord_tag || sale.discord_id}`;
   document.getElementById('refund-value').value = '';
   document.getElementById('refund-reason').value = '';
   document.getElementById('modal-alert').className = 'alert';

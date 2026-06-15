@@ -60,6 +60,14 @@ class BaseConnector {
     // Default: confia (use so se a PSP nao oferece HMAC).
     return true;
   }
+
+  // Smoke test das credenciais — chama um endpoint read-only da PSP.
+  // Default joga "not_implemented" pra que o controller skipe gracefully.
+  async testConnection() {
+    const e = new Error(`${this.providerId}.testConnection nao implementado`);
+    e.code = 'test_not_implemented';
+    throw e;
+  }
   /* eslint-enable no-unused-vars */
 }
 

@@ -52,6 +52,17 @@ class AbacatePayConnector extends BaseConnector {
     return this.api('GET', `/v1/pixQrCode/check?id=${encodeURIComponent(id)}`);
   }
 
+  async testConnection() {
+    this.ensureCreds();
+    const r = await fetch(`${ABACATE_API}/v1/billing/list`, {
+      headers: { 'Authorization': `Bearer ${this.credentials.ABACATE_API_KEY}`, 'Accept': 'application/json' }
+    });
+    if (r.status === 401 || r.status === 403) {
+      const e = new Error('API key invalida'); e.code = 'abacate_test_failed'; throw e;
+    }
+    return { ok: true };
+  }
+
   parseWebhook(req) {
     const b = req.body || {};
     const d = b.data || {};
