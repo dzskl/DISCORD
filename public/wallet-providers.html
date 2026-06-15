@@ -106,7 +106,12 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
   </div>
 
   <div class="section-title">Receita por gateway (ultimos 30 dias)</div>
-  <div id="stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:8px;">
+  <div id="stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:18px;">
+    <div class="empty-state" style="padding:24px;">carregando...</div>
+  </div>
+
+  <div class="section-title">Receita anual (12 meses, empilhado por PSP)</div>
+  <div id="yearly-chart" style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;margin-bottom:8px;min-height:200px;">
     <div class="empty-state" style="padding:24px;">carregando...</div>
   </div>
 
@@ -149,9 +154,67 @@ async function load() {
     render();
     loadStats();
     loadMigrationStatus();
+    loadYearly();
   } catch (e) {
     showAlert('erro ao carregar providers', 'err');
   }
+}
+
+async function loadYearly() {
+  try {
+    const r = await fetch('/api/payment-providers/yearly', { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    const months = d.months || [];
+    const providers = d.providers || [];
+    const matrix = d.matrix || {};
+    const palette = ['#5865f2','#f5c542','#5fff5f','#a87bff','#ff5f5f','#7dd3a4','#ffa057','#5cd1ff'];
+    const colorOf = {};
+    providers.forEach((p, i) => { colorOf[p] = palette[i % palette.length]; });
+
+    // Calcula max pra escalar barras
+    const totals = months.map(m => providers.reduce((acc, p) => acc + ((matrix[m]?.[p]?.gross_cents) || 0), 0));
+    const max = Math.max(1, ...totals);
+    const chartHeight = 180;
+    const barW = 36, gap = 8;
+    const innerW = (barW + gap) * months.length;
+
+    let bars = '';
+    months.forEach((m, mi) => {
+      let y = chartHeight;
+      let x = mi * (barW + gap) + 8;
+      providers.forEach(p => {
+        const v = (matrix[m]?.[p]?.gross_cents) || 0;
+        if (!v) return;
+        const h = (v / max) * chartHeight;
+        y -= h;
+        bars += `<rect x="${x}" y="${y + 20}" width="${barW}" height="${h}" fill="${colorOf[p]}" opacity="0.9"><title>${p}: R$ ${(v/100).toFixed(2)}</title></rect>`;
+      });
+      // Label do mes
+      const monthLabel = m.slice(5) + '/' + m.slice(2, 4);
+      bars += `<text x="${x + barW/2}" y="${chartHeight + 38}" text-anchor="middle" fill="#666" font-family="IBM Plex Mono" font-size="9">${monthLabel}</text>`;
+      // Total
+      if (totals[mi] > 0) {
+        bars += `<text x="${x + barW/2}" y="${chartHeight + 15 - (totals[mi]/max)*chartHeight}" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="9">${(totals[mi]/100).toFixed(0)}</text>`;
+      }
+    });
+
+    // Legenda
+    const legend = providers.map(p =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#aaa;font-family:'IBM Plex Mono',monospace;margin-right:14px;">
+        <span style="width:10px;height:10px;border-radius:2px;background:${colorOf[p]}"></span>${esc(p)}
+      </span>`
+    ).join('');
+
+    document.getElementById('yearly-chart').innerHTML = `
+      <div style="overflow-x:auto;">
+        <svg width="${Math.max(innerW + 20, 600)}" height="${chartHeight + 50}" style="display:block;">
+          ${bars || `<text x="20" y="100" fill="#666" font-family="IBM Plex Mono">sem vendas nos ultimos 12 meses</text>`}
+        </svg>
+      </div>
+      <div style="margin-top:10px;">${legend}</div>
+    `;
+  } catch {}
 }
 
 async function loadMigrationStatus() {

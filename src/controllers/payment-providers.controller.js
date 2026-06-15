@@ -154,6 +154,47 @@ router.get('/public', (req, res) => {
   res.json(items);
 });
 
+// GET /api/payment-providers/yearly — receita por mes x PSP (12 meses)
+router.get('/yearly', requireAuth, (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const yearAgo = now - 365 * 86400;
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs   = req.guildId ? [req.guildId] : [];
+
+  // Agrupa por (ano-mes, provider) — usa strftime do SQLite
+  const rows = db.prepare(`
+    SELECT
+      strftime('%Y-%m', paid_at, 'unixepoch') AS ym,
+      provider,
+      COUNT(*) AS sales_count,
+      COALESCE(SUM(amount_cents), 0) AS gross_cents
+    FROM sales
+    WHERE status='paid' AND provider IS NOT NULL AND paid_at >= ?
+      ${gFilter}
+    GROUP BY ym, provider
+    ORDER BY ym ASC
+  `).all(yearAgo, ...gArgs);
+
+  // Constroi grade 12-meses preenchida com 0
+  const months = [];
+  const today = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const ym = d.toISOString().slice(0, 7);  // YYYY-MM
+    months.push(ym);
+  }
+  const providers = [...new Set(rows.map(r => r.provider))];
+
+  const matrix = {};   // matrix[ym][provider] = { sales_count, gross_cents }
+  for (const ym of months) matrix[ym] = {};
+  for (const r of rows) {
+    if (!matrix[r.ym]) matrix[r.ym] = {};
+    matrix[r.ym][r.provider] = { sales_count: r.sales_count, gross_cents: r.gross_cents };
+  }
+
+  res.json({ months, providers, matrix });
+});
+
 // POST /api/payment-providers/:id/test — smoke test das credenciais
 router.post('/:id/test', requireAuth, async (req, res) => {
   const id = req.params.id;

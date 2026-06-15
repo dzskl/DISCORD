@@ -77,8 +77,13 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
 <body>
 <div class="wrap">
   <a class="back" href="/app.html">← voltar pro painel</a>
-  <h1>Vendas processadas</h1>
-  <div class="sub">vendas pagas, reembolsos manuais e devolucoes bancarias (MED) dos seus PSPs conectados</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+    <div>
+      <h1>Vendas processadas</h1>
+      <div class="sub">vendas pagas, reembolsos manuais e devolucoes bancarias (MED) dos seus PSPs conectados</div>
+    </div>
+    <a class="btn" href="/api/checkout/wallet/sales.csv" download style="text-decoration:none;align-self:flex-start;">⬇ exportar CSV</a>
+  </div>
 
   <div id="alert" class="alert"></div>
 
@@ -184,9 +189,11 @@ function render(sales) {
     const checkbox = canRefund
       ? `<input type="checkbox" class="bulk-cb" value="${s.id}" onchange="updateBulkBar()">`
       : '';
+    const canDispute = s.status === 'paid';
     const actions = `
       <button class="btn" onclick="openTimeline(${s.id})">timeline</button>
       ${canRefund ? `<button class="btn danger" onclick='openRefund(${JSON.stringify(s)})'>reembolsar</button>` : ''}
+      ${canDispute ? `<button class="btn" onclick='disputeManual(${s.id})' title="marcar como contestada (MED manual)">⚠ MED</button>` : ''}
       ${s.status === 'med_returned' ? `<span class="discord-tag" title="bloqueado pelo banco emissor">bloqueado</span>` : ''}
     `;
     return `<tr>
@@ -237,6 +244,23 @@ async function bulkRefund() {
     showAlert(`✓ ${d.summary.ok} reembolsadas · ${d.summary.failed} falharam`, d.summary.failed ? 'err' : 'ok');
     clearBulk();
     setTimeout(load, 1200);
+  } catch { showAlert('erro de conexao', 'err'); }
+}
+
+async function disputeManual(saleId) {
+  const reason = prompt('Motivo da contestacao manual:');
+  if (!reason) return;
+  if (!confirm(`Marcar venda #${saleId} como MED? Acao reverte o ledger e bloqueia saque.`)) return;
+  try {
+    const r = await fetch(`/api/checkout/wallet/sale/${saleId}/dispute`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    const d = await r.json();
+    if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+    showAlert('✓ marcada como MED', 'ok');
+    setTimeout(load, 800);
   } catch { showAlert('erro de conexao', 'err'); }
 }
 

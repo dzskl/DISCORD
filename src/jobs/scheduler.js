@@ -20,6 +20,8 @@ function start() {
   cron.schedule('*/3 * * * *', runWalletPolling);
   // Reconciliacao cripto on-chain — a cada hora, valida tx hash do NOWPayments
   cron.schedule('17 * * * *', runCryptoRecon);
+  // Monitor de fraude/MED — a cada 6h verifica ratio MED/total nas ultimas 24h
+  cron.schedule('23 */6 * * *', runFraudMonitor);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -55,6 +57,16 @@ async function runCryptoRecon() {
     if (r.checked > 0) logger.info(r, 'crypto recon executou');
   } catch (e) {
     logger.error({ err: e.message }, 'crypto recon falhou');
+  }
+}
+
+async function runFraudMonitor() {
+  try {
+    const fm = require('../services/fraud-monitor.service');
+    const r = await fm.run();
+    if (r.alerts > 0) logger.warn(r, 'fraud monitor disparou');
+  } catch (e) {
+    logger.error({ err: e.message }, 'fraud monitor falhou');
   }
 }
 

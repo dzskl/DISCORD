@@ -290,6 +290,68 @@ router.post('/refund/bulk', requireAuth, async (req, res) => {
   res.json({ summary, results });
 });
 
+// POST /api/checkout/wallet/sale/:id/dispute — marca sale como med_returned
+// manualmente (vendedor recebeu contestacao por fora, ex: extrato bancario).
+router.post('/sale/:sale_id/dispute', requireAuth, async (req, res) => {
+  const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
+  if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
+  if (sale.status !== 'paid') return res.status(400).json({ error: 'sale nao esta paga' });
+  if (req.guildId && sale.guild_id && sale.guild_id !== req.guildId) {
+    return res.status(403).json({ error: 'sale de outra guild' });
+  }
+
+  const reason = String(req.body?.reason || 'marcada manualmente como contestada').slice(0, 200);
+  try {
+    const med = require('../services/med.service');
+    const r = await med.handleMedReturn(sale.id, { reason });
+    require('../services/audit.service').log({
+      req, action: 'sale.dispute_manual',
+      target_type: 'sale', target_id: sale.id,
+      details: { reason }
+    });
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    logger.error({ err: e.message, sale_id: sale.id }, 'dispute manual falhou');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/checkout/wallet/sales.csv — exporta em CSV pra contabilidade
+router.get('/sales.csv', requireAuth, (req, res) => {
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs   = req.guildId ? [req.guildId] : [];
+
+  const rows = db.prepare(`
+    SELECT s.id, s.discord_id, s.discord_tag, s.amount_cents, s.net_to_owner_cents,
+           s.status, s.provider, s.provider_charge_id, s.provider_pay_currency,
+           s.paid_at, s.created_at, s.guild_id,
+           p.name AS product_name
+    FROM sales s LEFT JOIN products p ON p.id = s.product_id
+    WHERE s.provider IS NOT NULL ${gFilter}
+    ORDER BY COALESCE(s.paid_at, s.created_at) DESC
+    LIMIT 5000
+  `).all(...gArgs);
+
+  const headers = ['id','status','provider','charge_id','pay_currency','amount_brl','net_brl','discord_id','discord_tag','product','created_at','paid_at'];
+  const lines = [headers.join(',')];
+  for (const r of rows) {
+    const fmt = v => v == null ? '' : String(v).replace(/"/g, '""');
+    const wrap = v => /[,"\n]/.test(String(v ?? '')) ? `"${fmt(v)}"` : fmt(v);
+    const created = r.created_at ? new Date(r.created_at * 1000).toISOString() : '';
+    const paid    = r.paid_at    ? new Date(r.paid_at    * 1000).toISOString() : '';
+    lines.push([
+      r.id, r.status, r.provider, r.provider_charge_id || '', r.provider_pay_currency || '',
+      (r.amount_cents / 100).toFixed(2),
+      ((r.net_to_owner_cents || r.amount_cents) / 100).toFixed(2),
+      r.discord_id || '', r.discord_tag || '',
+      r.product_name || '', created, paid
+    ].map(wrap).join(','));
+  }
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="botdash-sales-${Date.now()}.csv"`);
+  res.send(lines.join('\n'));
+});
+
 // GET /api/checkout/wallet/sales — lista vendas processadas via Wallet
 // (paid / refunded / med_returned) com filtros pra UI de disputa
 router.get('/sales', requireAuth, (req, res) => {
