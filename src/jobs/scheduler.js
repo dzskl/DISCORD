@@ -18,6 +18,8 @@ function start() {
   cron.schedule('*/5 * * * *', runWebhookDlqDrain);
   // Wallet polling fallback — a cada 3min, resolve webhooks perdidos das PSPs
   cron.schedule('*/3 * * * *', runWalletPolling);
+  // Reconciliacao cripto on-chain — a cada hora, valida tx hash do NOWPayments
+  cron.schedule('17 * * * *', runCryptoRecon);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -43,6 +45,16 @@ async function runWalletPolling() {
     if (r.checked > 0) logger.info(r, 'wallet polling executou');
   } catch (e) {
     logger.error({ err: e.message }, 'wallet polling falhou');
+  }
+}
+
+async function runCryptoRecon() {
+  try {
+    const recon = require('../services/crypto-recon.service');
+    const r = await recon.run();
+    if (r.checked > 0) logger.info(r, 'crypto recon executou');
+  } catch (e) {
+    logger.error({ err: e.message }, 'crypto recon falhou');
   }
 }
 

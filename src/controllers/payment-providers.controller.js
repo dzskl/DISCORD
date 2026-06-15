@@ -42,6 +42,46 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/payment-providers/migration-status — info pra UI mostrar banner
+// quando o vendedor ainda usa os endpoints legados (/api/checkout/webhook,
+// /api/checkout/pix) e ja tem wallet configurada.
+router.get('/migration-status', requireAuth, (req, res) => {
+  const { db: legacyDb, getCredential } = require('../database/connection');
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs   = req.guildId ? [req.guildId] : [];
+  const now = Math.floor(Date.now() / 1000);
+  const last30 = now - 30 * 86400;
+
+  // Vendas pelo legado nos ultimos 30d (provider IS NULL ou stripe_session_id)
+  const legacy = legacyDb.prepare(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(amount_cents), 0) AS gross
+    FROM sales
+    WHERE status='paid' AND provider IS NULL AND paid_at >= ?
+      ${gFilter}
+  `).get(last30, ...gArgs);
+
+  const wallet = legacyDb.prepare(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(amount_cents), 0) AS gross
+    FROM sales
+    WHERE status='paid' AND provider IS NOT NULL AND paid_at >= ?
+      ${gFilter}
+  `).get(last30, ...gArgs);
+
+  const stripeLegacyOn = !!getCredential('STRIPE_SECRET_KEY');
+  const misticLegacyOn = !!getCredential('MISTICPAY_CLIENT_ID');
+
+  res.json({
+    legacy_sales_30d:   legacy.count,
+    legacy_gross_30d:   legacy.gross,
+    wallet_sales_30d:   wallet.count,
+    wallet_gross_30d:   wallet.gross,
+    has_legacy_creds:   stripeLegacyOn || misticLegacyOn,
+    deprecation_active: true,
+    sunset_date:        '2026-12-31',
+    successor_endpoint: '/api/checkout/wallet/create'
+  });
+});
+
 // GET /api/payment-providers/stats — receita por PSP (vendedor logado)
 const { db } = require('../database/connection');
 router.get('/stats', requireAuth, (req, res) => {

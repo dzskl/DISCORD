@@ -98,6 +98,13 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
 
   <div id="alert" class="alert"></div>
 
+  <div id="migration-banner" style="display:none;background:rgba(245,197,66,0.06);border:1px solid rgba(245,197,66,0.3);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12.5px;line-height:1.6;color:#f5c542;">
+    <b style="color:#fff">⚠ Modo legado detectado.</b> Voce esta usando o checkout antigo (<code style="background:#1a1a1a;padding:1px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;">/api/checkout/webhook</code> ou <code style="background:#1a1a1a;padding:1px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;">/api/checkout/pix</code>) — sera descontinuado em <b id="sunset-date" style="color:#fff">2026-12-31</b>. Conecte sua PSP abaixo no novo modelo Wallet pra migrar (mesma PSP, mesma UX, sem perder vendas).
+    <div style="margin-top:8px;font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">
+      <span id="legacy-summary">carregando...</span>
+    </div>
+  </div>
+
   <div class="section-title">Receita por gateway (ultimos 30 dias)</div>
   <div id="stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:8px;">
     <div class="empty-state" style="padding:24px;">carregando...</div>
@@ -141,9 +148,25 @@ async function load() {
     document.getElementById('plan-name').textContent = data.plan_name + ' (' + data.plan_id + ')';
     render();
     loadStats();
+    loadMigrationStatus();
   } catch (e) {
     showAlert('erro ao carregar providers', 'err');
   }
+}
+
+async function loadMigrationStatus() {
+  try {
+    const r = await fetch('/api/payment-providers/migration-status', { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.legacy_sales_30d > 0 || d.has_legacy_creds) {
+      const banner = document.getElementById('migration-banner');
+      document.getElementById('sunset-date').textContent = d.sunset_date;
+      document.getElementById('legacy-summary').innerHTML =
+        `Ultimos 30d: ${d.legacy_sales_30d} vendas legado (R$ ${(d.legacy_gross_30d/100).toFixed(2).replace('.', ',')}) vs ${d.wallet_sales_30d} via Wallet (R$ ${(d.wallet_gross_30d/100).toFixed(2).replace('.', ',')})`;
+      banner.style.display = 'block';
+    }
+  } catch {}
 }
 
 async function loadStats() {

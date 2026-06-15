@@ -33,6 +33,15 @@ router.get('/products', (req, res) => {
   res.json(rows);
 });
 
+// Deprecation: endpoint legado. Recomenda-se usar /api/checkout/wallet/create
+// com provider='stripe' (modelo intermediario, mesma PSP, mesma UX).
+router.use((req, res, next) => {
+  res.setHeader('Deprecation', 'true');
+  res.setHeader('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
+  res.setHeader('Link', '</api/checkout/wallet/create>; rel="successor-version"');
+  next();
+});
+
 router.post('/create-session', async (req, res) => {
   const s = stripe();
   if (!s) return res.status(503).json({ error: 'Stripe nao configurado' });

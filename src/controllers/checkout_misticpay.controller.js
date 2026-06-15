@@ -10,6 +10,14 @@ const router = express.Router();
 // Importante: nao usa express.json no router inteiro pra nao consumir o raw do webhook.
 const jsonParser = express.json({ limit: '128kb' });
 
+// Deprecation: usar /api/checkout/wallet/create com provider='misticpay'
+router.use((req, res, next) => {
+  res.setHeader('Deprecation', 'true');
+  res.setHeader('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
+  res.setHeader('Link', '</api/checkout/wallet/create>; rel="successor-version"');
+  next();
+});
+
 // Cria uma cobranca PIX via MisticPay e retorna QR code + copy/paste
 router.post('/create', jsonParser, async (req, res) => {
   if (!mp.isConfigured()) return res.status(503).json({ error: 'MisticPay nao configurado' });
