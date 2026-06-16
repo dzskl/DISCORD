@@ -20,13 +20,17 @@ const ALL_SCOPES = [
   'write:dispute'     // marcar MED manual
 ];
 
-function generate({ user_id, guild_id, label, scopes = ['read:sales'], expires_in_days } = {}) {
+function generate({ user_id, guild_id, label, scopes = ['read:sales'], expires_in_days, test_mode = false } = {}) {
   if (!user_id) throw Object.assign(new Error('user_id obrigatorio'), { code: 'no_user' });
   const invalid = (scopes || []).filter(s => !ALL_SCOPES.includes(s));
   if (invalid.length) throw Object.assign(new Error(`scopes invalidos: ${invalid.join(',')}`), { code: 'bad_scope' });
 
   const secret = crypto.randomBytes(24).toString('base64url').slice(0, 32);
-  const prefix = 'bd_' + crypto.randomBytes(4).toString('hex');
+  // Sandbox keys: prefix `bd_test_<hex>` em vez de `bd_<hex>`. Detectavel pela
+  // string `bd_test_` no inicio do token, sem precisar query no banco.
+  const prefix = test_mode
+    ? 'bd_test_' + crypto.randomBytes(4).toString('hex')
+    : 'bd_' + crypto.randomBytes(4).toString('hex');
   const full = `${prefix}_${secret}`;
   const hash = crypto.createHash('sha256').update(full).digest('hex');
   const expires_at = expires_in_days ? Math.floor(Date.now() / 1000) + expires_in_days * 86400 : null;
@@ -48,9 +52,13 @@ function generate({ user_id, guild_id, label, scopes = ['read:sales'], expires_i
 
 function verify(token) {
   if (!token || !token.startsWith('bd_')) return null;
-  const parts = token.split('_');
-  if (parts.length < 3) return null;
-  const prefix = parts[0] + '_' + parts[1];      // bd_a1b2
+  // Formato: <prefix>_<32 chars de secret>. Secret tem comprimento fixo,
+  // entao o prefix sao todos os chars exceto os ultimos 33 (=_ + 32).
+  // Isso evita ambiguidade quando base64url do secret contem '_'.
+  if (token.length < 35) return null;
+  const prefix = token.slice(0, -33);
+  if (token[token.length - 33] !== '_') return null;
+  const isTestMode = prefix.startsWith('bd_test_');
   const hash = crypto.createHash('sha256').update(token).digest('hex');
 
   const row = db.prepare(`
@@ -73,7 +81,8 @@ function verify(token) {
     id: row.id,
     user_id: row.user_id,
     guild_id: row.guild_id,
-    scopes
+    scopes,
+    test_mode: isTestMode
   };
 }
 

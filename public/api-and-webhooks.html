@@ -98,6 +98,12 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
         <div class="flabel">expira em (dias) — opcional</div>
         <input class="inp" id="key-expires" type="number" placeholder="90" min="1" max="3650">
       </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#aaa;font-family:'IBM Plex Mono',monospace;">
+          <input type="checkbox" id="key-test-mode" style="cursor:pointer;">
+          modo sandbox (bd_test_*) — nao dispara refund real na PSP
+        </label>
+      </div>
       <div id="key-result" style="display:none;">
         <div class="flabel">sua chave (copie agora, nao sera mostrada novamente)</div>
         <div class="code" id="key-result-value"></div>
@@ -167,15 +173,21 @@ async function loadKeys() {
     const expires = k.expires_at ? new Date(k.expires_at*1000).toLocaleDateString('pt-BR') : 'nunca';
     const lastUsed = k.last_used_at ? new Date(k.last_used_at*1000).toLocaleString('pt-BR') : 'nunca usada';
     const scopeChips = (k.scopes||[]).map(s => `<span class="chip">${esc(s)}</span>`).join(' ');
+    const isTest = String(k.key_prefix).startsWith('bd_test_');
+    const testChip = isTest ? '<span class="chip" style="background:#1f1900;color:#f5c542;border-color:rgba(245,197,66,0.3);">SANDBOX</span>' : '';
     return `<div class="card">
       <div class="card-head">
         <div class="card-title">${esc(k.label || k.key_prefix)}</div>
         ${k.active ? '<span class="chip ok">ativa</span>' : '<span class="chip err">revogada</span>'}
+        ${testChip}
         <span class="muted" style="margin-left:auto;">${esc(k.key_prefix)}...</span>
       </div>
       <div class="muted">criada ${new Date(k.created_at*1000).toLocaleDateString('pt-BR')} · expira em ${expires} · ${lastUsed}</div>
       <div style="margin-top:8px;">${scopeChips}</div>
-      ${k.active ? `<div style="margin-top:10px;"><button class="btn danger" onclick="revokeKey(${k.id})">revogar</button></div>` : ''}
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        ${k.active ? `<button class="btn danger" onclick="revokeKey(${k.id})">revogar</button>` : ''}
+        <button class="btn" onclick="viewAudit(${k.id})">audit log</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -235,7 +247,8 @@ async function createKey(e) {
   const body = {
     label: document.getElementById('key-label').value.trim(),
     scopes: [...selectedScopes],
-    expires_in_days: parseInt(document.getElementById('key-expires').value) || null
+    expires_in_days: parseInt(document.getElementById('key-expires').value) || null,
+    test_mode: document.getElementById('key-test-mode').checked
   };
   try {
     const r = await fetch('/api/api-keys', {
@@ -250,6 +263,15 @@ async function createKey(e) {
     document.getElementById('key-result-value').innerHTML = `<span>${esc(d.full_key)}</span><span class="copy" onclick="navigator.clipboard.writeText('${esc(d.full_key)}');this.textContent='copiado!'">copiar</span>`;
     btn.textContent = 'feito';
   } catch { showAlert('erro de conexao', 'err'); btn.disabled = false; btn.textContent = 'gerar'; }
+}
+
+async function viewAudit(id) {
+  const r = await fetch(`/api/api-keys/${id}/audit`, { credentials: 'include' });
+  const d = await r.json();
+  const lines = (d.audit || []).map(a =>
+    `[${new Date(a.created_at*1000).toLocaleString('pt-BR')}] ${a.method} ${a.path} -> ${a.status_code||'?'} · ${a.duration_ms||0}ms${a.test_mode ? ' · sandbox' : ''}${a.ip ? ' · '+a.ip : ''}`
+  ).join('\n');
+  alert(lines || 'sem uso registrado');
 }
 
 async function revokeKey(id) {

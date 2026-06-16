@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: BotDash REST API
+  description: |
+    API publica do BotDash. Modelo intermediario — BotDash nao toca em
+    dinheiro, so orquestra checkout + entrega.
+
+    Autenticacao via Bearer API key. Crie em /api-and-webhooks.html.
+
+    Chaves prefixadas com `bd_test_` rodam em **modo sandbox**: nao
+    disparam fulfillment real (cargo Discord nao eh entregue, vendedor
+    nao recebe notificacao, mas o resto do fluxo executa).
+  version: '1.0.0'
+  contact:
+    name: BotDash
+    url: https://botdash.app
+servers:
+  - url: https://SEU-DOMINIO
+    description: producao
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Sales
+    description: Vendas processadas via Wallet (PIX, cartao, cripto)
+  - name: Refund
+    description: Reembolso individual ou em lote
+  - name: Dispute
+    description: Marcar venda como MED (devolucao bancaria)
+  - name: API Keys
+    description: Gerenciamento de chaves (cookie auth apenas)
+  - name: Webhooks
+    description: Outbound webhooks (cookie auth apenas)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: bd_<prefix>_<secret>
+
+  schemas:
+    Sale:
+      type: object
+      properties:
+        id:                  { type: integer, example: 123 }
+        status:              { type: string, enum: [pending, paid, refunded, med_returned, expired, failed] }
+        provider:            { type: string, example: mercadopago }
+        provider_charge_id:  { type: string, example: '12345678' }
+        amount_cents:        { type: integer, example: 5000 }
+        net_to_owner_cents:  { type: integer, example: 5000 }
+        discord_id:          { type: string,  example: '123456789012345678' }
+        discord_tag:         { type: string,  example: joao }
+        product_name:        { type: string,  example: 'Cargo VIP' }
+        paid_at:             { type: integer, format: int64, example: 1750000000 }
+        created_at:          { type: integer, format: int64, example: 1749999000 }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:               { type: string }
+        code:                { type: string, nullable: true }
+        retry_after_ms:      { type: integer, nullable: true }
+        required_scope:      { type: string, nullable: true }
+
+    BulkRefundResult:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            ok:     { type: integer }
+            failed: { type: integer }
+        results:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              ok:    { type: boolean }
+              error: { type: string, nullable: true }
+              code:  { type: string, nullable: true }
+
+    TimelineEvent:
+      type: object
+      properties:
+        type:   { type: string, enum: [created, paid, expired, refunded, med, webhook, recon_ok, recon_flag] }
+        at:     { type: integer }
+        label:  { type: string }
+        detail: { type: string, nullable: true }
+
+  responses:
+    Unauthorized:
+      description: API key invalida, expirada ou sem Bearer
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: API key sem o scope necessario
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Recurso nao encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Rate limit excedido — veja header Retry-After
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Segundos ate liberar
+        X-RateLimit-Limit:
+          schema: { type: integer }
+        X-RateLimit-Remaining:
+          schema: { type: integer }
+        X-RateLimit-Reset:
+          schema: { type: integer }
+          description: Unix timestamp do reset
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+paths:
+  /api/checkout/wallet/sales:
+    get:
+      tags: [Sales]
+      summary: Lista vendas processadas via Wallet
+      description: 'Scope: `read:sales`. Rate limit: 120/min por API key.'
+      parameters:
+        - { name: status,   in: query, schema: { type: string, enum: [paid, refunded, med_returned] }, required: false }
+        - { name: provider, in: query, schema: { type: string }, required: false }
+        - { name: limit,    in: query, schema: { type: integer, maximum: 100, default: 50 }, required: false }
+      responses:
+        '200':
+          description: Lista de vendas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sales:
+                    type: array
+                    items: { $ref: '#/components/schemas/Sale' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/checkout/wallet/sales.csv:
+    get:
+      tags: [Sales]
+      summary: Exporta vendas em CSV
+      description: 'Scope: `read:sales`. Max 5000 linhas.'
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv:
+              schema: { type: string }
+
+  /api/checkout/wallet/sale/{sale_id}/timeline:
+    get:
+      tags: [Sales]
+      summary: Timeline de eventos de uma venda
+      description: 'Scope: `read:sales`.'
+      parameters:
+        - { name: sale_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sale:   { $ref: '#/components/schemas/Sale' }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/TimelineEvent' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/checkout/wallet/refund/{sale_id}:
+    post:
+      tags: [Refund]
+      summary: Reembolsa uma venda
+      description: 'Scope: `write:refund`. So funciona em MP/Asaas/Stripe. Rate limit: 30/min.'
+      parameters:
+        - { name: sale_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value:  { type: integer, description: 'em centavos; omitido = total' }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Reembolso enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '400': { description: 'Sale nao esta paga / parametros invalidos' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501': { description: 'Provider sem refund via API' }
+        '502': { description: 'Erro upstream na PSP' }
+
+  /api/checkout/wallet/refund/bulk:
+    post:
+      tags: [Refund]
+      summary: Reembolsa multiplas vendas
+      description: 'Scope: `write:refund`. Max 50 por batch.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sale_ids]
+              properties:
+                sale_ids:
+                  type: array
+                  items: { type: integer }
+                  maxItems: 50
+                reason: { type: string }
+      responses:
+        '200':
+          description: Resultado por sale_id
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkRefundResult' }
+
+  /api/checkout/wallet/sale/{sale_id}/dispute:
+    post:
+      tags: [Dispute]
+      summary: Marca venda como MED manualmente
+      description: 'Scope: `write:dispute`. Reverte ledger, bloqueia saque, notifica vendedor.'
+      parameters:
+        - { name: sale_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: 'MED registrado' }
+        '400': { description: 'Sale nao esta paga' }
+        '404': { $ref: '#/components/responses/NotFound' }

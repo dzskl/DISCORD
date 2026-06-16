@@ -23,7 +23,24 @@ function apiKeyOrAuth(requiredScope = null) {
         req.appUser = u || { id: k.user_id };
       } catch { req.appUser = { id: k.user_id }; }
       req.guildId = k.guild_id || req.guildId || null;
-      req.apiKey = { id: k.id, scopes: k.scopes };
+      req.apiKey = { id: k.id, scopes: k.scopes, test_mode: k.test_mode };
+
+      // Audit log de uso (apos response enviada — nao bloqueia)
+      const started = Date.now();
+      res.on('finish', () => {
+        try {
+          db.prepare(`
+            INSERT INTO api_key_audit
+              (api_key_id, user_id, method, path, status_code, ip, user_agent, test_mode, duration_ms)
+            VALUES (?,?,?,?,?,?,?,?,?)
+          `).run(
+            k.id, k.user_id, req.method, req.path, res.statusCode,
+            req.ip || null, String(req.headers['user-agent'] || '').slice(0, 200),
+            k.test_mode ? 1 : 0, Date.now() - started
+          );
+        } catch {}
+      });
+
       return next();
     }
     // Fallback: requireAuth normal (cookie)

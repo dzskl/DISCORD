@@ -38,4 +38,20 @@ router.delete('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/api-keys/:id/audit — historico de uso da chave (cookie auth)
+router.get('/:id/audit', (req, res) => {
+  const { db } = require('../database/connection');
+  const id = parseInt(req.params.id);
+  const k = db.prepare(`SELECT user_id FROM api_keys WHERE id=?`).get(id);
+  if (!k || k.user_id !== req.appUser.id) return res.status(404).json({ error: 'nao encontrada' });
+  const rows = db.prepare(`
+    SELECT id, method, path, status_code, ip, user_agent, test_mode, duration_ms, created_at
+    FROM api_key_audit
+    WHERE api_key_id = ?
+    ORDER BY created_at DESC
+    LIMIT 100
+  `).all(id);
+  res.json({ audit: rows });
+});
+
 module.exports = router;

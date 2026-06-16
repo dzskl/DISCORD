@@ -56,6 +56,10 @@ function tenantLimiter({ scope, capacity, windowMs }) {
     }
 
     const r = take(key, capacity, windowMs);
+    // Headers RFC-style sempre (mesmo em 429)
+    res.set('X-RateLimit-Limit', String(capacity));
+    res.set('X-RateLimit-Reset', String(Math.ceil((Date.now() + windowMs) / 1000)));
+
     if (!r.ok) {
       // Log uma vez por minuto por chave pra nao spammar
       const last = violationsCache.get(key) || 0;
@@ -69,6 +73,7 @@ function tenantLimiter({ scope, capacity, windowMs }) {
         } catch {}
       }
       res.set('Retry-After', Math.ceil(r.retry_after_ms / 1000));
+      res.set('X-RateLimit-Remaining', '0');
       return res.status(429).json({ error: 'rate limit excedido', retry_after_ms: r.retry_after_ms });
     }
     res.set('X-RateLimit-Remaining', String(r.remaining));

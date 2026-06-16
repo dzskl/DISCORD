@@ -223,11 +223,16 @@ router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) =
     return res.status(501).json({ error: `provider ${sale.provider} nao suporta refund via API` });
   }
 
+  // Sandbox: nao chama PSP. So marca como refunded + dispara webhook.
+  const isTest = req.apiKey?.test_mode === true;
+
   try {
-    const r = await connector.refundPayment(sale.provider_charge_id, {
-      value: req.body?.value || undefined,
-      description: req.body?.reason || 'refund via BotDash'
-    });
+    const r = isTest
+      ? { sandbox: true, message: 'refund simulado (test mode)' }
+      : await connector.refundPayment(sale.provider_charge_id, {
+          value: req.body?.value || undefined,
+          description: req.body?.reason || 'refund via BotDash'
+        });
     db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
     require('../services/audit.service').log({
       req, action: 'sale.refund',
