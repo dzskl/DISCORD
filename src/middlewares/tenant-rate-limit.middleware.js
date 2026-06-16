@@ -42,6 +42,15 @@ function tenantLimiter({ scope, capacity, windowMs }) {
       key = `tenant:${scope}:${req.appUser.id}:${req.path}`;
     } else if (scope === 'ip') {
       key = `tenant:ip:${req.ip}:${req.path}`;
+    } else if (scope === 'api_key') {
+      // So limita se a request veio via Bearer api_key (req.apiKey populado
+      // por api-key.middleware). Fallback: ip+path pra rate-limitar mesmo
+      // requests com cookie de sessao.
+      if (req.apiKey?.id) {
+        key = `tenant:apikey:${req.apiKey.id}:${req.path}`;
+      } else {
+        key = `tenant:ip:${req.ip}:${req.path}`;
+      }
     } else {
       return next();
     }

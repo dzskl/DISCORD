@@ -32,4 +32,16 @@ function apiKeyOrAuth(requiredScope = null) {
   };
 }
 
-module.exports = { apiKeyOrAuth };
+// Middleware leve que so popula req.apiKey se vier Bearer bd_*, sem
+// validar scope. Util pra rate-limit ANTES do auth.
+function peekApiKey(req, res, next) {
+  const auth = String(req.headers.authorization || '');
+  if (auth.startsWith('Bearer bd_')) {
+    const token = auth.slice('Bearer '.length).trim();
+    const k = apiKeys.verify(token);
+    if (k) req.apiKey = { id: k.id, scopes: k.scopes };
+  }
+  next();
+}
+
+module.exports = { apiKeyOrAuth, peekApiKey };

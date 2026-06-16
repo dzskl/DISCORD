@@ -22,6 +22,8 @@ function start() {
   cron.schedule('17 * * * *', runCryptoRecon);
   // Monitor de fraude/MED — a cada 6h verifica ratio MED/total nas ultimas 24h
   cron.schedule('23 */6 * * *', runFraudMonitor);
+  // Retry de outbound webhooks falhados — a cada 5min
+  cron.schedule('*/5 * * * *', runOutboundRetry);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -67,6 +69,15 @@ async function runFraudMonitor() {
     if (r.alerts > 0) logger.warn(r, 'fraud monitor disparou');
   } catch (e) {
     logger.error({ err: e.message }, 'fraud monitor falhou');
+  }
+}
+
+async function runOutboundRetry() {
+  try {
+    const r = await require('./outbound-webhook-retry').run();
+    if (r.retried > 0) logger.info(r, 'outbound retry');
+  } catch (e) {
+    logger.error({ err: e.message }, 'outbound retry falhou');
   }
 }
 
