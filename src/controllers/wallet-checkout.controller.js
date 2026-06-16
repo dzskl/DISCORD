@@ -131,6 +131,7 @@ router.get('/status/:sale_id', (req, res) => {
 });
 
 const { requireAuth } = require('../middlewares/auth.middleware');
+const { apiKeyOrAuth } = require('../middlewares/api-key.middleware');
 
 // Timeline da sale: eventos de criacao, pagamento, webhooks recebidos, refund.
 router.get('/sale/:sale_id/timeline', requireAuth, (req, res) => {
@@ -202,7 +203,7 @@ router.get('/sale/:sale_id/timeline', requireAuth, (req, res) => {
 
 // Refund: vendedor solicita estorno via API da PSP (so MP e Asaas suportam
 // nesta versao — NOWPayments cripto nao tem refund).
-router.post('/refund/:sale_id', requireAuth, async (req, res) => {
+router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) => {
   const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
   if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
   if (sale.status !== 'paid') return res.status(400).json({ error: 'sale nao esta paga' });
@@ -233,6 +234,14 @@ router.post('/refund/:sale_id', requireAuth, async (req, res) => {
       target_type: 'sale', target_id: sale.id,
       details: { provider: sale.provider, charge_id: sale.provider_charge_id }
     });
+    try {
+      const ob = require('../services/outbound-webhooks.service');
+      ob.dispatch('sale.refunded', {
+        user_id: req.appUser?.id, guild_id: sale.guild_id, sale_id: sale.id,
+        amount_cents: sale.amount_cents, provider: sale.provider,
+        provider_charge_id: sale.provider_charge_id
+      }).catch(() => {});
+    } catch {}
     res.json({ ok: true, raw: r });
   } catch (e) {
     logger.warn({ err: e.message, sale_id: sale.id }, 'refund falhou');
@@ -354,7 +363,7 @@ router.get('/sales.csv', requireAuth, (req, res) => {
 
 // GET /api/checkout/wallet/sales — lista vendas processadas via Wallet
 // (paid / refunded / med_returned) com filtros pra UI de disputa
-router.get('/sales', requireAuth, (req, res) => {
+router.get('/sales', apiKeyOrAuth('read:sales'), (req, res) => {
   const status = String(req.query.status || '').trim() || null;   // paid | refunded | med_returned
   const provider = String(req.query.provider || '').trim() || null;
   const limit = Math.min(100, parseInt(req.query.limit) || 50);

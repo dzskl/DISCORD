@@ -86,6 +86,22 @@ async function handleMedReturn(saleId, opts = {}) {
     }
   } catch (e) { logger.warn({ err: e.message }, 'med notification falhou'); }
 
+  // Outbound webhook
+  try {
+    const ob = require('./outbound-webhooks.service');
+    ob.dispatch('sale.med_returned', {
+      user_id: findSellerId(sale),
+      guild_id: sale.guild_id,
+      sale_id: sale.id,
+      amount_cents: sale.amount_cents,
+      net_cents: sale.net_to_owner_cents,
+      discord_id: sale.discord_id,
+      provider: sale.provider,
+      provider_charge_id: sale.provider_charge_id,
+      reason
+    }).catch(() => {});
+  } catch {}
+
   return { ok: true, sale_id: sale.id, reason };
 }
 

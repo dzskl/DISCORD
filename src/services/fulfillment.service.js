@@ -133,7 +133,38 @@ async function fulfillSale(saleId, opts = {}) {
     } catch {}
   }
 
+  // 12. Outbound webhook pros vendedores que assinaram sale.paid
+  try {
+    const ob = require('./outbound-webhooks.service');
+    const finalSale = db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id);
+    const sellerId = feeRes?.seller_id || findOwnerForGuild(sale.guild_id);
+    ob.dispatch('sale.paid', {
+      user_id: sellerId,
+      guild_id: sale.guild_id,
+      sale_id: sale.id,
+      amount_cents: finalSale.amount_cents,
+      net_cents: finalSale.net_to_owner_cents,
+      discord_id: sale.discord_id,
+      discord_tag: sale.discord_tag,
+      provider: sale.provider,
+      provider_charge_id: sale.provider_charge_id,
+      paid_at: finalSale.paid_at,
+      products: tagsBought
+    }).catch(() => {});
+  } catch {}
+
   return { ok: true, sale: db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id), tagsBought };
+}
+
+function findOwnerForGuild(guildId) {
+  try {
+    if (guildId) {
+      const r = db.prepare(`SELECT user_id FROM user_guilds WHERE guild_id=? AND role='owner' LIMIT 1`).get(guildId);
+      if (r) return r.user_id;
+    }
+    const r = db.prepare(`SELECT id FROM users WHERE role='owner' AND active=1 ORDER BY id LIMIT 1`).get();
+    return r?.id || null;
+  } catch { return null; }
 }
 
 module.exports = { fulfillSale, computeExpiry, parseCart };
