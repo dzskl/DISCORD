@@ -154,6 +154,59 @@ router.get('/public', (req, res) => {
   res.json(items);
 });
 
+// GET /api/payment-providers/global — visao consolidada por guild
+// (super-admin only). Mostra receita Wallet de cada guild registrada.
+router.get('/global', requireAuth, (req, res) => {
+  try {
+    const { isSuperAdmin } = require('../middlewares/auth.middleware');
+    if (!isSuperAdmin || !isSuperAdmin(req.appUser)) {
+      return res.status(403).json({ error: 'super-admin somente' });
+    }
+  } catch { return res.status(403).json({ error: 'super-admin somente' }); }
+
+  const now = Math.floor(Date.now() / 1000);
+  const monthStart = now - 30 * 86400;
+  const dbConn = require('../database/connection').db;
+
+  const rows = dbConn.prepare(`
+    SELECT
+      COALESCE(s.guild_id, '(default)') AS guild_id,
+      g.name AS guild_name,
+      COUNT(*) AS sales_count,
+      COALESCE(SUM(s.amount_cents), 0) AS gross_cents,
+      COALESCE(SUM(CASE WHEN s.paid_at >= ? THEN s.amount_cents END), 0) AS month_cents,
+      COUNT(DISTINCT s.provider) AS providers_used
+    FROM sales s
+    LEFT JOIN guilds g ON g.id = s.guild_id
+    WHERE s.status='paid' AND s.provider IS NOT NULL
+    GROUP BY guild_id
+    ORDER BY month_cents DESC
+  `).all(monthStart);
+
+  const totals = rows.reduce((a, r) => ({
+    sales: a.sales + r.sales_count,
+    gross: a.gross + r.gross_cents,
+    month: a.month + r.month_cents
+  }), { sales: 0, gross: 0, month: 0 });
+
+  res.json({ guilds: rows, totals });
+});
+
+// POST /api/payment-providers/backfill — backfill de sales legadas
+// Marca sales com stripe_session_id como provider='stripe'
+router.post('/backfill', requireAuth, (req, res) => {
+  // Super-admin only check (reuse middleware)
+  try {
+    const { isSuperAdmin } = require('../middlewares/auth.middleware');
+    if (!isSuperAdmin || !isSuperAdmin(req.appUser)) {
+      return res.status(403).json({ error: 'super-admin somente' });
+    }
+  } catch {}
+  const dry = req.body?.dry_run === true || req.query?.dry_run === '1';
+  const r = require('../jobs/wallet-backfill').run({ dryRun: dry });
+  res.json({ ok: true, dry_run: dry, ...r });
+});
+
 // GET /api/payment-providers/yearly — receita por mes x PSP (12 meses)
 router.get('/yearly', requireAuth, (req, res) => {
   const now = Math.floor(Date.now() / 1000);

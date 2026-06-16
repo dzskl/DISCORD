@@ -11,10 +11,14 @@ const router = express.Router();
 const jsonParser = express.json({ limit: '128kb' });
 
 // Deprecation: usar /api/checkout/wallet/create com provider='misticpay'
+const _legacyLogger = require('../utils/logger');
 router.use((req, res, next) => {
   res.setHeader('Deprecation', 'true');
   res.setHeader('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
   res.setHeader('Link', '</api/checkout/wallet/create>; rel="successor-version"');
+  if (req.method !== 'GET' && !req.path.startsWith('/webhook') && !req.path.startsWith('/status')) {
+    _legacyLogger.warn({ path: req.path, method: req.method }, 'legacy misticpay endpoint usado');
+  }
   next();
 });
 

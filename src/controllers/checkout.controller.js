@@ -35,10 +35,15 @@ router.get('/products', (req, res) => {
 
 // Deprecation: endpoint legado. Recomenda-se usar /api/checkout/wallet/create
 // com provider='stripe' (modelo intermediario, mesma PSP, mesma UX).
+const _legacyLogger = require('../utils/logger');
 router.use((req, res, next) => {
   res.setHeader('Deprecation', 'true');
   res.setHeader('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
   res.setHeader('Link', '</api/checkout/wallet/create>; rel="successor-version"');
+  // So loga writes (POST/PUT) — GET /gateway e /products sao baratos
+  if (req.method !== 'GET' && req.path !== '/webhook') {
+    _legacyLogger.warn({ path: req.path, method: req.method }, 'legacy stripe endpoint usado');
+  }
   next();
 });
 

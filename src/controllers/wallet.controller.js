@@ -155,6 +155,51 @@ router.post('/extract-email', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/wallet/balance-by-provider — quebra o saldo por PSP
+router.get('/balance-by-provider', (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs   = req.guildId ? [req.guildId] : [];
+
+  // Por provider, soma net released (available) e net pending (em hold)
+  const rows = db.prepare(`
+    SELECT
+      provider,
+      COUNT(*) AS sales_count,
+      COALESCE(SUM(amount_cents), 0) AS gross_cents,
+      COALESCE(SUM(CASE
+        WHEN (available_at IS NULL OR available_at <= ?)
+        THEN COALESCE(NULLIF(net_to_owner_cents, 0), amount_cents)
+        ELSE 0 END), 0) AS released_cents,
+      COALESCE(SUM(CASE
+        WHEN available_at IS NOT NULL AND available_at > ?
+        THEN COALESCE(NULLIF(net_to_owner_cents, 0), amount_cents)
+        ELSE 0 END), 0) AS hold_cents,
+      COALESCE(SUM(CASE WHEN status='refunded' THEN amount_cents ELSE 0 END), 0) AS refunded_cents,
+      COALESCE(SUM(CASE WHEN status='med_returned' THEN amount_cents ELSE 0 END), 0) AS med_cents
+    FROM sales
+    WHERE status IN ('paid', 'refunded', 'med_returned')
+      AND provider IS NOT NULL
+      ${gFilter}
+    GROUP BY provider
+    ORDER BY released_cents DESC
+  `).all(now, now, ...gArgs);
+
+  const walletConfig = require('../config/wallet-providers');
+  const items = rows.map(r => ({
+    provider:        r.provider,
+    label:           walletConfig.getProvider(r.provider)?.label || r.provider,
+    method:          walletConfig.getProvider(r.provider)?.method || 'unknown',
+    sales_count:     r.sales_count,
+    gross_cents:     r.gross_cents,
+    released_cents:  r.released_cents,
+    hold_cents:      r.hold_cents,
+    refunded_cents:  r.refunded_cents,
+    med_cents:       r.med_cents
+  }));
+  res.json({ providers: items });
+});
+
 router.get('/withdrawals', (req, res) => {
   const rows = db.prepare(`SELECT * FROM withdrawals WHERE user_id=? ORDER BY requested_at DESC LIMIT 100`).all(req.appUser.id);
   res.json(rows);
