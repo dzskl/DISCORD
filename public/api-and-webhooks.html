@@ -185,6 +185,7 @@ async function loadKeys() {
       <div class="muted">criada ${new Date(k.created_at*1000).toLocaleDateString('pt-BR')} · expira em ${expires} · ${lastUsed}</div>
       <div style="margin-top:8px;">${scopeChips}</div>
       <div style="margin-top:10px;display:flex;gap:6px;">
+        ${k.active ? `<button class="btn" onclick="rotateKey(${k.id})">rotacionar</button>` : ''}
         ${k.active ? `<button class="btn danger" onclick="revokeKey(${k.id})">revogar</button>` : ''}
         <button class="btn" onclick="viewAudit(${k.id})">audit log</button>
       </div>
@@ -263,6 +264,15 @@ async function createKey(e) {
     document.getElementById('key-result-value').innerHTML = `<span>${esc(d.full_key)}</span><span class="copy" onclick="navigator.clipboard.writeText('${esc(d.full_key)}');this.textContent='copiado!'">copiar</span>`;
     btn.textContent = 'feito';
   } catch { showAlert('erro de conexao', 'err'); btn.disabled = false; btn.textContent = 'gerar'; }
+}
+
+async function rotateKey(id) {
+  if (!confirm('Rotacionar essa chave?\n\nA antiga sera revogada e uma NOVA sera gerada (com mesmas configs). A nova chave so eh exibida uma vez.')) return;
+  const r = await fetch(`/api/api-keys/${id}/rotate`, { method: 'POST', credentials: 'include' });
+  const d = await r.json();
+  if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+  prompt('Nova chave gerada — copie agora (nao sera mostrada novamente):', d.full_key);
+  loadKeys();
 }
 
 async function viewAudit(id) {

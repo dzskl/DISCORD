@@ -101,4 +101,28 @@ function revoke(userId, id) {
   return db.prepare(`UPDATE api_keys SET active = 0 WHERE id = ? AND user_id = ?`).run(id, userId).changes > 0;
 }
 
-module.exports = { ALL_SCOPES, generate, verify, list, revoke };
+// Rotate: gera novo prefix+secret pra mesma "logical key". Mantem id antigo
+// como revogado (active=0) e cria uma nova com mesmo label/scopes/etc.
+function rotate(userId, id) {
+  const k = db.prepare(`SELECT * FROM api_keys WHERE id = ? AND user_id = ? AND active = 1`).get(id, userId);
+  if (!k) return null;
+  // Revoga a antiga
+  db.prepare(`UPDATE api_keys SET active = 0 WHERE id = ?`).run(id);
+  // Cria nova com mesmas configs
+  let scopes = [];
+  try { scopes = JSON.parse(k.scopes || '[]'); } catch {}
+  const isTest = String(k.key_prefix).startsWith('bd_test_');
+  const expiresInDays = k.expires_at
+    ? Math.max(1, Math.ceil((k.expires_at - Math.floor(Date.now() / 1000)) / 86400))
+    : null;
+  return generate({
+    user_id: userId,
+    guild_id: k.guild_id,
+    label: k.label ? k.label + ' (rotated)' : 'rotated',
+    scopes,
+    expires_in_days: expiresInDays,
+    test_mode: isTest
+  });
+}
+
+module.exports = { ALL_SCOPES, generate, verify, list, revoke, rotate };

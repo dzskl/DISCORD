@@ -133,9 +133,10 @@ paths:
         - { name: status,   in: query, schema: { type: string, enum: [paid, refunded, med_returned] }, required: false }
         - { name: provider, in: query, schema: { type: string }, required: false }
         - { name: limit,    in: query, schema: { type: integer, maximum: 100, default: 50 }, required: false }
+        - { name: after_id, in: query, schema: { type: integer }, required: false, description: 'cursor: id da ultima sale da pagina anterior (ordem DESC)' }
       responses:
         '200':
-          description: Lista de vendas
+          description: Lista de vendas + paging
           content:
             application/json:
               schema:
@@ -144,6 +145,13 @@ paths:
                   sales:
                     type: array
                     items: { $ref: '#/components/schemas/Sale' }
+                  paging:
+                    type: object
+                    properties:
+                      limit:    { type: integer }
+                      count:    { type: integer }
+                      after_id: { type: integer, nullable: true, description: 'cursor pra proxima pagina (null = ultima)' }
+                      has_more: { type: boolean }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/TooManyRequests' }

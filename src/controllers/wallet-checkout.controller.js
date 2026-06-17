@@ -13,6 +13,8 @@
 const express = require('express');
 const { db } = require('../database/connection');
 const registry = require('../providers/wallet');
+const { requireAuth } = require('../middlewares/auth.middleware');
+const { apiKeyOrAuth } = require('../middlewares/api-key.middleware');
 const wallet = require('../config/wallet-providers');
 const plans = require('../config/plans');
 const logger = require('../utils/logger');
@@ -123,15 +125,22 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// SSE stream: cliente recebe eventos em tempo real (sale.paid, refunded, MED)
+router.get('/stream', apiKeyOrAuth('read:sales'), (req, res) => {
+  const sse = require('../services/sse.service');
+  sse.attach(req, res, {
+    userId:  req.appUser.id,
+    guildId: req.guildId,
+    scopes:  req.apiKey?.scopes || []
+  });
+});
+
 // Status polling: cliente consulta status da sale enquanto aguarda pagamento
 router.get('/status/:sale_id', (req, res) => {
   const s = db.prepare(`SELECT id, status, provider, provider_charge_id, paid_at FROM sales WHERE id=?`).get(req.params.sale_id);
   if (!s) return res.status(404).json({ error: 'sale nao encontrada' });
   res.json(s);
 });
-
-const { requireAuth } = require('../middlewares/auth.middleware');
-const { apiKeyOrAuth } = require('../middlewares/api-key.middleware');
 
 // Timeline da sale: eventos de criacao, pagamento, webhooks recebidos, refund.
 router.get('/sale/:sale_id/timeline', requireAuth, (req, res) => {
@@ -240,12 +249,13 @@ router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) =
       details: { provider: sale.provider, charge_id: sale.provider_charge_id }
     });
     try {
-      const ob = require('../services/outbound-webhooks.service');
-      ob.dispatch('sale.refunded', {
+      const payload = {
         user_id: req.appUser?.id, guild_id: sale.guild_id, sale_id: sale.id,
         amount_cents: sale.amount_cents, provider: sale.provider,
         provider_charge_id: sale.provider_charge_id
-      }).catch(() => {});
+      };
+      require('../services/outbound-webhooks.service').dispatch('sale.refunded', payload).catch(() => {});
+      try { require('../services/sse.service').emit('sale.refunded', payload); } catch {}
     } catch {}
     res.json({ ok: true, raw: r });
   } catch (e) {
@@ -372,12 +382,15 @@ router.get('/sales', apiKeyOrAuth('read:sales'), (req, res) => {
   const status = String(req.query.status || '').trim() || null;   // paid | refunded | med_returned
   const provider = String(req.query.provider || '').trim() || null;
   const limit = Math.min(100, parseInt(req.query.limit) || 50);
+  // Cursor opcional: id da ultima sale da pagina anterior (paginacao DESC)
+  const afterId = req.query.after_id ? parseInt(req.query.after_id) : null;
 
   const wheres = ['provider IS NOT NULL'];
   const args = [];
   if (req.guildId) { wheres.push('(guild_id = ? OR guild_id IS NULL)'); args.push(req.guildId); }
   if (status)      { wheres.push('status = ?'); args.push(status); }
   if (provider)    { wheres.push('provider = ?'); args.push(provider); }
+  if (afterId)     { wheres.push('s.id < ?'); args.push(afterId); }
 
   const rows = db.prepare(`
     SELECT s.id, s.discord_id, s.discord_tag, s.amount_cents, s.net_to_owner_cents,
@@ -386,11 +399,21 @@ router.get('/sales', apiKeyOrAuth('read:sales'), (req, res) => {
            p.name AS product_name
     FROM sales s LEFT JOIN products p ON p.id = s.product_id
     WHERE ${wheres.join(' AND ')}
-    ORDER BY COALESCE(s.paid_at, s.created_at) DESC
+    ORDER BY s.id DESC
     LIMIT ?
   `).all(...args, limit);
 
-  res.json({ sales: rows });
+  // Cursor pra proxima pagina: id do ultimo item se atingiu o limit
+  const nextCursor = rows.length === limit ? rows[rows.length - 1].id : null;
+  res.json({
+    sales: rows,
+    paging: {
+      limit,
+      count: rows.length,
+      after_id: nextCursor,
+      has_more: nextCursor !== null
+    }
+  });
 });
 
 module.exports = router;

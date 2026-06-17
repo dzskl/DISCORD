@@ -38,6 +38,15 @@ router.delete('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/api-keys/:id/rotate — gera novo secret, revoga o antigo
+router.post('/:id/rotate', (req, res) => {
+  const id = parseInt(req.params.id);
+  const k = keys.rotate(req.appUser.id, id);
+  if (!k) return res.status(404).json({ error: 'chave nao encontrada ou ja revogada' });
+  audit.log({ req, action: 'api_key.rotate', target_type: 'api_key', target_id: id, details: { new_id: k.id } });
+  res.json(k);   // contem full_key — exibido UMA VEZ
+});
+
 // GET /api/api-keys/:id/audit — historico de uso da chave (cookie auth)
 router.get('/:id/audit', (req, res) => {
   const { db } = require('../database/connection');

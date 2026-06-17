@@ -147,22 +147,29 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
 
 <script>
 let currentStatus = 'paid';
+let nextCursor = null;
+let allSales = [];
 let refundSale = null;
 
 function pick(status, btn) {
   currentStatus = status;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  nextCursor = null;
+  allSales = [];
   load();
 }
 
 async function load() {
   try {
-    const url = `/api/checkout/wallet/sales?status=${encodeURIComponent(currentStatus)}&limit=100`;
+    let url = `/api/checkout/wallet/sales?status=${encodeURIComponent(currentStatus)}&limit=50`;
+    if (nextCursor) url += `&after_id=${nextCursor}`;
     const r = await fetch(url, { credentials: 'include' });
     if (r.status === 401) { location.href = '/login.html'; return; }
     const data = await r.json();
-    render(data.sales || []);
+    allSales = nextCursor ? allSales.concat(data.sales || []) : (data.sales || []);
+    nextCursor = data.paging?.has_more ? data.paging.after_id : null;
+    render(allSales);
     // Atualiza counts (carrega cada status em paralelo)
     const statuses = ['paid', 'refunded', 'med_returned'];
     for (const s of statuses) {
@@ -208,6 +215,22 @@ function render(sales) {
       <td><div class="actions">${actions}</div></td>
     </tr>`;
   }).join('');
+  // Botao "carregar mais" se houver cursor
+  const tableContainer = document.querySelector('.sales-list');
+  let loadMore = document.getElementById('load-more');
+  if (nextCursor) {
+    if (!loadMore) {
+      loadMore = document.createElement('button');
+      loadMore.id = 'load-more';
+      loadMore.className = 'btn';
+      loadMore.style.cssText = 'width:100%;margin-top:10px;';
+      loadMore.onclick = load;
+      tableContainer.parentNode.insertBefore(loadMore, tableContainer.nextSibling);
+    }
+    loadMore.textContent = `carregar mais (${sales.length} carregadas)`;
+  } else if (loadMore) {
+    loadMore.remove();
+  }
   updateBulkBar();
 }
 

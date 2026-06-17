@@ -86,10 +86,9 @@ async function handleMedReturn(saleId, opts = {}) {
     }
   } catch (e) { logger.warn({ err: e.message }, 'med notification falhou'); }
 
-  // Outbound webhook
+  // Outbound webhook + SSE
   try {
-    const ob = require('./outbound-webhooks.service');
-    ob.dispatch('sale.med_returned', {
+    const payload = {
       user_id: findSellerId(sale),
       guild_id: sale.guild_id,
       sale_id: sale.id,
@@ -99,7 +98,9 @@ async function handleMedReturn(saleId, opts = {}) {
       provider: sale.provider,
       provider_charge_id: sale.provider_charge_id,
       reason
-    }).catch(() => {});
+    };
+    require('./outbound-webhooks.service').dispatch('sale.med_returned', payload).catch(() => {});
+    try { require('./sse.service').emit('sale.med_returned', payload); } catch {}
   } catch {}
 
   return { ok: true, sale_id: sale.id, reason };

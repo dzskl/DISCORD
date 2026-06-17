@@ -133,12 +133,13 @@ async function fulfillSale(saleId, opts = {}) {
     } catch {}
   }
 
-  // 12. Outbound webhook pros vendedores que assinaram sale.paid
+  // 12. Outbound webhook + SSE pros vendedores que assinaram sale.paid
   try {
     const ob = require('./outbound-webhooks.service');
+    const sse = require('./sse.service');
     const finalSale = db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id);
     const sellerId = feeRes?.seller_id || findOwnerForGuild(sale.guild_id);
-    ob.dispatch('sale.paid', {
+    const payload = {
       user_id: sellerId,
       guild_id: sale.guild_id,
       sale_id: sale.id,
@@ -150,7 +151,9 @@ async function fulfillSale(saleId, opts = {}) {
       provider_charge_id: sale.provider_charge_id,
       paid_at: finalSale.paid_at,
       products: tagsBought
-    }).catch(() => {});
+    };
+    ob.dispatch('sale.paid', payload).catch(() => {});
+    try { sse.emit('sale.paid', payload); } catch {}
   } catch {}
 
   return { ok: true, sale: db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id), tagsBought };
