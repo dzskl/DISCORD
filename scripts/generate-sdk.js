@@ -13,6 +13,7 @@ const path = require('path');
 const SRC = path.join(__dirname, '..', 'docs', 'openapi.yaml');
 const OUT_DIR = path.join(__dirname, '..', 'docs', 'sdk');
 const OUT_JS = path.join(OUT_DIR, 'botdash-js.js');
+const OUT_PY = path.join(OUT_DIR, 'botdash.py');
 
 function camel(s) {
   return s.replace(/[\/{}]/g, ' ')
@@ -78,6 +79,103 @@ function parseOpenAPI(yamlText) {
     }
   }
   return paths;
+}
+
+function snakeCase(s) {
+  return s.replace(/[A-Z]/g, m => '_' + m.toLowerCase()).replace(/^_/, '');
+}
+
+function generatePython(paths) {
+  const out = [];
+  out.push(`# BotDash Python SDK (auto-gerado por scripts/generate-sdk.js)`);
+  out.push(`# Nao edite — re-rode o script.`);
+  out.push(`#`);
+  out.push(`# Uso:`);
+  out.push(`#   from botdash import BotDashClient`);
+  out.push(`#   bd = BotDashClient(base_url='https://SEU-DOMINIO', api_key='bd_...')`);
+  out.push(`#   sales = bd.list_checkout_wallet_sales(query={'limit': 10})`);
+  out.push(``);
+  out.push(`import json`);
+  out.push(`import urllib.request, urllib.parse, urllib.error`);
+  out.push(``);
+  out.push(`class BotDashError(Exception):`);
+  out.push(`    def __init__(self, message, status=None, body=None, rate_limit=None):`);
+  out.push(`        super().__init__(message)`);
+  out.push(`        self.status = status`);
+  out.push(`        self.body = body`);
+  out.push(`        self.rate_limit = rate_limit or {}`);
+  out.push(``);
+  out.push(`class BotDashClient:`);
+  out.push(`    def __init__(self, base_url, api_key, version=None):`);
+  out.push(`        if not base_url: raise ValueError('base_url obrigatorio')`);
+  out.push(`        if not api_key:  raise ValueError('api_key obrigatorio')`);
+  out.push(`        self.base_url = base_url.rstrip('/')`);
+  out.push(`        self.api_key = api_key`);
+  out.push(`        self.version = version`);
+  out.push(``);
+  out.push(`    def _request(self, method, path, body=None, idempotency_key=None, query=None):`);
+  out.push(`        url = self.base_url + path`);
+  out.push(`        if query:`);
+  out.push(`            clean = {k: v for k, v in query.items() if v is not None}`);
+  out.push(`            if clean: url += '?' + urllib.parse.urlencode(clean)`);
+  out.push(`        headers = {`);
+  out.push(`            'Authorization': 'Bearer ' + self.api_key,`);
+  out.push(`            'Content-Type': 'application/json',`);
+  out.push(`            'User-Agent': 'BotDash-SDK-Python/1.0'`);
+  out.push(`        }`);
+  out.push(`        if self.version: headers['BotDash-Version'] = self.version`);
+  out.push(`        if idempotency_key: headers['Idempotency-Key'] = idempotency_key`);
+  out.push(`        data = json.dumps(body).encode('utf-8') if body is not None else None`);
+  out.push(`        req = urllib.request.Request(url, data=data, headers=headers, method=method)`);
+  out.push(`        try:`);
+  out.push(`            with urllib.request.urlopen(req, timeout=30) as resp:`);
+  out.push(`                return json.loads(resp.read().decode('utf-8') or '{}')`);
+  out.push(`        except urllib.error.HTTPError as e:`);
+  out.push(`            try: parsed = json.loads(e.read().decode('utf-8'))`);
+  out.push(`            except Exception: parsed = None`);
+  out.push(`            rl = {`);
+  out.push(`                'limit':       e.headers.get('X-RateLimit-Limit'),`);
+  out.push(`                'remaining':   e.headers.get('X-RateLimit-Remaining'),`);
+  out.push(`                'reset':       e.headers.get('X-RateLimit-Reset'),`);
+  out.push(`                'retry_after': e.headers.get('Retry-After')`);
+  out.push(`            }`);
+  out.push(`            raise BotDashError(`);
+  out.push(`                (parsed.get('error') if parsed else None) or f'HTTP {e.code}',`);
+  out.push(`                status=e.code, body=parsed, rate_limit=rl`);
+  out.push(`            )`);
+
+  const seen = new Set();
+  for (const [p, methods] of Object.entries(paths)) {
+    for (const [method, info] of Object.entries(methods)) {
+      let jsName = methodName(method, p);
+      let pyName = snakeCase(jsName);
+      let n = 1;
+      while (seen.has(pyName)) { n++; pyName = snakeCase(methodName(method, p)) + '_' + n; }
+      seen.add(pyName);
+
+      const pathParams = [...p.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+      const args = ['self'];
+      pathParams.forEach(pp => args.push(snakeCase(pp)));
+      if (method === 'post' || method === 'put') args.push('body=None');
+      args.push('idempotency_key=None', 'query=None');
+
+      out.push(``);
+      out.push(`    # ${method.toUpperCase()} ${p}${info.summary ? ' — ' + info.summary : ''}`);
+      out.push(`    def ${pyName}(${args.join(', ')}):`);
+      let pathBuild = "'" + p + "'";
+      for (const param of pathParams) {
+        pathBuild = pathBuild.replace(`{${param}}`, "' + urllib.parse.quote(str(" + snakeCase(param) + ")) + '");
+      }
+      out.push(`        path = ${pathBuild}`);
+      if (method === 'get' || method === 'delete') {
+        out.push(`        return self._request('${method.toUpperCase()}', path, query=query, idempotency_key=idempotency_key)`);
+      } else {
+        out.push(`        return self._request('${method.toUpperCase()}', path, body=body, idempotency_key=idempotency_key, query=query)`);
+      }
+    }
+  }
+
+  return out.join('\n') + '\n';
 }
 
 function generate() {
@@ -175,7 +273,9 @@ function generate() {
 
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT_JS, out.join('\n') + '\n');
-  console.log('SDK gerado em ' + OUT_JS);
+  fs.writeFileSync(OUT_PY, generatePython(paths));
+  console.log('SDK JS  gerado em ' + OUT_JS);
+  console.log('SDK Python gerado em ' + OUT_PY);
   console.log('Endpoints: ' + Array.from(seen).length);
 }
 

@@ -10,7 +10,10 @@
     "seed": "node -e \"require('./src/database/connection');const fs=require('fs');const {db}=require('./src/database/connection');db.exec(fs.readFileSync('database/seeds/demo.sql','utf8'));console.log('seed ok')\"",
     "test": "node tests/run.js",
     "backup": "node scripts/backup.js",
-    "db:reset": "node -e \"require('./src/database/migrate').applyMigrations()\""
+    "db:reset": "node -e \"require('./src/database/migrate').applyMigrations()\"",
+    "sdk:generate": "node scripts/generate-sdk.js",
+    "cli": "node scripts/botdash-cli.js",
+    "webhook:receive": "node scripts/webhook-receiver.js"
   },
   "type": "commonjs",
   "dependencies": {
