@@ -24,6 +24,7 @@ async function handleMedReturn(saleId, opts = {}) {
 
   // 1. Marca status
   db.prepare(`UPDATE sales SET status='med_returned' WHERE id=?`).run(sale.id);
+  try { require('./metrics.service').inc('botdash_med_total', { provider: sale.provider || 'unknown' }); } catch {}
 
   // 2. Reverte ledger: se a venda ja estava liberada, registra debito de retorno
   try {

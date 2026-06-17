@@ -91,6 +91,7 @@ async function sendOne(hook, event, payload, attemptNumber = 1) {
       body.length > MAX_BODY_BYTES ? body.slice(0, MAX_BODY_BYTES) : body,
       status || null, respBody, error, attemptNumber, succeeded ? 1 : 0, duration
     );
+    try { require('./metrics.service').inc('botdash_webhook_outbound_total', { event, status: succeeded ? 'ok' : 'fail' }); } catch {}
 
     if (succeeded) {
       db.prepare(`UPDATE outbound_webhooks SET failure_count=0, last_success_at=strftime('%s','now'), last_attempt_at=strftime('%s','now') WHERE id=?`).run(hook.id);

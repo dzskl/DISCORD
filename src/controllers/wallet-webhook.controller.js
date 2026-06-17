@@ -71,6 +71,9 @@ router.post('/:provider', bodyParser, async (req, res) => {
     return res.status(400).json({ error: 'payload invalido' });
   }
 
+  // Metricas: webhook recebido
+  try { require('../services/metrics.service').inc('botdash_webhook_received_total', { gateway: provider, status: parsed.event }); } catch {}
+
   // 3. Registra evento (auditoria + idempotencia)
   const eventId = `${provider}:${parsed.external_id || 'no-id'}:${Math.floor(Date.now() / 1000)}`;
   let webhookEventId = null;

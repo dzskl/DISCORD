@@ -24,6 +24,8 @@ function start() {
   cron.schedule('23 */6 * * *', runFraudMonitor);
   // Retry de outbound webhooks falhados — a cada 5min
   cron.schedule('*/5 * * * *', runOutboundRetry);
+  // Cleanup diario das tabelas que crescem (webhook_events, outbound_attempts, audit)
+  cron.schedule('30 3 * * *', runWalletCleanup);
   // Saque automatico — todo dia as 09:00 BRT (UTC-3 => 12:00 UTC)
   cron.schedule('0 12 * * *', runAutoWithdraw);
   // Limpeza de featured/badge expirados — diario
@@ -78,6 +80,16 @@ async function runOutboundRetry() {
     if (r.retried > 0) logger.info(r, 'outbound retry');
   } catch (e) {
     logger.error({ err: e.message }, 'outbound retry falhou');
+  }
+}
+
+async function runWalletCleanup() {
+  try {
+    const r = await require('./wallet-cleanup').run();
+    const total = (r.webhook_events_deleted || 0) + (r.outbound_attempts_deleted || 0) + (r.api_key_audit_deleted || 0);
+    if (total > 0) logger.info(r, 'wallet cleanup');
+  } catch (e) {
+    logger.error({ err: e.message }, 'wallet cleanup falhou');
   }
 }
 

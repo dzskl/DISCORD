@@ -35,6 +35,13 @@ async function fulfillSale(saleId, opts = {}) {
     WHERE id=?
   `).run(expiresAt, sale.id);
 
+  // Metricas: contagem + volume
+  try {
+    const m = require('./metrics.service');
+    m.inc('botdash_sales_total', { provider: sale.provider || 'unknown', status: 'paid' });
+    m.inc('botdash_sales_paid_cents_total', { provider: sale.provider || 'unknown' }, sale.amount_cents || 0);
+  } catch {}
+
   // 2. Platform fee (pricing v3: zero — mas mantemos a chamada pra preencher net_to_owner_cents)
   let feeRes = null;
   try { feeRes = require('../config/platform-fee').applyFeeToSale(db, sale.id); } catch (e) { logger.warn({ err: e.message, sale: sale.id }, 'platform-fee falhou'); }

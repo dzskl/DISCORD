@@ -10,6 +10,7 @@ function register(app) {
   app.use('/api/payment-providers', require('../controllers/payment-providers.controller'));
   app.use('/api/checkout/wallet', require('../controllers/wallet-checkout.controller'));
   app.use('/api/docs', require('../controllers/openapi.controller'));
+  app.use('/metrics', require('../controllers/metrics.controller'));
   app.use('/api/api-keys', require('../controllers/api-keys.controller'));
   app.use('/api/outbound-webhooks', require('../controllers/outbound-webhooks.controller'));
   app.use('/api/billing', require('../controllers/billing.controller'));

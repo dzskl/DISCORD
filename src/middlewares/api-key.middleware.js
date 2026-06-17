@@ -28,6 +28,7 @@ function apiKeyOrAuth(requiredScope = null) {
       // Audit log de uso (apos response enviada — nao bloqueia)
       const started = Date.now();
       res.on('finish', () => {
+        const duration = Date.now() - started;
         try {
           db.prepare(`
             INSERT INTO api_key_audit
@@ -36,8 +37,13 @@ function apiKeyOrAuth(requiredScope = null) {
           `).run(
             k.id, k.user_id, req.method, req.path, res.statusCode,
             req.ip || null, String(req.headers['user-agent'] || '').slice(0, 200),
-            k.test_mode ? 1 : 0, Date.now() - started
+            k.test_mode ? 1 : 0, duration
           );
+        } catch {}
+        try {
+          const m = require('../services/metrics.service');
+          m.inc('botdash_api_key_uses_total', { test_mode: k.test_mode ? '1' : '0', path: req.path });
+          m.observe('botdash_request_duration_ms', duration, { path: req.path });
         } catch {}
       });
 

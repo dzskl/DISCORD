@@ -243,6 +243,7 @@ router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) =
           description: req.body?.reason || 'refund via BotDash'
         });
     db.prepare(`UPDATE sales SET status='refunded' WHERE id=?`).run(sale.id);
+    try { require('../services/metrics.service').inc('botdash_refunds_total', { provider: sale.provider, mode: isTest ? 'sandbox' : 'real' }); } catch {}
     require('../services/audit.service').log({
       req, action: 'sale.refund',
       target_type: 'sale', target_id: sale.id,
