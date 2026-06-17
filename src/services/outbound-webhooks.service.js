@@ -45,13 +45,17 @@ function listAllActiveUsers() {
 async function sendOne(hook, event, payload, attemptNumber = 1) {
   const start = Date.now();
   const delivery = crypto.randomUUID();
+  const timestamp = Math.floor(Date.now() / 1000);
   const body = JSON.stringify({
     event,
     delivery,
     sent_at: new Date().toISOString(),
     data: payload
   });
-  const sig = 'sha256=' + crypto.createHmac('sha256', hook.secret).update(body).digest('hex');
+  // v1: sha256(body) — legado
+  const sigV1 = 'sha256=' + crypto.createHmac('sha256', hook.secret).update(body).digest('hex');
+  // v2: sha256(timestamp + '.' + body) — anti-replay (Stripe-style)
+  const sigV2 = 't=' + timestamp + ',v2=' + crypto.createHmac('sha256', hook.secret).update(`${timestamp}.${body}`).digest('hex');
 
   let status = 0, respBody = null, error = null;
   try {
@@ -63,8 +67,10 @@ async function sendOne(hook, event, payload, attemptNumber = 1) {
         'Content-Type': 'application/json',
         'X-BotDash-Event': event,
         'X-BotDash-Delivery': delivery,
-        'X-BotDash-Signature': sig,
-        'User-Agent': 'BotDash-Webhook/1.0'
+        'X-BotDash-Timestamp': String(timestamp),
+        'X-BotDash-Signature': sigV1,            // legado
+        'X-BotDash-Signature-V2': sigV2,         // recomendado (anti-replay)
+        'User-Agent': 'BotDash-Webhook/2.0'
       },
       body,
       signal: ctrl.signal

@@ -59,6 +59,8 @@ function buildApp() {
   app.use('/api/checkout/wallet/create', tenantLimiter({ scope: 'guild', capacity: 60, windowMs: 60_000 }));
   // API publica via Bearer key: peek populando req.apiKey antes do limiter
   const { peekApiKey } = require('./middlewares/api-key.middleware');
+  const { versionMiddleware } = require('./middlewares/api-version.middleware');
+  app.use('/api/checkout/wallet', versionMiddleware);
   app.use('/api/checkout/wallet/sales', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 120, windowMs: 60_000 }));
   app.use('/api/checkout/wallet/refund', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 30, windowMs: 60_000 }));
   app.use('/api/products', tenantLimiter({ scope: 'guild', capacity: 30, windowMs: 60_000 }));
