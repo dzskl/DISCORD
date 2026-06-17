@@ -1,0 +1,114 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "title": "BotDash — Wallet",
+  "tags": ["botdash", "wallet", "payments"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      { "name": "provider", "type": "query", "datasource": "Prometheus", "query": "label_values(botdash_sales_total, provider)", "multi": true, "includeAll": true }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "title": "GMV nas ultimas 24h (R$)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "botdash_gmv_24h_cents / 100", "refId": "A" }],
+      "options": { "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "currencyBRL" } }
+    },
+    {
+      "id": 2, "title": "GMV nos ultimos 30d (R$)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "botdash_gmv_30d_cents / 100", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "currencyBRL" } }
+    },
+    {
+      "id": 3, "title": "Vendedores ativos (30d)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "botdash_active_sellers_total", "refId": "A" }]
+    },
+    {
+      "id": 4, "title": "Vendedores pagantes",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "botdash_paying_sellers_total", "refId": "A" }]
+    },
+    {
+      "id": 5, "title": "Vendas pagas (rate/min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "sum by (provider) (rate(botdash_sales_total{status=\"paid\",provider=~\"$provider\"}[5m]) * 60)", "legendFormat": "{{provider}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "ops" } }
+    },
+    {
+      "id": 6, "title": "Sales pending (gauge)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [{ "expr": "botdash_sales_pending_total", "legendFormat": "pending", "refId": "A" }]
+    },
+    {
+      "id": 7, "title": "MEDs por provider (taxa /h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [{ "expr": "sum by (provider) (rate(botdash_med_total{provider=~\"$provider\"}[1h]) * 3600)", "legendFormat": "{{provider}}", "refId": "A" }]
+    },
+    {
+      "id": 8, "title": "Refunds (real vs sandbox)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [{ "expr": "sum by (mode) (rate(botdash_refunds_total[5m]) * 60)", "legendFormat": "{{mode}}", "refId": "A" }]
+    },
+    {
+      "id": 9, "title": "Webhooks inbound recebidos (PSP -> BotDash)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [{ "expr": "sum by (gateway, status) (rate(botdash_webhook_received_total[5m]) * 60)", "legendFormat": "{{gateway}} ({{status}})", "refId": "A" }]
+    },
+    {
+      "id": 10, "title": "Outbound webhooks (taxa de sucesso)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [{ "expr": "sum by (event, status) (rate(botdash_webhook_outbound_total[5m]) * 60)", "legendFormat": "{{event}} ({{status}})", "refId": "A" }]
+    },
+    {
+      "id": 11, "title": "Latencia da API (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(botdash_request_duration_ms_bucket[5m]))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, rate(botdash_request_duration_ms_bucket[5m]))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, rate(botdash_request_duration_ms_bucket[5m]))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 12, "title": "API keys uses (test_mode vs prod)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [{ "expr": "sum by (test_mode) (rate(botdash_api_key_uses_total[5m]) * 60)", "legendFormat": "test_mode={{test_mode}}", "refId": "A" }]
+    },
+    {
+      "id": 13, "title": "Rate limit hits",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 36 },
+      "targets": [{ "expr": "sum by (scope) (rate(botdash_rate_limit_hits_total[5m]) * 60)", "legendFormat": "{{scope}}", "refId": "A" }]
+    },
+    {
+      "id": 14, "title": "SSE connections + PSPs ativos",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        { "expr": "botdash_sse_connections", "legendFormat": "SSE conns", "refId": "A" },
+        { "expr": "botdash_active_wallet_providers", "legendFormat": "PSPs", "refId": "B" }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}

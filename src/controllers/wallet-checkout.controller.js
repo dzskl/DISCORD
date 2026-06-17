@@ -15,6 +15,7 @@ const { db } = require('../database/connection');
 const registry = require('../providers/wallet');
 const { requireAuth } = require('../middlewares/auth.middleware');
 const { apiKeyOrAuth } = require('../middlewares/api-key.middleware');
+const { idempotent } = require('../middlewares/idempotency.middleware');
 const wallet = require('../config/wallet-providers');
 const plans = require('../config/plans');
 const logger = require('../utils/logger');
@@ -212,7 +213,7 @@ router.get('/sale/:sale_id/timeline', requireAuth, (req, res) => {
 
 // Refund: vendedor solicita estorno via API da PSP (so MP e Asaas suportam
 // nesta versao — NOWPayments cripto nao tem refund).
-router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) => {
+router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), idempotent('/api/checkout/wallet/refund/:sale_id'), async (req, res) => {
   const sale = db.prepare(`SELECT * FROM sales WHERE id=?`).get(req.params.sale_id);
   if (!sale) return res.status(404).json({ error: 'sale nao encontrada' });
   if (sale.status !== 'paid') return res.status(400).json({ error: 'sale nao esta paga' });
@@ -268,7 +269,7 @@ router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), async (req, res) =
 // POST /api/checkout/wallet/refund/bulk — reembolsa varias sales de uma vez
 // body: { sale_ids: [1,2,3], reason?: '...' }
 // retorna por sale_id: { ok, error?, code? }
-router.post('/refund/bulk', requireAuth, async (req, res) => {
+router.post('/refund/bulk', requireAuth, idempotent('/api/checkout/wallet/refund/bulk'), async (req, res) => {
   const ids = Array.isArray(req.body?.sale_ids) ? req.body.sale_ids.map(x => parseInt(x)).filter(Boolean) : [];
   if (!ids.length) return res.status(400).json({ error: 'sale_ids vazio' });
   if (ids.length > 50) return res.status(400).json({ error: 'maximo 50 por batch' });

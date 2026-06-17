@@ -38,6 +38,12 @@ async function run() {
     stats.api_key_audit_deleted = r.changes;
   } catch (e) { logger.warn({ err: e.message }, 'cleanup api_key_audit falhou'); }
 
+  // idempotency_keys: usa expires_at proprio (24h)
+  try {
+    const { cleanupExpired } = require('../middlewares/idempotency.middleware');
+    stats.idempotency_keys_deleted = cleanupExpired();
+  } catch (e) { logger.warn({ err: e.message }, 'cleanup idempotency falhou'); }
+
   // VACUUM pra recuperar espaco (apenas se algo foi deletado)
   const total = Object.values(stats).reduce((a, n) => a + (n || 0), 0);
   if (total > 1000) {

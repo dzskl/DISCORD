@@ -16,6 +16,19 @@ router.get('/events', (req, res) => {
   res.json({ events: ALL_EVENTS });
 });
 
+// GET /api/outbound-webhooks/source-ips — IPs do BotDash que enviam webhooks.
+// Vendedor pode usar pra IP allowlist no firewall dele.
+router.get('/source-ips', (req, res) => {
+  // Em deploy real, listar IPs publicos do cluster. Por enquanto, expomos via env.
+  const ips = String(process.env.WEBHOOK_SOURCE_IPS || '').split(',').map(s => s.trim()).filter(Boolean);
+  res.json({
+    ips,
+    note: ips.length === 0
+      ? 'Configure WEBHOOK_SOURCE_IPS no env do BotDash. Em multi-replica deploy, listar todos.'
+      : null
+  });
+});
+
 router.get('/', (req, res) => {
   const rows = db.prepare(`
     SELECT id, url, events, active, failure_count, disabled_at,
