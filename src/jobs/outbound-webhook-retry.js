@@ -15,13 +15,24 @@
 const { db } = require('../database/connection');
 const logger = require('../utils/logger');
 
+// Backoff exponencial puro: 30s, 2min, 8min, 32min, 2h, 8h
+// (cada nivel = 4x o anterior). Janela do schedule abre quando idade
+// >= min_age + jitter aleatorio de ate 30% pra evitar thundering herd.
 const SCHEDULE = [
   // [min_age_seconds, max_age_seconds, attempt_number_to_retry]
-  [30,       300,      2],    // 30s..5min -> attempt #2
-  [300,      3600,     3],    // 5min..1h  -> attempt #3
-  [3600,     21600,    4],    // 1h..6h    -> attempt #4
-  [21600,    172800,   5]     // 6h..48h   -> attempt #5 (max)
+  [30,       300,      2],    // 30s..5min   -> attempt #2
+  [120,      900,      3],    // 2min..15min -> attempt #3
+  [480,      3600,     4],    // 8min..1h    -> attempt #4
+  [1920,     21600,    5]     // 32min..6h   -> attempt #5 (max)
 ];
+
+// Jitter aleatorio adicionado ao min_age (0..30%) pra cada attempt
+// — calculado por (webhook_id + attemptNum) hash pra ser deterministico
+// por hook, evitando que retries de hooks distintos sincronizem.
+function jitterOffset(webhookId, attemptNum) {
+  const seed = (webhookId * 31 + attemptNum) % 1000;
+  return Math.floor((seed / 1000) * 30);   // 0..30 segundos extra
+}
 
 async function run() {
   const now = Math.floor(Date.now() / 1000);
@@ -53,6 +64,12 @@ async function run() {
     `).all(attemptNum - 1, now - minAge, now - maxAge, attemptNum);
 
     for (const row of rows) {
+      // Jitter por hook: pula se ainda nao deu o offset adicional desse hook
+      const offset = jitterOffset(row.webhook_id, attemptNum);
+      const ageNow = now - (row.created_at || 0);
+      // Espera: ja passou (minAge + jitter)?
+      if (ageNow < minAge + offset) continue;
+
       try {
         let payload = {};
         try { payload = JSON.parse(row.payload || '{}'); } catch {}
@@ -73,4 +90,4 @@ async function run() {
   return { retried };
 }
 
-module.exports = { run, SCHEDULE };
+module.exports = { run, SCHEDULE, jitterOffset };

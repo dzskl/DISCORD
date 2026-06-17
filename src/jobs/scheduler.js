@@ -44,53 +44,43 @@ async function runReconciliation() {
   }
 }
 
+const _lock = () => require('../services/cron-lock.service');
+
 async function runWalletPolling() {
-  try {
-    const poll = require('./wallet-polling');
-    const r = await poll.run();
-    if (r.checked > 0) logger.info(r, 'wallet polling executou');
-  } catch (e) {
-    logger.error({ err: e.message }, 'wallet polling falhou');
-  }
+  const r = await _lock().withLock('wallet-polling', 180, () => require('./wallet-polling').run())
+    .catch(e => ({ error: e.message }));
+  if (r.result?.checked > 0) logger.info(r.result, 'wallet polling executou');
+  if (r.error) logger.error({ err: r.error }, 'wallet polling falhou');
 }
 
 async function runCryptoRecon() {
-  try {
-    const recon = require('../services/crypto-recon.service');
-    const r = await recon.run();
-    if (r.checked > 0) logger.info(r, 'crypto recon executou');
-  } catch (e) {
-    logger.error({ err: e.message }, 'crypto recon falhou');
-  }
+  const r = await _lock().withLock('crypto-recon', 600, () => require('../services/crypto-recon.service').run())
+    .catch(e => ({ error: e.message }));
+  if (r.result?.checked > 0) logger.info(r.result, 'crypto recon executou');
+  if (r.error) logger.error({ err: r.error }, 'crypto recon falhou');
 }
 
 async function runFraudMonitor() {
-  try {
-    const fm = require('../services/fraud-monitor.service');
-    const r = await fm.run();
-    if (r.alerts > 0) logger.warn(r, 'fraud monitor disparou');
-  } catch (e) {
-    logger.error({ err: e.message }, 'fraud monitor falhou');
-  }
+  const r = await _lock().withLock('fraud-monitor', 120, () => require('../services/fraud-monitor.service').run())
+    .catch(e => ({ error: e.message }));
+  if (r.result?.alerts > 0) logger.warn(r.result, 'fraud monitor disparou');
+  if (r.error) logger.error({ err: r.error }, 'fraud monitor falhou');
 }
 
 async function runOutboundRetry() {
-  try {
-    const r = await require('./outbound-webhook-retry').run();
-    if (r.retried > 0) logger.info(r, 'outbound retry');
-  } catch (e) {
-    logger.error({ err: e.message }, 'outbound retry falhou');
-  }
+  const r = await _lock().withLock('outbound-retry', 300, () => require('./outbound-webhook-retry').run())
+    .catch(e => ({ error: e.message }));
+  if (r.result?.retried > 0) logger.info(r.result, 'outbound retry');
+  if (r.error) logger.error({ err: r.error }, 'outbound retry falhou');
 }
 
 async function runWalletCleanup() {
-  try {
-    const r = await require('./wallet-cleanup').run();
-    const total = (r.webhook_events_deleted || 0) + (r.outbound_attempts_deleted || 0) + (r.api_key_audit_deleted || 0);
-    if (total > 0) logger.info(r, 'wallet cleanup');
-  } catch (e) {
-    logger.error({ err: e.message }, 'wallet cleanup falhou');
-  }
+  const r = await _lock().withLock('wallet-cleanup', 900, () => require('./wallet-cleanup').run())
+    .catch(e => ({ error: e.message }));
+  const result = r.result || {};
+  const total = (result.webhook_events_deleted || 0) + (result.outbound_attempts_deleted || 0) + (result.api_key_audit_deleted || 0);
+  if (total > 0) logger.info(result, 'wallet cleanup');
+  if (r.error) logger.error({ err: r.error }, 'wallet cleanup falhou');
 }
 
 async function runWebhookDlqDrain() {
