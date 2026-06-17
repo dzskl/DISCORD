@@ -9,6 +9,7 @@ function register(app) {
   app.use('/api/credentials', require('../controllers/credentials.controller'));
   app.use('/api/payment-providers', require('../controllers/payment-providers.controller'));
   app.use('/api/checkout/wallet', require('../controllers/wallet-checkout.controller'));
+  app.use('/api/sandbox', require('../controllers/sandbox.controller'));
   app.use('/api/docs', require('../controllers/openapi.controller'));
   app.use('/metrics', require('../controllers/metrics.controller'));
   app.use('/api/api-keys', require('../controllers/api-keys.controller'));

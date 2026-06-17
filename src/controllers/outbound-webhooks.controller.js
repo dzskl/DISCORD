@@ -82,6 +82,16 @@ router.put('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+router.post('/:id/rotate-secret', (req, res) => {
+  const id = parseInt(req.params.id);
+  const wh = db.prepare(`SELECT user_id FROM outbound_webhooks WHERE id=?`).get(id);
+  if (!wh || wh.user_id !== req.appUser.id) return res.status(404).json({ error: 'nao encontrada' });
+  const newSecret = crypto.randomBytes(24).toString('base64url');
+  db.prepare(`UPDATE outbound_webhooks SET secret=? WHERE id=?`).run(newSecret, id);
+  audit.log({ req, action: 'webhook.rotate_secret', target_type: 'webhook', target_id: id });
+  res.json({ ok: true, secret: newSecret });
+});
+
 router.delete('/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const r = db.prepare(`DELETE FROM outbound_webhooks WHERE id = ? AND user_id = ?`).run(id, req.appUser.id);

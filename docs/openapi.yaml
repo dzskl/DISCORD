@@ -244,6 +244,51 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BulkRefundResult' }
 
+  /api/sandbox/create-sale:
+    post:
+      tags: [Dispute]
+      summary: '[SANDBOX] Cria sale de teste sem checkout real'
+      description: |
+        Disponivel apenas com api key sandbox (bd_test_*). Retorna sale_id
+        pra usar em /simulate-payment.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:     { type: string, default: mercadopago }
+                amount_cents: { type: integer, default: 1000 }
+                discord_id:   { type: string, default: '000000000000000000' }
+      responses:
+        '201': { description: 'Sale sandbox criada' }
+        '403': { description: 'Nao eh api key sandbox' }
+
+  /api/sandbox/simulate-payment/{sale_id}:
+    post:
+      tags: [Dispute]
+      summary: '[SANDBOX] Simula evento da PSP na sale'
+      description: |
+        Disponivel apenas com api key sandbox (bd_test_*). Eventos
+        suportados: paid (dispara fulfillment + webhook + SSE),
+        refunded, med_returned, expired.
+      parameters:
+        - { name: sale_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  enum: [paid, refunded, med_returned, expired]
+                  default: paid
+      responses:
+        '200': { description: 'Evento simulado' }
+        '403': { description: 'Nao eh api key sandbox' }
+
   /api/checkout/wallet/sale/{sale_id}/dispute:
     post:
       tags: [Dispute]

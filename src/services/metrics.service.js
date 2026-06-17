@@ -23,7 +23,12 @@ const HELP = {
   botdash_rate_limit_hits_total: 'Rate limit excedido por scope',
   botdash_active_wallet_providers:'Quantos providers tem credentials configuradas',
   botdash_sse_connections:       'Conexoes SSE abertas no momento',
-  botdash_request_duration_ms:   'Latencia de request em ms (apenas Wallet API)'
+  botdash_request_duration_ms:   'Latencia de request em ms (apenas Wallet API)',
+  botdash_active_sellers_total:  'Vendedores com pelo menos 1 sale paga nos ultimos 30d',
+  botdash_paying_sellers_total:  'Vendedores com plano ativo (starter/pro/scale)',
+  botdash_gmv_30d_cents:         'GMV (Gross Merchandise Value) ultimos 30d em centavos',
+  botdash_gmv_24h_cents:         'GMV ultimas 24h em centavos',
+  botdash_sales_pending_total:   'Sales atualmente pendentes de pagamento'
 };
 
 const TYPE = {
@@ -37,7 +42,12 @@ const TYPE = {
   botdash_rate_limit_hits_total: 'counter',
   botdash_active_wallet_providers:'gauge',
   botdash_sse_connections:       'gauge',
-  botdash_request_duration_ms:   'histogram'
+  botdash_request_duration_ms:   'histogram',
+  botdash_active_sellers_total:  'gauge',
+  botdash_paying_sellers_total:  'gauge',
+  botdash_gmv_30d_cents:         'gauge',
+  botdash_gmv_24h_cents:         'gauge',
+  botdash_sales_pending_total:   'gauge'
 };
 
 const HISTOGRAM_BUCKETS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
@@ -129,6 +139,37 @@ function refreshGauges() {
     set('botdash_active_wallet_providers', {}, configured);
 
     set('botdash_sse_connections', {}, require('./sse.service').bus.listenerCount('event'));
+
+    // Business metrics via SQL agregados
+    const now = Math.floor(Date.now() / 1000);
+    const d30 = now - 30 * 86400;
+    const d1  = now - 86400;
+
+    try {
+      const active = db.prepare(`
+        SELECT COUNT(DISTINCT COALESCE(guild_id,'_owner')) AS c
+        FROM sales WHERE status='paid' AND paid_at >= ?
+      `).get(d30);
+      set('botdash_active_sellers_total', {}, active?.c || 0);
+    } catch {}
+    try {
+      const paying = db.prepare(`
+        SELECT COUNT(*) AS c FROM users
+        WHERE plan IN ('starter','pro','scale')
+          AND subscription_status IN ('active','trialing')
+      `).get();
+      set('botdash_paying_sellers_total', {}, paying?.c || 0);
+    } catch {}
+    try {
+      const gmv30 = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(d30);
+      set('botdash_gmv_30d_cents', {}, gmv30?.v || 0);
+      const gmv24 = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ?`).get(d1);
+      set('botdash_gmv_24h_cents', {}, gmv24?.v || 0);
+    } catch {}
+    try {
+      const pending = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='pending' AND provider IS NOT NULL`).get();
+      set('botdash_sales_pending_total', {}, pending?.c || 0);
+    } catch {}
   } catch {}
 }
 

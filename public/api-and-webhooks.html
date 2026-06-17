@@ -214,6 +214,7 @@ async function loadHooks() {
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn" onclick="testHook(${w.id})">testar</button>
         <button class="btn" onclick="viewAttempts(${w.id})">historico</button>
+        <button class="btn" onclick="rotateSecret(${w.id})">rotacionar secret</button>
         ${!w.active ? `<button class="btn primary" onclick="enableHook(${w.id})">reativar</button>` : ''}
         <button class="btn danger" onclick="deleteHook(${w.id})">excluir</button>
       </div>
@@ -340,6 +341,13 @@ async function enableHook(id) {
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: true })
   });
   loadHooks();
+}
+async function rotateSecret(id) {
+  if (!confirm('Rotacionar o secret? Voce precisa atualizar a verificacao HMAC no seu servidor — eventos antigos do BotDash continuam vindo com o secret novo.')) return;
+  const r = await fetch(`/api/outbound-webhooks/${id}/rotate-secret`, { method: 'POST', credentials: 'include' });
+  const d = await r.json();
+  if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+  prompt('Novo secret (copie agora):', d.secret);
 }
 async function testHook(id) {
   const r = await fetch(`/api/outbound-webhooks/${id}/test`, { method: 'POST', credentials: 'include' });
