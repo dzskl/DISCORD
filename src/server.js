@@ -61,6 +61,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info(`loja em http://localhost:${PORT}/loja.html`);
 });
 
+// Registra SIGTERM/SIGINT handler pra graceful shutdown (K8s / Railway)
+try { require('./services/graceful-shutdown.service').register(server); } catch {}
+
 // Captura erros nao tratados pra nao matar o app silenciosamente no Railway
 process.on('uncaughtException', (e) => {
   logger.error({ err: e.message, stack: e.stack }, 'uncaughtException');

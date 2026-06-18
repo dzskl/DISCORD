@@ -67,4 +67,21 @@ logger.error = function (objOrMsg, msg) {
   }
 };
 
+// Hook: replica logs no log-stream service pra admin SSE consumir.
+// So ativa quando log-stream esta carregado (evita require ciclico).
+for (const level of ['info', 'warn', 'error']) {
+  const orig = logger[level].bind(logger);
+  logger[level] = function (...args) {
+    orig(...args);
+    try {
+      const stream = require.cache[require.resolve('../services/log-stream.service')];
+      if (stream?.exports?.push) {
+        const obj = typeof args[0] === 'object' ? args[0] : {};
+        const msg = typeof args[args.length - 1] === 'string' ? args[args.length - 1] : '';
+        stream.exports.push({ level, msg, ...obj });
+      }
+    } catch {}
+  };
+}
+
 module.exports = logger;

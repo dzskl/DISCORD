@@ -131,4 +131,18 @@ router.get('/summary', (req, res) => {
   res.json({ since, summary });
 });
 
+// GET /api/admin/logs/stream — SSE com logs ao vivo (admin)
+//   ?level=debug|info|warn|error  (default info)
+router.get('/stream', (req, res) => {
+  const minLevel = String(req.query.level || 'info');
+  require('../services/log-stream.service').attach(req, res, { minLevel });
+});
+
+// GET /api/admin/logs/tail — ultimos N logs estruturados (ring buffer)
+router.get('/tail', (req, res) => {
+  const n = Math.min(500, parseInt(req.query.limit) || 100);
+  const level = req.query.level ? String(req.query.level) : null;
+  res.json({ logs: require('../services/log-stream.service').recent(n, level) });
+});
+
 module.exports = router;
