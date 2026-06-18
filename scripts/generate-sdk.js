@@ -14,6 +14,7 @@ const SRC = path.join(__dirname, '..', 'docs', 'openapi.yaml');
 const OUT_DIR = path.join(__dirname, '..', 'docs', 'sdk');
 const OUT_JS = path.join(OUT_DIR, 'botdash-js.js');
 const OUT_PY = path.join(OUT_DIR, 'botdash.py');
+const OUT_POSTMAN = path.join(OUT_DIR, 'botdash.postman_collection.json');
 
 function camel(s) {
   return s.replace(/[\/{}]/g, ' ')
@@ -178,6 +179,64 @@ function generatePython(paths) {
   return out.join('\n') + '\n';
 }
 
+function generatePostman(paths) {
+  const items = [];
+  for (const [p, methods] of Object.entries(paths)) {
+    for (const [method, info] of Object.entries(methods)) {
+      const pathParts = p.split('/').filter(Boolean);
+      const pathParams = [...p.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+      // Postman: {{var}} no path
+      const pathPostman = p.replace(/\{(\w+)\}/g, ':$1');
+
+      const request = {
+        method: method.toUpperCase(),
+        header: [
+          { key: 'Authorization', value: 'Bearer {{api_key}}', type: 'text' },
+          { key: 'BotDash-Version', value: '{{api_version}}', type: 'text', disabled: true },
+          { key: 'Idempotency-Key', value: '{{$guid}}', type: 'text', disabled: true }
+        ],
+        url: {
+          raw: '{{base_url}}' + pathPostman,
+          host: ['{{base_url}}'],
+          path: pathParts.map(x => x.startsWith('{') ? ':' + x.slice(1, -1) : x),
+          variable: pathParams.map(pp => ({ key: pp, value: '' }))
+        },
+        description: info.summary || ''
+      };
+
+      if (method === 'post' || method === 'put') {
+        request.header.push({ key: 'Content-Type', value: 'application/json', type: 'text' });
+        request.body = {
+          mode: 'raw',
+          raw: '{}',
+          options: { raw: { language: 'json' } }
+        };
+      }
+
+      items.push({
+        name: `${method.toUpperCase()} ${p}`,
+        request,
+        response: []
+      });
+    }
+  }
+
+  return JSON.stringify({
+    info: {
+      _postman_id: 'botdash-' + Date.now(),
+      name: 'BotDash API',
+      description: 'Collection auto-gerada do OpenAPI. Set base_url + api_key nos environment variables.',
+      schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+    },
+    variable: [
+      { key: 'base_url', value: 'https://SEU-DOMINIO', type: 'string' },
+      { key: 'api_key', value: 'bd_xxx_yyy', type: 'string' },
+      { key: 'api_version', value: '2026-06-15', type: 'string' }
+    ],
+    item: items
+  }, null, 2);
+}
+
 function generate() {
   const yaml = fs.readFileSync(SRC, 'utf8');
   const paths = parseOpenAPI(yaml);
@@ -274,8 +333,10 @@ function generate() {
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT_JS, out.join('\n') + '\n');
   fs.writeFileSync(OUT_PY, generatePython(paths));
-  console.log('SDK JS  gerado em ' + OUT_JS);
-  console.log('SDK Python gerado em ' + OUT_PY);
+  fs.writeFileSync(OUT_POSTMAN, generatePostman(paths));
+  console.log('SDK JS      gerado em ' + OUT_JS);
+  console.log('SDK Python  gerado em ' + OUT_PY);
+  console.log('Postman col gerada em ' + OUT_POSTMAN);
   console.log('Endpoints: ' + Array.from(seen).length);
 }
 

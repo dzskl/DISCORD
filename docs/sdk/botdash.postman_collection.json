@@ -1,0 +1,779 @@
+{
+  "info": {
+    "_postman_id": "botdash-1781820537898",
+    "name": "BotDash API",
+    "description": "Collection auto-gerada do OpenAPI. Set base_url + api_key nos environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://SEU-DOMINIO",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "bd_xxx_yyy",
+      "type": "string"
+    },
+    {
+      "key": "api_version",
+      "value": "2026-06-15",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET /api/checkout/wallet/sales",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/sales",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "sales"
+          ],
+          "variable": []
+        },
+        "description": "Lista vendas processadas via Wallet"
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/checkout/wallet/sales.csv",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/sales.csv",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "sales.csv"
+          ],
+          "variable": []
+        },
+        "description": "Exporta vendas em CSV"
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/checkout/wallet/sale/{sale_id}/timeline",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/sale/:sale_id/timeline",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "sale",
+            ":sale_id",
+            "timeline"
+          ],
+          "variable": [
+            {
+              "key": "sale_id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Timeline de eventos de uma venda"
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/checkout/wallet/refund/{sale_id}",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/refund/:sale_id",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "refund",
+            ":sale_id"
+          ],
+          "variable": [
+            {
+              "key": "sale_id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Reembolsa uma venda",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/checkout/wallet/refund/bulk",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/refund/bulk",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "refund",
+            "bulk"
+          ],
+          "variable": []
+        },
+        "description": "Reembolsa multiplas vendas",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/sandbox/create-sale",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/sandbox/create-sale",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "sandbox",
+            "create-sale"
+          ],
+          "variable": []
+        },
+        "description": "[SANDBOX] Cria sale de teste sem checkout real",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/sandbox/simulate-payment/{sale_id}",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/sandbox/simulate-payment/:sale_id",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "sandbox",
+            "simulate-payment",
+            ":sale_id"
+          ],
+          "variable": [
+            {
+              "key": "sale_id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "[SANDBOX] Simula evento da PSP na sale",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/api-keys",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/api-keys",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "api-keys"
+          ],
+          "variable": []
+        },
+        "description": "Lista chaves do user (cookie auth only)"
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/api-keys",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/api-keys",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "api-keys"
+          ],
+          "variable": []
+        },
+        "description": "Cria nova api key",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/api-keys/{id}/rotate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/api-keys/:id/rotate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "api-keys",
+            ":id",
+            "rotate"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Rotaciona chave (revoga antiga, gera nova com mesmas configs)",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/outbound-webhooks",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/outbound-webhooks",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "outbound-webhooks"
+          ],
+          "variable": []
+        },
+        "description": "Lista webhooks de saida configurados"
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/outbound-webhooks",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/outbound-webhooks",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "outbound-webhooks"
+          ],
+          "variable": []
+        },
+        "description": "Cria webhook",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/outbound-webhooks/{id}/rotate-secret",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/outbound-webhooks/:id/rotate-secret",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "outbound-webhooks",
+            ":id",
+            "rotate-secret"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Gera novo secret HMAC pro webhook",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/outbound-webhooks/source-ips",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/outbound-webhooks/source-ips",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "outbound-webhooks",
+            "source-ips"
+          ],
+          "variable": []
+        },
+        "description": "IPs do BotDash que enviam webhooks (pra IP allowlist no firewall)"
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/checkout/wallet/sale/{sale_id}/dispute",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "BotDash-Version",
+            "value": "{{api_version}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/checkout/wallet/sale/:sale_id/dispute",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "checkout",
+            "wallet",
+            "sale",
+            ":sale_id",
+            "dispute"
+          ],
+          "variable": [
+            {
+              "key": "sale_id",
+              "value": ""
+            }
+          ]
+        },
+        "description": "Marca venda como MED manualmente",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    }
+  ]
+}
