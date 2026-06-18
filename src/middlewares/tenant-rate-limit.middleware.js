@@ -29,8 +29,29 @@ function take(key, capacity, windowMs) {
   return { ok: true, remaining: Math.floor(bucket.tokens) };
 }
 
-function tenantLimiter({ scope, capacity, windowMs }) {
+// Cache em memoria das configs (refreshado a cada 60s)
+let configCache = {};
+let configCacheAt = 0;
+function getRouteOverride(route) {
+  const now = Date.now();
+  if (now - configCacheAt > 60_000) {
+    try {
+      const rows = db.prepare(`SELECT route, capacity, window_ms FROM rate_limit_config`).all();
+      configCache = Object.fromEntries(rows.map(r => [r.route, { capacity: r.capacity, windowMs: r.window_ms }]));
+      configCacheAt = now;
+    } catch {}
+  }
+  return configCache[route];
+}
+
+function tenantLimiter({ scope, capacity, windowMs, route }) {
   return (req, res, next) => {
+    // Aplica override do banco se a route estiver registrada
+    let cap = capacity, win = windowMs;
+    if (route) {
+      const ov = getRouteOverride(route);
+      if (ov) { cap = ov.capacity; win = ov.windowMs; }
+    }
     // Identifica o tenant
     let key;
     if (scope === 'guild') {
@@ -55,10 +76,10 @@ function tenantLimiter({ scope, capacity, windowMs }) {
       return next();
     }
 
-    const r = take(key, capacity, windowMs);
+    const r = take(key, cap, win);
     // Headers RFC-style sempre (mesmo em 429)
-    res.set('X-RateLimit-Limit', String(capacity));
-    res.set('X-RateLimit-Reset', String(Math.ceil((Date.now() + windowMs) / 1000)));
+    res.set('X-RateLimit-Limit', String(cap));
+    res.set('X-RateLimit-Reset', String(Math.ceil((Date.now() + win) / 1000)));
 
     if (!r.ok) {
       // Log uma vez por minuto por chave pra nao spammar
@@ -69,7 +90,7 @@ function tenantLimiter({ scope, capacity, windowMs }) {
         // Persiste pra observabilidade
         try {
           db.prepare(`INSERT INTO rate_limit_violations (key, count, ip) VALUES (?, ?, ?)`)
-            .run(key, capacity, req.ip || null);
+            .run(key, cap, req.ip || null);
         } catch {}
       }
       res.set('Retry-After', Math.ceil(r.retry_after_ms / 1000));
@@ -81,6 +102,31 @@ function tenantLimiter({ scope, capacity, windowMs }) {
   };
 }
 
+// Helpers pra admin sobrescrever via endpoint
+function setRouteOverride(route, capacity, windowMs, by) {
+  db.prepare(`
+    INSERT INTO rate_limit_config (route, capacity, window_ms, updated_by, updated_at)
+    VALUES (?, ?, ?, ?, strftime('%s','now'))
+    ON CONFLICT(route) DO UPDATE SET
+      capacity = excluded.capacity,
+      window_ms = excluded.window_ms,
+      updated_by = excluded.updated_by,
+      updated_at = strftime('%s','now')
+  `).run(route, capacity, windowMs, by || null);
+  configCacheAt = 0;   // invalida cache
+}
+
+function clearRouteOverride(route) {
+  db.prepare(`DELETE FROM rate_limit_config WHERE route = ?`).run(route);
+  configCacheAt = 0;
+}
+
+function listRouteOverrides() {
+  try {
+    return db.prepare(`SELECT * FROM rate_limit_config ORDER BY route`).all();
+  } catch { return []; }
+}
+
 // GC dos buckets antigos pra nao vazar memoria
 setInterval(() => {
   const cutoff = Date.now() - 3600 * 1000; // 1h sem uso
@@ -89,4 +135,4 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref?.();
 
-module.exports = { tenantLimiter, take };
+module.exports = { tenantLimiter, take, setRouteOverride, clearRouteOverride, listRouteOverrides };

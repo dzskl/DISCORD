@@ -61,8 +61,8 @@ function buildApp() {
   const { peekApiKey } = require('./middlewares/api-key.middleware');
   const { versionMiddleware } = require('./middlewares/api-version.middleware');
   app.use('/api/checkout/wallet', versionMiddleware);
-  app.use('/api/checkout/wallet/sales', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 120, windowMs: 60_000 }));
-  app.use('/api/checkout/wallet/refund', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 30, windowMs: 60_000 }));
+  app.use('/api/checkout/wallet/sales', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 120, windowMs: 60_000, route: 'wallet:sales' }));
+  app.use('/api/checkout/wallet/refund', peekApiKey, tenantLimiter({ scope: 'api_key', capacity: 30, windowMs: 60_000, route: 'wallet:refund' }));
   app.use('/api/products', tenantLimiter({ scope: 'guild', capacity: 30, windowMs: 60_000 }));
   // Por user: 10 saques/min, 5 antecipacoes/min
   app.use('/api/wallet/withdraw', tenantLimiter({ scope: 'user', capacity: 10, windowMs: 60_000 }));
