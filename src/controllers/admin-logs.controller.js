@@ -131,6 +131,26 @@ router.get('/summary', (req, res) => {
   res.json({ since, summary });
 });
 
+// System flags (maintenance mode etc)
+const flags = require('../services/system-flags.service');
+
+router.get('/flags', (req, res) => {
+  res.json({ flags: flags.list() });
+});
+
+router.put('/flags/:key', (req, res) => {
+  const key = String(req.params.key);
+  const value = req.body?.value;
+  flags.set(key, value, req.appUser?.email || 'admin');
+  res.json({ ok: true, key, value: flags.get(key) });
+});
+
+router.delete('/flags/:key', (req, res) => {
+  // Setar pra null efetivamente "limpa"
+  flags.set(String(req.params.key), null, req.appUser?.email || 'admin');
+  res.json({ ok: true });
+});
+
 // GET /api/admin/logs/stream — SSE com logs ao vivo (admin)
 //   ?level=debug|info|warn|error  (default info)
 router.get('/stream', (req, res) => {

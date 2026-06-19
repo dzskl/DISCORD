@@ -11,6 +11,7 @@ function register(app) {
   app.use('/api/checkout/wallet', require('../controllers/wallet-checkout.controller'));
   app.use('/api/sandbox', require('../controllers/sandbox.controller'));
   app.use('/api/admin/logs', require('../controllers/admin-logs.controller'));
+  app.use('/api/admin/backup', require('../controllers/admin-backup.controller'));
   app.use('/api/docs', require('../controllers/openapi.controller'));
   app.use('/metrics', require('../controllers/metrics.controller'));
   app.use('/', require('../controllers/health.controller'));   // /healthz e /readyz

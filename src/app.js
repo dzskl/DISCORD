@@ -26,6 +26,7 @@ function buildApp() {
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
   app.use(require('./middlewares/request-id.middleware').requestIdMiddleware);
   app.use(require('./services/graceful-shutdown.service').shutdownMiddleware);
+  app.use(require('./middlewares/maintenance.middleware').maintenanceMiddleware);
   app.use(cors({ origin: true, credentials: true }));
 
   // === RAW BODY ROUTES (webhooks Stripe) — ANTES do express.json ===
