@@ -80,6 +80,13 @@ router.get('/healthz/details', requireAuth, (req, res) => {
   let migrations = 0;
   try { migrations = db.prepare(`SELECT COUNT(*) AS c FROM _migrations`).get().c; } catch {}
 
+  // Tracing config
+  let tracing = {};
+  try {
+    const t = require('../services/tracing.service');
+    tracing = { sample_rate: t.SAMPLE_RATE, spans_buffered: t.recent(99999).length };
+  } catch {}
+
   res.json({
     status: 'alive',
     uptime_s: uptime,
@@ -92,7 +99,8 @@ router.get('/healthz/details', requireAuth, (req, res) => {
       heap_total_mb:Math.round(mem.heapTotal / 1024 / 1024)
     },
     db: dbStats,
-    migrations_applied: migrations
+    migrations_applied: migrations,
+    tracing
   });
 });
 

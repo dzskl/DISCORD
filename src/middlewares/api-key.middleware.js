@@ -23,7 +23,10 @@ function apiKeyOrAuth(requiredScope = null) {
         req.appUser = u || { id: k.user_id };
       } catch { req.appUser = { id: k.user_id }; }
       req.guildId = k.guild_id || req.guildId || null;
-      req.apiKey = { id: k.id, scopes: k.scopes, test_mode: k.test_mode };
+      // guildScoped: chave amarrada a UMA guild -> endpoints filtram estrito
+      // (nao veem sales guild_id IS NULL, que pertencem ao owner/legado).
+      req.guildScoped = !!k.guild_id;
+      req.apiKey = { id: k.id, scopes: k.scopes, test_mode: k.test_mode, guild_id: k.guild_id };
 
       // Audit log de uso (apos response enviada — nao bloqueia)
       const started = Date.now();

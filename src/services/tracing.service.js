@@ -14,6 +14,24 @@ const crypto = require('crypto');
 const RING_SIZE = 2000;
 const spans = [];                 // ring buffer
 
+// Sample rate: 0..1. Default 1 (tudo). Em prod, set TRACE_SAMPLE_RATE=0.1.
+// Decisao de sample eh por-trace (root span decide, filhos herdam) pra que
+// uma trace fique completa ou totalmente ausente — nunca parcial.
+const SAMPLE_RATE = (() => {
+  const v = parseFloat(process.env.TRACE_SAMPLE_RATE);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 1;
+})();
+
+// Erros sempre sao amostrados (force-sample) independente do rate.
+function shouldSample(traceId, forced) {
+  if (forced) return true;
+  if (SAMPLE_RATE >= 1) return true;
+  if (SAMPLE_RATE <= 0) return false;
+  // Determinismo por traceId: usa primeiros 8 hex chars como fracao 0..1
+  const frac = parseInt(traceId.slice(0, 8), 16) / 0xffffffff;
+  return frac < SAMPLE_RATE;
+}
+
 function newTraceId()  { return crypto.randomBytes(16).toString('hex'); }
 function newSpanId()   { return crypto.randomBytes(8).toString('hex'); }
 
@@ -42,7 +60,9 @@ class Span {
     if (this.ended) return;
     this.ended = true;
     this.endNs = Date.now() * 1_000_000;
-    push(this);
+    // Force-sample se a span virou erro, mesmo abaixo do sample rate
+    const forced = this.status.code === 2;
+    if (shouldSample(this.traceId, forced)) push(this);
   }
 }
 
@@ -145,4 +165,4 @@ function tracingMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { start, recent, findByTraceId, toOTLP, tracingMiddleware, Span };
+module.exports = { start, recent, findByTraceId, toOTLP, tracingMiddleware, Span, shouldSample, SAMPLE_RATE };

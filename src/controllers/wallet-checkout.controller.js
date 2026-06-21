@@ -223,6 +223,10 @@ router.post('/refund/:sale_id', apiKeyOrAuth('write:refund'), idempotent('/api/c
   if (req.guildId && sale.guild_id && sale.guild_id !== req.guildId) {
     return res.status(403).json({ error: 'sale de outra guild' });
   }
+  // Chave guild-scoped nao pode tocar sales de guild_id IS NULL (owner/legado)
+  if (req.guildScoped && !sale.guild_id) {
+    return res.status(403).json({ error: 'chave guild-scoped nao acessa sale sem guild' });
+  }
 
   if (!registry.isSupported(sale.provider) || !registry.isConfigured(sale.provider)) {
     return res.status(503).json({ error: 'provider nao configurado' });
@@ -389,7 +393,14 @@ router.get('/sales', apiKeyOrAuth('read:sales'), (req, res) => {
 
   const wheres = ['provider IS NOT NULL'];
   const args = [];
-  if (req.guildId) { wheres.push('(guild_id = ? OR guild_id IS NULL)'); args.push(req.guildId); }
+  if (req.guildId) {
+    if (req.guildScoped) {
+      // Chave amarrada a guild: estrito, sem vazar sales de guild_id IS NULL
+      wheres.push('guild_id = ?'); args.push(req.guildId);
+    } else {
+      wheres.push('(guild_id = ? OR guild_id IS NULL)'); args.push(req.guildId);
+    }
+  }
   if (status)      { wheres.push('status = ?'); args.push(status); }
   if (provider)    { wheres.push('provider = ?'); args.push(provider); }
   if (afterId)     { wheres.push('s.id < ?'); args.push(afterId); }
