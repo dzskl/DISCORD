@@ -117,6 +117,28 @@ h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:
   </div>
 </div>
 
+<!-- ATTEMPTS MODAL -->
+<div class="modal" id="attempts-modal">
+  <div class="modal-card" style="max-width:680px;">
+    <h2>Histórico de entregas</h2>
+    <div id="attempts-stats" style="margin:14px 0;"></div>
+    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:var(--surface-2);position:sticky;top:0;">
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">data</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">evento</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">try</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">status</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">ms</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">erro</th>
+        </tr></thead>
+        <tbody id="attempts-body"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="closeAttempts()">fechar</button></div>
+  </div>
+</div>
+
 <!-- HOOK MODAL -->
 <div class="modal" id="hook-modal">
   <div class="modal-card">
@@ -358,11 +380,39 @@ async function testHook(id) {
 async function viewAttempts(id) {
   const r = await fetch(`/api/outbound-webhooks/${id}/attempts`, { credentials: 'include' });
   const d = await r.json();
-  const lines = d.attempts.map(a =>
-    `[${new Date(a.created_at*1000).toLocaleString('pt-BR')}] ${a.event} · HTTP ${a.status_code||'?'} · ${a.succeeded ? '✓' : '✗'}${a.error ? ' ('+a.error+')' : ''} · ${a.duration_ms||0}ms`
-  ).join('\n');
-  alert(lines || 'sem tentativas registradas');
+  const attempts = d.attempts || [];
+
+  // Estatisticas agregadas
+  const total = attempts.length;
+  const ok = attempts.filter(a => a.succeeded).length;
+  const failed = total - ok;
+  const successRate = total ? Math.round(ok / total * 100) : 0;
+  const avgMs = total ? Math.round(attempts.reduce((s, a) => s + (a.duration_ms || 0), 0) / total) : 0;
+
+  const rows = attempts.map(a => {
+    const when = new Date(a.created_at * 1000).toLocaleString('pt-BR');
+    const color = a.succeeded ? 'var(--success)' : 'var(--danger)';
+    return `<tr style="border-bottom:1px solid var(--surface-3);">
+      <td style="padding:6px 8px;font-size:11px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${esc(when)}</td>
+      <td style="padding:6px 8px;font-size:11.5px;">${esc(a.event)}</td>
+      <td style="padding:6px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;">#${a.attempt_number}</td>
+      <td style="padding:6px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:${color};">${a.succeeded ? '✓' : '✗'} ${a.status_code || '—'}</td>
+      <td style="padding:6px 8px;font-size:11px;color:var(--text-faint);">${a.duration_ms || 0}ms</td>
+      <td style="padding:6px 8px;font-size:10.5px;color:var(--danger);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.error || '')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('attempts-stats').innerHTML = `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+      <div><div class="muted">taxa sucesso</div><div style="font-size:20px;font-weight:700;color:${successRate >= 90 ? 'var(--success)' : successRate >= 50 ? 'var(--warn)' : 'var(--danger)'};">${successRate}%</div></div>
+      <div><div class="muted">total</div><div style="font-size:20px;font-weight:700;color:#fff;">${total}</div></div>
+      <div><div class="muted">falhas</div><div style="font-size:20px;font-weight:700;color:${failed ? 'var(--danger)' : '#fff'};">${failed}</div></div>
+      <div><div class="muted">latencia media</div><div style="font-size:20px;font-weight:700;color:#fff;">${avgMs}ms</div></div>
+    </div>`;
+  document.getElementById('attempts-body').innerHTML = rows || `<tr><td colspan="6" style="padding:30px;text-align:center;color:var(--text-faint);">sem tentativas registradas</td></tr>`;
+  document.getElementById('attempts-modal').classList.add('open');
 }
+function closeAttempts() { document.getElementById('attempts-modal').classList.remove('open'); }
 
 function showAlert(msg, type) {
   const a = document.getElementById('alert');

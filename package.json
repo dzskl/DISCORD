@@ -13,7 +13,8 @@
     "db:reset": "node -e \"require('./src/database/migrate').applyMigrations()\"",
     "sdk:generate": "node scripts/generate-sdk.js",
     "cli": "node scripts/botdash-cli.js",
-    "webhook:receive": "node scripts/webhook-receiver.js"
+    "webhook:receive": "node scripts/webhook-receiver.js",
+    "load-test": "node scripts/load-test.js"
   },
   "type": "commonjs",
   "dependencies": {
