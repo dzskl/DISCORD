@@ -1,18 +1,43 @@
 {
-  "name": "discord",
+  "name": "botdash",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Discord bot vend\u00e1vel com dashboard, pagamentos via Stripe e SQLite.",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/database/migrate.js",
+    "seed": "node -e \"require('./src/database/connection');const fs=require('fs');const {db}=require('./src/database/connection');db.exec(fs.readFileSync('database/seeds/demo.sql','utf8'));console.log('seed ok')\"",
+    "test": "node tests/run.js",
+    "backup": "node scripts/backup.js",
+    "db:reset": "node -e \"require('./src/database/migrate').applyMigrations()\"",
+    "sdk:generate": "node scripts/generate-sdk.js",
+    "cli": "node scripts/botdash-cli.js",
+    "webhook:receive": "node scripts/webhook-receiver.js",
+    "load-test": "node scripts/load-test.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "cors": "^2.8.6",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.5.0",
+    "connect-sqlite3": "^0.9.15",
+    "cors": "^2.8.5",
     "discord.js": "^14.25.1",
-    "express": "^5.2.1"
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.1",
+    "passport": "^0.7.0",
+    "passport-discord": "^0.1.4",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "stripe": "^17.5.0"
+  },
+  "optionalDependencies": {
+    "@sentry/node": "^8.0.0",
+    "pino-pretty": "^11.0.0"
   }
 }

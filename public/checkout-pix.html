@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagamento PIX — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Inter',sans-serif;
+  background:
+    radial-gradient(ellipse at top, rgba(139,111,255,0.08), transparent 50%),
+    #0a0a0a;
+  color:#e8e8e8;
+  min-height:100vh;padding:40px 20px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:560px;margin:0 auto;}
+.card{
+  background:#111;
+  border:1px solid #1f1f1f;
+  border-radius:14px;
+  padding:36px;
+  text-align:center;
+  box-shadow:0 24px 60px rgba(0,0,0,0.4), 0 0 80px rgba(139,111,255,0.04);
+}
+.head{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;}
+.brand-logo{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg,#8b6fff,#5a4ad1);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#fff;font-size:15px;
+  box-shadow:0 6px 18px rgba(139,111,255,0.3);
+}
+.brand{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.01em;}
+
+h1{font-size:24px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-.02em;}
+.sub{font-size:12.5px;color:#888;margin-bottom:24px;}
+.amount{
+  font-size:40px;font-weight:800;color:#fff;
+  letter-spacing:-.03em;margin-bottom:24px;
+  font-family:'IBM Plex Mono',monospace;
+  font-feature-settings:'tnum' on,'lnum' on;
+}
+
+.qr{
+  background:#fff;
+  padding:18px;
+  border-radius:14px;
+  display:inline-block;
+  margin-bottom:20px;
+  box-shadow:0 12px 30px rgba(0,0,0,0.4);
+}
+.qr img{display:block;max-width:240px;height:auto;}
+
+.copy-label{
+  font-size:10.5px;font-family:'IBM Plex Mono',monospace;
+  color:#666;text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:8px;font-weight:600;
+}
+.copy-row{display:flex;gap:8px;margin-bottom:20px;}
+.copy-row input{
+  flex:1;
+  background:#0a0a0a;
+  border:1px solid #2a2a2a;
+  border-radius:8px;
+  padding:11px 13px;
+  font-size:11px;font-family:'IBM Plex Mono',monospace;
+  color:#fff;outline:none;text-overflow:ellipsis;
+}
+.copy-row input:focus{
+  border-color:#8b6fff;
+  box-shadow:0 0 0 3px rgba(139,111,255,0.08);
+}
+.copy-btn{
+  background:linear-gradient(90deg,#8b6fff,#7758ff);
+  color:#fff;border:none;
+  padding:0 20px;border-radius:8px;
+  font-family:inherit;font-size:12.5px;font-weight:700;
+  cursor:pointer;transition:filter .15s;
+}
+.copy-btn:hover{filter:brightness(1.1);}
+.copy-btn.copied{
+  background:#22c55e;
+  color:#062e15;
+}
+
+.status{
+  padding:14px 18px;
+  border-radius:9px;
+  font-size:13px;font-family:'IBM Plex Mono',monospace;
+  margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;justify-content:center;
+  border:1px solid;
+}
+.status.pending{
+  background:rgba(245,197,66,0.08);
+  color:#f5c542;
+  border-color:rgba(245,197,66,0.25);
+}
+.status.paid{
+  background:rgba(34,197,94,0.08);
+  color:#7dd3a4;
+  border-color:rgba(34,197,94,0.3);
+}
+.status.err{
+  background:rgba(239,68,68,0.08);
+  color:#fca5a5;
+  border-color:rgba(239,68,68,0.3);
+}
+.spinner{
+  width:14px;height:14px;
+  border:2px solid transparent;
+  border-top-color:currentColor;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.steps{
+  text-align:left;
+  background:#0a0a0a;
+  border:1px solid #1a1a1a;
+  border-left:2px solid #8b6fff;
+  border-radius:9px;
+  padding:14px 18px;
+  margin-bottom:18px;
+}
+.steps-title{
+  font-size:10.5px;font-family:'IBM Plex Mono',monospace;
+  color:#888;text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:8px;font-weight:600;
+}
+.steps ol{padding-left:18px;}
+.steps li{
+  font-size:12.5px;color:#aaa;line-height:1.8;
+}
+
+.back{
+  display:inline-block;
+  margin-top:14px;
+  font-size:12.5px;color:#666;
+  text-decoration:none;
+  transition:color .15s;
+}
+.back:hover{color:#fff;}
+
+footer{
+  text-align:center;
+  margin-top:24px;
+  font-size:11px;font-family:'IBM Plex Mono',monospace;
+  color:#444;
+}
+.checkmark{font-size:48px;color:#7dd3a4;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="head">
+      <div class="brand-logo">B</div>
+      <div class="brand">BotDash</div>
+    </div>
+    <h1 id="title">Pague com PIX</h1>
+    <div class="sub">aprovação em até 60 segundos</div>
+    <div class="amount" id="amount">R$ 0,00</div>
+
+    <div id="qr-area">
+      <div class="qr"><img id="qr-img" alt="QR Code PIX"></div>
+      <div class="copy-label">copia e cola</div>
+      <div class="copy-row">
+        <input id="copy-input" readonly>
+        <button class="copy-btn" id="copy-btn" onclick="copyCode()">copiar</button>
+      </div>
+      <div class="steps">
+        <div class="steps-title">como pagar</div>
+        <ol>
+          <li>Abra seu app do banco</li>
+          <li>Escolha PIX → Pix Copia e Cola</li>
+          <li>Cole o código acima ou escaneie o QR</li>
+          <li>Confirme o pagamento</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="status pending" id="status">
+      <div class="spinner"></div>
+      <span>aguardando pagamento...</span>
+    </div>
+
+    <a href="/loja.html" class="back">← voltar pra loja</a>
+  </div>
+  <footer>BotDash · processado por MisticPay</footer>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const txId = params.get('tx');
+const provider = params.get('provider');     // se setado, eh sale_id do Wallet
+const amount = parseInt(params.get('amount') || '0');
+const payCurrency = params.get('pay_currency');     // cripto: usdttrc20, btc, ...
+const payAmount   = params.get('pay_amount');       // valor em cripto (string)
+const qrBase64 = sessionStorage.getItem('pix_qr_' + txId);
+const copyCode = sessionStorage.getItem('pix_code_' + txId);
+
+if (!txId) {
+  document.body.innerHTML = '<div class="wrap"><div class="card"><h1>Transação inválida</h1><a href="/loja.html" class="back">← voltar pra loja</a></div></div>';
+} else {
+  document.getElementById('amount').textContent = 'R$ ' + (amount / 100).toFixed(2).replace('.', ',');
+  // Se for cripto, mostra valor nativo (USDT/BTC) abaixo do BRL
+  if (payCurrency && payAmount) {
+    const sub = document.querySelector('.sub');
+    if (sub) {
+      sub.innerHTML = `≈ <b>${payAmount} ${payCurrency.toUpperCase()}</b> · cotacao congelada por 15min`;
+    }
+    // Atualiza titulo do passo a passo
+    const title = document.getElementById('title');
+    if (title) title.textContent = 'Pague com ' + payCurrency.toUpperCase();
+  }
+  if (qrBase64) {
+    document.getElementById('qr-img').src = qrBase64.startsWith('data:') ? qrBase64 : 'data:image/png;base64,' + qrBase64;
+  }
+  if (copyCode) {
+    document.getElementById('copy-input').value = copyCode;
+  }
+  pollStatus();
+}
+
+let pollCount = 0;
+async function pollStatus() {
+  pollCount++;
+  if (pollCount > 200) return;
+  try {
+    const url = provider
+      ? '/api/checkout/wallet/status/' + encodeURIComponent(txId)
+      : '/api/checkout/pix/status/' + encodeURIComponent(txId);
+    const r = await fetch(url).then(r => r.json());
+    if (r.status === 'paid') { showSuccess(); return; }
+    if (r.status === 'expired') {
+      document.getElementById('status').className = 'status err';
+      document.getElementById('status').innerHTML = '<span>cobranca expirada</span>';
+      return;
+    }
+  } catch {}
+  setTimeout(pollStatus, 3000);
+}
+
+function showSuccess() {
+  document.getElementById('qr-area').style.display = 'none';
+  document.getElementById('title').textContent = 'Pagamento confirmado!';
+  document.getElementById('status').className = 'status paid';
+  document.getElementById('status').innerHTML = '<span style="font-size:18px;">✓</span><span>seu cargo será liberado em segundos</span>';
+  sessionStorage.removeItem('pix_qr_' + txId);
+  sessionStorage.removeItem('pix_code_' + txId);
+  setTimeout(() => location.href = '/loja.html?status=ok', 4000);
+}
+
+function copyCode() {
+  const inp = document.getElementById('copy-input');
+  inp.select();
+  navigator.clipboard.writeText(inp.value).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ copiado';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'copiar'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>

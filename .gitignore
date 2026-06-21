@@ -1,0 +1,77 @@
+# ---- Dependencies ----
+node_modules/
+jspm_packages/
+
+# ---- Variaveis de ambiente / secrets ----
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+
+# ---- Banco de dados local ----
+data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# ---- Logs ----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---- Build / outputs ----
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+coverage/
+
+# ---- Uploads / runtime ----
+uploads/
+tmp/
+temp/
+*.tmp
+
+# ---- Editores / IDEs ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---- Sistema operacional ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---- Misc ----
+.eslintcache
+.parcel-cache
+.npm
+.yarn-integrity
+*.tgz
+.pnp.*
+
+# ---- Claude Code / agentes ----
+.claude/

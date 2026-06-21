@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BotDash · Painel dos Donos</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="/_design-system.css">
+<style>
+  body {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(245,197,66,0.06), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(139,111,255,0.10), transparent 50%),
+      #0a0a0a;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .card-login {
+    width: 100%; max-width: 440px;
+    background: #0e0e0e;
+    border: 1px solid #1f1f1f;
+    border-radius: 14px;
+    padding: 38px 36px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(245,197,66,0.05);
+    position: relative; z-index: 1;
+  }
+  .brand-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .brand-logo {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #8b6fff, #5a4ad1);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 19px;
+    box-shadow: 0 6px 20px rgba(139,111,255,0.35);
+  }
+  .brand-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px;
+    background: rgba(245,197,66,0.13);
+    border: 1px solid rgba(245,197,66,0.3);
+    color: #f5c542;
+    font-size: 10.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase; letter-spacing: .08em;
+    border-radius: 999px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .pill::before {
+    content: ''; width: 5px; height: 5px;
+    background: #f5c542; border-radius: 50%;
+    box-shadow: 0 0 8px #f5c542;
+  }
+
+  h1 {
+    font-size: 26px; font-weight: 800;
+    color: #fff; margin-bottom: 6px;
+    letter-spacing: -.02em;
+  }
+  .sub {
+    font-size: 13px;
+    color: #888; margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .sub a { color: #b9a8ff; text-decoration: none; font-weight: 600; }
+  .sub a:hover { color: #fff; }
+
+  label {
+    display: block;
+    font-size: 11.5px; color: #aaa;
+    margin-bottom: 6px; font-weight: 600;
+    margin-top: 14px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type=email], input[type=password] {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 11px 13px;
+    font-size: 13px;
+    color: #fff;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus {
+    border-color: #8b6fff;
+    box-shadow: 0 0 0 3px rgba(139,111,255,0.1);
+  }
+
+  .primary {
+    width: 100%;
+    background: linear-gradient(90deg, #8b6fff, #7758ff);
+    color: #fff;
+    border: 0;
+    padding: 13px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter .15s, transform .05s;
+    font-family: 'Inter', sans-serif;
+    margin-top: 20px;
+  }
+  .primary:hover { filter: brightness(1.1); }
+  .primary:active { transform: translateY(0.5px); }
+  .primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-discord {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    color: #fff;
+    padding: 12px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-discord:hover {
+    border-color: #5865f2;
+    background: rgba(88,101,242,0.06);
+  }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 22px 0;
+    color: #444;
+    font-size: 10.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: #1a1a1a;
+  }
+
+  .alert {
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-bottom: 16px;
+    display: none;
+    line-height: 1.5;
+    border: 1px solid;
+  }
+  .alert.err {
+    background: rgba(239,68,68,0.08);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,0.3);
+    display: block;
+  }
+  .alert.ok {
+    background: rgba(34,197,94,0.08);
+    color: #7dd3a4;
+    border-color: rgba(34,197,94,0.3);
+    display: block;
+  }
+
+  .foot {
+    text-align: center;
+    margin-top: 20px;
+    color: #555;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .foot a { color: #888; text-decoration: none; }
+  .foot a:hover { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="card-login">
+    <div class="brand-row">
+      <div class="brand-logo">B</div>
+      <div class="brand-name">BotDash</div>
+    </div>
+
+    <div class="pill">Acesso restrito</div>
+    <h1>Painel dos Donos</h1>
+    <div class="sub">Esse painel é exclusivo da equipe BotDash. Outros usuários, voltem ao <a href="/login.html">login normal</a>.</div>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="login-form" onsubmit="doLogin(event)">
+      <label for="email">email</label>
+      <input id="email" type="email" autocomplete="email" required placeholder="voce@botdash.app">
+
+      <label for="password">senha</label>
+      <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+
+      <button type="submit" class="primary" id="login-btn">entrar →</button>
+    </form>
+
+    <div class="divider">ou</div>
+
+    <a id="discord-btn" href="/admin/auth/discord" class="btn-discord">
+      <svg width="18" height="18" viewBox="0 0 71 55" fill="currentColor"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.6.6L44 3.4a54 54 0 0 0-16.2 0L26.4.6A58.4 58.4 0 0 0 11.9 4.9C2.8 18.6.3 31.9 1.6 45a58.9 58.9 0 0 0 18 9c1.4-2 2.7-4.1 3.8-6.3-2.1-.8-4.1-1.8-6-3l1.4-1.1A41.9 41.9 0 0 0 36 47.4c12 0 18.2-3.4 19.2-3.8l1.4 1.1a37 37 0 0 1-6 3c1 2.2 2.3 4.3 3.7 6.3a58.8 58.8 0 0 0 18-9c1.6-15.1-2.4-28.3-12.2-39.1ZM23.7 36.4c-3.6 0-6.5-3.3-6.5-7.4s2.9-7.4 6.5-7.4c3.6 0 6.5 3.3 6.5 7.4s-2.9 7.4-6.5 7.4Zm24 0c-3.6 0-6.5-3.3-6.5-7.4s2.9-7.4 6.5-7.4c3.6 0 6.5 3.3 6.5 7.4s-2.9 7.4-6.5 7.4Z"/></svg>
+      continuar com Discord
+    </a>
+
+    <div id="config-help" style="display:none;margin-top:14px;padding:14px;background:#0a0a0a;border:1px solid #2a2a2a;border-left:2px solid #f5c542;border-radius:9px;font-size:11.5px;color:#aaa;line-height:1.6;">
+      <div style="color:#f5c542;font-weight:700;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">⚠ Configuração Discord</div>
+      <div>Adicione estas URLs em <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865f2;">Discord Developer Portal</a> → OAuth2 → Redirects:</div>
+      <div id="config-urls" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#fff;word-break:break-all;"></div>
+    </div>
+
+    <div class="foot">
+      <a href="/api/session/health" target="_blank">diagnóstico</a> · <a href="/admin/auth/discord-config" target="_blank">config Discord</a> · <a href="/login.html">login normal</a>
+    </div>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const a = document.getElementById('alert');
+const errKey = params.get('err');
+
+if (errKey) {
+  const errMap = {
+    not_authorized: 'Sua conta não tem permissão pra esse painel.',
+    not_allowlisted: 'Seu Discord não está na lista de donos autorizados.',
+    no_discord: 'Discord OAuth não configurado. Vá em Credenciais e adicione DISCORD_CLIENT_ID e DISCORD_CLIENT_SECRET.',
+    auth_failed: 'Falha no Discord OAuth — provavelmente o callback URL não está registrado.',
+    invalid_redirect: 'O Discord rejeitou o redirect_uri. Veja abaixo as URLs que precisam estar registradas.',
+    session_save: 'Login OK mas falhou ao salvar a sessão (volume persistente?).',
+    inactive: 'Sua conta está desativada.'
+  };
+  a.className = 'alert err';
+  a.textContent = errMap[errKey] || 'Erro: ' + errKey;
+
+  if (errKey === 'not_allowlisted' || errKey === 'not_authorized') {
+    const did = params.get('did') || '';
+    const tag = params.get('tag') || '';
+    const help = document.getElementById('config-help');
+    help.style.display = 'block';
+    help.innerHTML = `
+      <div style="color:#f5c542;font-weight:700;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;">Como autorizar seu acesso</div>
+      ${did ? `<div style="margin-bottom:12px;color:#aaa;">Seu Discord ID: <b style="color:#fff;font-family:'IBM Plex Mono',monospace;cursor:pointer;padding:2px 6px;background:#111;border-radius:4px;" onclick="navigator.clipboard.writeText('${did}');this.textContent='✓ copiado!';setTimeout(()=>this.textContent='${did}',1500)">${did}</b>${tag ? ' (@' + tag + ')' : ''}</div>` : ''}
+
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:12px;">Opção 1 — Auto-promover (recomendado)</div>
+      <div style="color:#888;margin:5px 0 10px;">Se você ainda não tem super-admin no DB e está logado como owner em <a href="/app.html" style="color:#b9a8ff;">/app.html</a>, clique abaixo:</div>
+      <button onclick="selfPromote()" style="background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;border:0;padding:9px 16px;border-radius:8px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;">Tentar auto-promoção →</button>
+
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:16px;">Opção 2 — Adicionar Discord ID no Railway</div>
+      <div style="color:#888;margin-top:5px;">Vá em Railway → Variables e adicione:</div>
+      <div style="background:#000;padding:9px 11px;border:1px solid #1a1a1a;border-radius:6px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7dd3a4;">SUPER_ADMIN_DISCORD_IDS=${did || '<seu_id>'}</div>
+
+      <div style="color:#fff;font-weight:700;font-size:11.5px;margin-top:16px;">Opção 3 — Login por email/senha</div>
+      <div style="color:#888;margin-top:5px;">Use o formulário acima com seu email/senha de owner.</div>
+    `;
+  }
+
+  if (['auth_failed', 'no_discord', 'invalid_redirect'].includes(errKey)) {
+    fetch('/admin/auth/discord-config').then(r => r.json()).then(cfg => {
+      const help = document.getElementById('config-help');
+      const urls = document.getElementById('config-urls');
+      urls.innerHTML = cfg.callback_urls_to_register.map(u => `<div style="padding:3px 0;">→ ${u}</div>`).join('');
+      if (cfg.public_url_is_placeholder) {
+        urls.innerHTML += `<div style="margin-top:8px;color:#ef4444;">⚠ PUBLIC_URL env está com placeholder. Configure no Railway → Variables com o domínio real.</div>`;
+      }
+      help.style.display = 'block';
+    }).catch(() => {});
+  }
+}
+
+async function selfPromote() {
+  try {
+    const r = await fetch('/admin/auth/self-promote', { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json();
+    if (!r.ok) { alert(j.error || 'erro'); return; }
+    location.href = j.redirect || '/admin/';
+  } catch (e) { alert(e.message); }
+}
+
+fetch('/admin/auth/me', { credentials: 'same-origin' })
+  .then(r => r.json())
+  .then(m => { if (m.super_admin) location.href = '/admin/'; })
+  .catch(() => {});
+
+async function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'entrando...';
+  try {
+    const r = await fetch('/admin/auth/login', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      a.className = 'alert err';
+      a.textContent = j.error || 'Falha no login';
+      btn.disabled = false; btn.textContent = 'entrar →';
+      return;
+    }
+    location.href = j.redirect || '/admin/';
+  } catch (err) {
+    a.className = 'alert err'; a.textContent = err.message;
+    btn.disabled = false; btn.textContent = 'entrar →';
+  }
+}
+</script>
+</body>
+</html>

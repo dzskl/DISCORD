@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wallet — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
+:root {
+  --bg: #0a0a0a; --surface: #111; --surface-2: #161616; --surface-3: #1a1a1a;
+  --border: #1f1f1f; --border-strong: #2a2a2a;
+  --text: #e8e8e8; --text-dim: #888; --text-faint: #555; --text-mute: #333;
+  --primary: #5865f2; --primary-hov: #4752c4; --primary-glow: rgba(88,101,242,0.18);
+  --success: #5fff5f; --success-bg: #0a1f0a; --success-bd: #1a4a1a;
+  --warn: #ffdf5f; --warn-bg: #1f1900;
+  --danger: #ff5f5f; --danger-bg: #1f0a0a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:40px 20px 80px;}
+.bg{position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(circle at 20% 20%, rgba(88,101,242,0.08), transparent 50%),
+  var(--bg);}
+
+.wrap{max-width:980px;margin:0 auto;}
+.head{margin-bottom:30px;}
+h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:6px;}
+.sub{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);max-width:60ch;line-height:1.6;}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-faint);text-decoration:none;margin-bottom:16px;font-family:'IBM Plex Mono',monospace;}
+.back:hover{color:var(--text);}
+
+.plan-pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-family:'IBM Plex Mono',monospace;background:var(--surface);border:1px solid var(--border);padding:5px 12px;border-radius:30px;margin-top:14px;}
+.plan-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);}
+
+.section-title{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin:30px 0 12px;padding-left:4px;}
+
+.providers{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s;position:relative;overflow:hidden;}
+.card:hover{border-color:var(--border-strong);}
+.card.configured{border-color:var(--success-bd);}
+.card.configured::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--success);}
+.card.blocked{opacity:.5;}
+
+.row{display:flex;align-items:center;gap:10px;}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--surface-3);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--text);flex-shrink:0;}
+.title{font-size:14.5px;font-weight:600;color:#fff;}
+.method-chip{font-size:9.5px;font-family:'IBM Plex Mono',monospace;background:var(--surface-3);border:1px solid var(--border);padding:2px 7px;border-radius:20px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-left:auto;}
+.method-chip.pix{color:#7dd3a4;border-color:rgba(34,197,94,0.25);background:rgba(34,197,94,0.06);}
+.method-chip.crypto{color:#f5c542;border-color:rgba(245,197,66,0.25);background:rgba(245,197,66,0.06);}
+.method-chip.card{color:#a0bfff;border-color:rgba(88,101,242,0.25);background:rgba(88,101,242,0.06);}
+
+.fee{font-size:11.5px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;}
+.status.ok{color:var(--success);}
+.status.pending{color:var(--text-faint);}
+.status.blocked{color:#a87b3c;}
+
+.actions{display:flex;gap:8px;margin-top:6px;}
+.btn{flex:1;background:transparent;border:1px solid var(--border-strong);color:var(--text);padding:8px 12px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;transition:all .12s;}
+.btn:hover{border-color:var(--primary);color:#fff;}
+.btn.primary{background:var(--primary);border-color:var(--primary);}
+.btn.primary:hover{background:var(--primary-hov);}
+.btn.danger{color:var(--danger);border-color:var(--danger-bd);}
+.btn.danger:hover{border-color:var(--danger);background:var(--danger-bg);}
+.btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal.open{display:flex;}
+.modal-card{background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;}
+.modal h2{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;}
+.modal-sub{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);margin-bottom:18px;}
+.modal-sub a{color:var(--primary);}
+.field{margin-bottom:14px;}
+.flabel{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;font-weight:600;}
+.inp{width:100%;background:#0a0a0a;border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#fff;outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow);}
+.fhint{font-size:10.5px;color:var(--text-faint);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+.alert{padding:10px 14px;border-radius:7px;font-size:12px;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;display:none;line-height:1.5;border:1px solid;}
+.alert.ok{background:var(--success-bg);color:var(--success);border-color:var(--success-bd);display:block;}
+.alert.err{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-bd);display:block;}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="wrap">
+  <a class="back" href="/app.html">← voltar pro painel</a>
+  <div class="head">
+    <h1>Wallet</h1>
+    <div class="sub">conecte sua propria PSP (MercadoPago, PushinPay, NOWPayments, etc.). BotDash NAO toca no seu dinheiro — o pagamento cai direto na sua conta da PSP escolhida.</div>
+    <div class="plan-pill" id="plan-pill"><span class="dot"></span>seu plano: <b id="plan-name">carregando...</b></div>
+  </div>
+
+  <div id="alert" class="alert"></div>
+
+  <div id="migration-banner" style="display:none;background:rgba(245,197,66,0.06);border:1px solid rgba(245,197,66,0.3);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12.5px;line-height:1.6;color:#f5c542;">
+    <b style="color:#fff">⚠ Modo legado detectado.</b> Voce esta usando o checkout antigo (<code style="background:#1a1a1a;padding:1px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;">/api/checkout/webhook</code> ou <code style="background:#1a1a1a;padding:1px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;">/api/checkout/pix</code>) — sera descontinuado em <b id="sunset-date" style="color:#fff">2026-12-31</b>. Conecte sua PSP abaixo no novo modelo Wallet pra migrar (mesma PSP, mesma UX, sem perder vendas).
+    <div style="margin-top:8px;font-size:11px;color:#888;font-family:'IBM Plex Mono',monospace;">
+      <span id="legacy-summary">carregando...</span>
+    </div>
+  </div>
+
+  <div class="section-title">Receita por gateway (ultimos 30 dias)</div>
+  <div id="stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:18px;">
+    <div class="empty-state" style="padding:24px;">carregando...</div>
+  </div>
+
+  <div class="section-title">Receita anual (12 meses, empilhado por PSP)</div>
+  <div id="yearly-chart" style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;margin-bottom:8px;min-height:200px;">
+    <div class="empty-state" style="padding:24px;">carregando...</div>
+  </div>
+
+  <div class="section-title">PIX nacional</div>
+  <div class="providers" id="pix-list"></div>
+
+  <div class="section-title">Cripto</div>
+  <div class="providers" id="crypto-list"></div>
+
+  <div class="section-title">Cartao internacional</div>
+  <div class="providers" id="card-list"></div>
+</div>
+
+<!-- Modal de configuracao -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h2 id="modal-title">Conectar provider</h2>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-alert" class="alert"></div>
+    <form id="modal-form" onsubmit="saveCreds(event)">
+      <div id="modal-fields"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal()">cancelar</button>
+        <button type="submit" class="btn primary" id="modal-save">salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let state = { providers: [], plan_id: '', plan_name: '' };
+
+async function load() {
+  try {
+    const r = await fetch('/api/payment-providers', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    const data = await r.json();
+    state = data;
+    document.getElementById('plan-name').textContent = data.plan_name + ' (' + data.plan_id + ')';
+    render();
+    loadStats();
+    loadMigrationStatus();
+    loadYearly();
+  } catch (e) {
+    showAlert('erro ao carregar providers', 'err');
+  }
+}
+
+async function loadYearly() {
+  try {
+    const r = await fetch('/api/payment-providers/yearly', { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    const months = d.months || [];
+    const providers = d.providers || [];
+    const matrix = d.matrix || {};
+    const palette = ['#5865f2','#f5c542','#5fff5f','#a87bff','#ff5f5f','#7dd3a4','#ffa057','#5cd1ff'];
+    const colorOf = {};
+    providers.forEach((p, i) => { colorOf[p] = palette[i % palette.length]; });
+
+    // Calcula max pra escalar barras
+    const totals = months.map(m => providers.reduce((acc, p) => acc + ((matrix[m]?.[p]?.gross_cents) || 0), 0));
+    const max = Math.max(1, ...totals);
+    const chartHeight = 180;
+    const barW = 36, gap = 8;
+    const innerW = (barW + gap) * months.length;
+
+    let bars = '';
+    months.forEach((m, mi) => {
+      let y = chartHeight;
+      let x = mi * (barW + gap) + 8;
+      providers.forEach(p => {
+        const v = (matrix[m]?.[p]?.gross_cents) || 0;
+        if (!v) return;
+        const h = (v / max) * chartHeight;
+        y -= h;
+        bars += `<rect x="${x}" y="${y + 20}" width="${barW}" height="${h}" fill="${colorOf[p]}" opacity="0.9"><title>${p}: R$ ${(v/100).toFixed(2)}</title></rect>`;
+      });
+      // Label do mes
+      const monthLabel = m.slice(5) + '/' + m.slice(2, 4);
+      bars += `<text x="${x + barW/2}" y="${chartHeight + 38}" text-anchor="middle" fill="#666" font-family="IBM Plex Mono" font-size="9">${monthLabel}</text>`;
+      // Total
+      if (totals[mi] > 0) {
+        bars += `<text x="${x + barW/2}" y="${chartHeight + 15 - (totals[mi]/max)*chartHeight}" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="9">${(totals[mi]/100).toFixed(0)}</text>`;
+      }
+    });
+
+    // Legenda
+    const legend = providers.map(p =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#aaa;font-family:'IBM Plex Mono',monospace;margin-right:14px;">
+        <span style="width:10px;height:10px;border-radius:2px;background:${colorOf[p]}"></span>${esc(p)}
+      </span>`
+    ).join('');
+
+    document.getElementById('yearly-chart').innerHTML = `
+      <div style="overflow-x:auto;">
+        <svg width="${Math.max(innerW + 20, 600)}" height="${chartHeight + 50}" style="display:block;">
+          ${bars || `<text x="20" y="100" fill="#666" font-family="IBM Plex Mono">sem vendas nos ultimos 12 meses</text>`}
+        </svg>
+      </div>
+      <div style="margin-top:10px;">${legend}</div>
+    `;
+  } catch {}
+}
+
+async function loadMigrationStatus() {
+  try {
+    const r = await fetch('/api/payment-providers/migration-status', { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.legacy_sales_30d > 0 || d.has_legacy_creds) {
+      const banner = document.getElementById('migration-banner');
+      document.getElementById('sunset-date').textContent = d.sunset_date;
+      document.getElementById('legacy-summary').innerHTML =
+        `Ultimos 30d: ${d.legacy_sales_30d} vendas legado (R$ ${(d.legacy_gross_30d/100).toFixed(2).replace('.', ',')}) vs ${d.wallet_sales_30d} via Wallet (R$ ${(d.wallet_gross_30d/100).toFixed(2).replace('.', ',')})`;
+      banner.style.display = 'block';
+    }
+  } catch {}
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/payment-providers/stats', { credentials: 'include' });
+    if (!r.ok) return;
+    const data = await r.json();
+    const row = document.getElementById('stats-row');
+    if (!data.providers.length) {
+      row.innerHTML = `<div class="empty-state" style="padding:24px;grid-column:1/-1;">ainda nenhuma venda processada</div>`;
+      return;
+    }
+    const total30 = data.totals.gross_month_cents;
+    const cards = data.providers.map(p => {
+      const share = total30 > 0 ? Math.round(p.gross_month_cents / total30 * 100) : 0;
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;">
+        <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;">${esc(p.label)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:#fff;margin-top:6px;">R$ ${(p.gross_month_cents/100).toFixed(2).replace('.', ',')}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+          ${p.sales_month} venda${p.sales_month === 1 ? '' : 's'} · ${share}% do mes
+          ${p.pending_count ? ` · <span style="color:#f5c542">${p.pending_count} pendente${p.pending_count === 1 ? '' : 's'}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    const totalCard = `<div style="background:rgba(88,101,242,0.04);border:1px solid rgba(88,101,242,0.3);border-radius:11px;padding:14px 16px;">
+      <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:#a0bfff;text-transform:uppercase;letter-spacing:.07em;">total 30d</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:#fff;margin-top:6px;">R$ ${(total30/100).toFixed(2).replace('.', ',')}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${data.totals.sales_count} venda${data.totals.sales_count === 1 ? '' : 's'} no historico</div>
+    </div>`;
+    row.innerHTML = totalCard + cards;
+  } catch {}
+}
+
+function render() {
+  const byMethod = { pix: [], crypto: [], card: [] };
+  for (const p of state.providers) (byMethod[p.method] = byMethod[p.method] || []).push(p);
+  document.getElementById('pix-list').innerHTML    = byMethod.pix.map(card).join('')    || empty('nenhum provider PIX');
+  document.getElementById('crypto-list').innerHTML = byMethod.crypto.map(card).join('') || empty('nenhum provider cripto');
+  document.getElementById('card-list').innerHTML   = byMethod.card.map(card).join('')   || empty('nenhum provider de cartao');
+}
+
+function card(p) {
+  const cls = [
+    'card',
+    p.configured ? 'configured' : '',
+    !p.allowed_by_plan ? 'blocked' : ''
+  ].filter(Boolean).join(' ');
+  const status = !p.allowed_by_plan
+    ? `<span class="status blocked">▲ upgrade pra usar</span>`
+    : p.configured
+      ? `<span class="status ok">● conectado</span>`
+      : `<span class="status pending">○ nao conectado</span>`;
+  const supported = p.supported ? '' : '<span class="status pending" style="margin-left:auto">em breve</span>';
+  const primaryAction = p.allowed_by_plan && p.supported
+    ? `<button class="btn primary" onclick="openModal('${p.id}')">${p.configured ? 'editar' : 'conectar'}</button>`
+    : `<button class="btn disabled">${p.allowed_by_plan ? 'em breve' : 'upgrade'}</button>`;
+  const testBtn = p.configured && p.supported
+    ? `<button class="btn" onclick="testConn('${p.id}', this)">testar</button>`
+    : '';
+  const removeBtn = p.configured && p.supported
+    ? `<button class="btn danger" onclick="disconnect('${p.id}')">desconectar</button>`
+    : '';
+  const initial = p.label.charAt(0);
+  return `<div class="${cls}">
+    <div class="row">
+      <div class="logo">${esc(initial)}</div>
+      <div class="title">${esc(p.label)}</div>
+      <span class="method-chip ${p.method}">${p.method}</span>
+    </div>
+    <div class="fee">${esc(p.fee_hint || '')}</div>
+    <div class="row" style="justify-content:space-between">${status}${supported}</div>
+    <div class="actions">${primaryAction}${testBtn}${removeBtn}</div>
+  </div>`;
+}
+
+function empty(msg) { return `<div class="empty-state">${esc(msg)}</div>`; }
+
+function openModal(providerId) {
+  const p = state.providers.find(x => x.id === providerId);
+  if (!p) return;
+  document.getElementById('modal-title').textContent = (p.configured ? 'Editar ' : 'Conectar ') + p.label;
+  const docsLink = p.docs_url ? `· <a href="${p.docs_url}" target="_blank" rel="noopener">docs ↗</a>` : '';
+  document.getElementById('modal-sub').innerHTML = (p.fee_hint || '') + ' ' + docsLink;
+  document.getElementById('modal-alert').className = 'alert';
+  document.getElementById('modal-alert').textContent = '';
+  document.getElementById('modal-form').dataset.provider = providerId;
+  const fields = p.credentials.map(c => `
+    <div class="field">
+      <div class="flabel">${esc(c.label)}</div>
+      <input class="inp" name="${esc(c.key)}" type="${c.type === 'secret' ? 'password' : 'text'}" placeholder="${c.type === 'secret' ? '••••••••' : ''}" autocomplete="off">
+      ${c.hint ? `<div class="fhint">${esc(c.hint)}</div>` : ''}
+    </div>
+  `).join('');
+  document.getElementById('modal-fields').innerHTML = fields;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function saveCreds(e) {
+  e.preventDefault();
+  const form = e.target;
+  const providerId = form.dataset.provider;
+  const p = state.providers.find(x => x.id === providerId);
+  if (!p) return;
+  const alertEl = document.getElementById('modal-alert');
+  const btn = document.getElementById('modal-save');
+  btn.disabled = true; btn.textContent = 'salvando...';
+
+  const inputs = form.querySelectorAll('input.inp');
+  let ok = true;
+  for (const inp of inputs) {
+    const value = inp.value.trim();
+    if (!value) continue;
+    try {
+      const r = await fetch('/api/credentials/' + encodeURIComponent(inp.name), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value })
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alertEl.className = 'alert err';
+        alertEl.textContent = '✗ ' + (d.error || 'erro ao salvar ' + inp.name);
+        ok = false;
+        break;
+      }
+    } catch {
+      alertEl.className = 'alert err';
+      alertEl.textContent = 'erro de conexao';
+      ok = false;
+      break;
+    }
+  }
+  btn.disabled = false; btn.textContent = 'salvar';
+  if (ok) {
+    alertEl.className = 'alert ok';
+    alertEl.textContent = '✓ salvo';
+    setTimeout(() => { closeModal(); load(); }, 800);
+  }
+}
+
+async function testConn(providerId, btn) {
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch(`/api/payment-providers/${encodeURIComponent(providerId)}/test`, {
+      method: 'POST', credentials: 'include'
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      const detail = d.account
+        ? ' · ' + (d.account.email || d.account.name || d.account.id || '')
+        : '';
+      showAlert('✓ ' + providerId + ' conectado' + detail, 'ok');
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+    } else {
+      showAlert('✗ ' + providerId + ': ' + (d.error || 'falha'), 'err');
+      btn.textContent = original; btn.disabled = false;
+    }
+  } catch {
+    showAlert('erro de conexao', 'err');
+    btn.textContent = original; btn.disabled = false;
+  }
+}
+
+async function disconnect(providerId) {
+  const p = state.providers.find(x => x.id === providerId);
+  if (!p) return;
+  if (!confirm('Desconectar ' + p.label + '? As credenciais serao removidas.')) return;
+  for (const c of p.credentials) {
+    await fetch('/api/credentials/' + encodeURIComponent(c.key), {
+      method: 'DELETE', credentials: 'include'
+    }).catch(() => {});
+  }
+  showAlert('✓ ' + p.label + ' desconectado', 'ok');
+  load();
+}
+
+function showAlert(msg, type) {
+  const a = document.getElementById('alert');
+  a.className = 'alert ' + type;
+  a.textContent = msg;
+  setTimeout(() => { a.className = 'alert'; a.textContent = ''; }, 4000);
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+load();
+</script>
+</body>
+</html>

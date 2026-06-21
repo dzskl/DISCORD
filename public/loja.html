@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loja — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Inter',sans-serif;
+  background:radial-gradient(ellipse at top, rgba(139,111,255,0.06), transparent 50%), #0a0a0a;
+  color:#e8e8e8;min-height:100vh;padding:40px 20px 100px;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1200px;margin:0 auto;}
+.head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;flex-wrap:wrap;gap:14px;}
+h1{font-size:32px;font-weight:800;color:#fff;letter-spacing:-.02em;}
+.sub{font-size:13px;color:#888;margin-top:6px;}
+.cart-btn{
+  position:relative;background:linear-gradient(90deg,#8b6fff,#7758ff);color:#fff;
+  border:none;padding:11px 20px;border-radius:9px;font-weight:700;cursor:pointer;
+  font-family:inherit;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;
+  transition:filter .15s,transform .05s;
+}
+.cart-btn:hover{filter:brightness(1.1);}
+.cart-count{background:#fff;color:#8b6fff;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800;font-family:'IBM Plex Mono',monospace;}
+.alert{padding:13px 16px;border-radius:9px;font-size:13px;margin-bottom:20px;border:1px solid;}
+.alert.ok{background:rgba(34,197,94,0.08);color:#7dd3a4;border-color:rgba(34,197,94,0.25);}
+.alert.err{background:rgba(239,68,68,0.08);color:#fca5a5;border-color:rgba(239,68,68,0.3);}
+.id-box{
+  background:#111;border:1px solid #1f1f1f;border-left:2px solid #8b6fff;
+  border-radius:12px;padding:18px 22px;margin-bottom:16px;
+}
+.id-label{font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;}
+.id-input{
+  background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;padding:11px 14px;
+  font-size:13px;font-family:inherit;color:#fff;width:100%;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.id-input:focus{border-color:#8b6fff;box-shadow:0 0 0 3px rgba(139,111,255,0.08);}
+.id-help{font-size:11.5px;color:#666;margin-top:8px;line-height:1.5;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:20px;}
+.card{
+  background:#111;border:1px solid #1f1f1f;border-radius:12px;padding:0;
+  display:flex;flex-direction:column;position:relative;overflow:hidden;
+  transition:border-color .15s,transform .12s;
+}
+.card:hover{border-color:#2a2a2a;transform:translateY(-2px);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent, #8b6fff);z-index:1;}
+.thumb{width:100%;height:160px;background:#0a0a0a center/cover no-repeat;border-bottom:1px solid #161616;}
+.card-body{padding:18px 20px;display:flex;flex-direction:column;flex:1;}
+.name{font-size:17px;font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:-.01em;}
+.desc{font-size:12.5px;color:#888;line-height:1.55;margin-bottom:14px;min-height:50px;}
+.row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
+.price{font-size:24px;font-weight:800;color:#fff;letter-spacing:-.02em;font-family:'IBM Plex Mono',monospace;}
+.dur{font-size:10px;font-family:'IBM Plex Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;background:#1a1a1a;border-radius:20px;}
+.stock{font-size:11px;font-family:'IBM Plex Mono',monospace;margin-bottom:10px;display:inline-flex;align-items:center;gap:5px;}
+.stock.ok{color:#7dd3a4;}
+.stock.low{color:#f5c542;}
+.stock.out{color:#fca5a5;}
+.btn{background:var(--accent, #8b6fff);color:#fff;border:none;padding:12px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter .15s;width:100%;}
+.btn:hover{filter:brightness(1.1);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn.notify{background:transparent;border:1px solid #2a2a2a;color:#aaa;}
+.btn.notify:hover{border-color:#8b6fff;color:#fff;filter:none;}
+.empty{text-align:center;padding:60px 20px;color:#444;font-size:13px;font-style:italic;}
+footer{text-align:center;margin-top:40px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#444;}
+
+/* Cart sidebar */
+.cart{position:fixed;top:0;right:-440px;width:420px;max-width:100vw;height:100vh;background:#0e0e0e;border-left:1px solid #2a2a2a;transition:right .25s ease;z-index:100;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.6);}
+.cart.open{right:0;}
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .25s;z-index:99;}
+.cart-overlay.show{opacity:1;pointer-events:auto;}
+.cart-head{padding:20px;border-bottom:1px solid #1f1f1f;display:flex;justify-content:space-between;align-items:center;}
+.cart-title{font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;}
+.cart-close{background:none;border:none;color:#666;font-size:24px;cursor:pointer;padding:0 6px;line-height:1;}
+.cart-close:hover{color:#fff;}
+.cart-list{flex:1;overflow-y:auto;padding:16px;}
+.cart-item{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center;}
+.cart-thumb{width:50px;height:50px;border-radius:7px;background:#222 center/cover;flex-shrink:0;}
+.cart-info{flex:1;min-width:0;}
+.cart-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cart-price{font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:#888;}
+.cart-qty{display:flex;align-items:center;gap:6px;}
+.qty-btn{width:26px;height:26px;background:#222;border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:14px;transition:background .12s;}
+.qty-btn:hover{background:#2a2a2a;}
+.qty-num{min-width:22px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#fff;font-weight:600;}
+.cart-foot{padding:20px;border-top:1px solid #1f1f1f;background:#0a0a0a;}
+.cart-total{display:flex;justify-content:space-between;font-size:13px;color:#aaa;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;}
+.cart-total .val{color:#fff;font-weight:700;font-size:16px;}
+.cart-empty{text-align:center;padding:40px 20px;color:#444;font-size:12px;font-style:italic;}
+.cart-remove{background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:6px;border-radius:4px;transition:all .12s;}
+.cart-remove:hover{color:#ef4444;background:rgba(239,68,68,0.08);}
+</style>
+<script>
+(async function(){
+  try {
+    const c = await fetch('/api/public-stats/config').then(r => r.json());
+    if (c.ga_measurement_id) {
+      const s = document.createElement('script');
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(c.ga_measurement_id);
+      s.async = true; document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      gtag('js', new Date());
+      gtag('config', c.ga_measurement_id);
+    }
+  } catch {}
+})();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Loja</h1>
+      <div class="sub">compre cargos, beneficios e produtos do servidor</div>
+    </div>
+    <button class="cart-btn" onclick="toggleCart()">
+      🛒 carrinho <span class="cart-count" id="cart-count">0</span>
+    </button>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="id-box">
+    <div class="id-label">seu ID do Discord</div>
+    <input class="id-input" id="discord-id" placeholder="123456789012345678" inputmode="numeric">
+    <div class="id-help">
+      Ative <b>Modo Desenvolvedor</b> nas configs do Discord, clica com botão direito no seu nome → <b>Copiar ID do Usuário</b>. Cargo entregue automaticamente após pagamento.
+    </div>
+  </div>
+
+  <div class="id-box">
+    <div class="id-label">cupom de desconto (opcional)</div>
+    <div style="display:flex;gap:8px;">
+      <input class="id-input" id="coupon-code" placeholder="ex: BLACKFRIDAY" style="text-transform:uppercase;flex:1;">
+      <button class="btn" id="coupon-btn" onclick="applyCoupon()" style="background:#222;padding:0 18px;flex-shrink:0;width:auto;">aplicar</button>
+    </div>
+    <div class="id-help" id="coupon-status">se voce tem um codigo, aplique antes de fechar o carrinho.</div>
+  </div>
+
+  <div class="id-box" id="provider-box" style="display:none;">
+    <div class="id-label">forma de pagamento</div>
+    <div id="provider-list" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <div class="id-help" id="provider-help">escolha como quer pagar.</div>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <footer>BotDash · pagamentos processados via Stripe</footer>
+</div>
+
+<div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+<aside class="cart" id="cart">
+  <div class="cart-head">
+    <div class="cart-title">seu carrinho</div>
+    <button class="cart-close" onclick="toggleCart()">×</button>
+  </div>
+  <div class="cart-list" id="cart-list"></div>
+  <div class="cart-foot">
+    <div class="cart-total"><span>subtotal</span><span class="val" id="cart-subtotal">R$ 0,00</span></div>
+    <div class="cart-total" id="cart-discount-row" style="display:none;"><span>desconto</span><span class="val" style="color:#5fff5f" id="cart-discount">-R$ 0,00</span></div>
+    <div class="cart-total"><span>total</span><span class="val" id="cart-total">R$ 0,00</span></div>
+    <button class="btn" id="checkout-btn" onclick="checkout()" disabled>finalizar compra</button>
+  </div>
+</aside>
+
+<script>
+const params = new URLSearchParams(location.search);
+const alertEl = document.getElementById('alert');
+if (params.get('status') === 'ok') {
+  alertEl.className = 'alert ok';
+  alertEl.textContent = '✓ Pagamento confirmado! Seu cargo sera entregue em instantes.';
+  localStorage.removeItem('botdash_cart');
+} else if (params.get('status') === 'cancel') {
+  alertEl.className = 'alert err';
+  alertEl.textContent = 'Pagamento cancelado.';
+}
+
+const savedId = localStorage.getItem('botdash_discord_id');
+if (savedId) document.getElementById('discord-id').value = savedId;
+document.getElementById('discord-id').addEventListener('input', e => localStorage.setItem('botdash_discord_id', e.target.value.trim()));
+
+// Captura referral do link ?ref=CODE
+const refFromUrl = params.get('ref');
+if (refFromUrl) localStorage.setItem('botdash_affiliate', refFromUrl.toUpperCase());
+const affiliateCode = localStorage.getItem('botdash_affiliate') || null;
+if (affiliateCode) {
+  const el = document.createElement('div');
+  el.className = 'alert ok';
+  el.textContent = `✓ Você foi indicado por ${affiliateCode} — eles ganham comissão na sua compra.`;
+  alertEl.parentNode.insertBefore(el, alertEl.nextSibling);
+}
+
+let activeProducts = [];
+let appliedCoupon = null;
+let cart = JSON.parse(localStorage.getItem('botdash_cart') || '[]');
+
+function saveCart() { localStorage.setItem('botdash_cart', JSON.stringify(cart)); }
+
+function findCartItem(id) { return cart.find(x => x.id === id); }
+
+function addToCart(id) {
+  const product = activeProducts.find(p => p.id === id);
+  if (!product) return;
+  if (product.stock != null && product.stock === 0) return;
+  const existing = findCartItem(id);
+  if (existing) {
+    if (product.stock != null && existing.q >= product.stock) {
+      flash('Limite de estoque atingido.', 'err'); return;
+    }
+    existing.q++;
+  } else {
+    cart.push({ id, q: 1 });
+  }
+  saveCart(); renderCart(); flash('Adicionado ao carrinho.', 'ok');
+}
+
+function changeQty(id, delta) {
+  const item = findCartItem(id);
+  if (!item) return;
+  item.q += delta;
+  if (item.q <= 0) cart = cart.filter(x => x.id !== id);
+  saveCart(); renderCart();
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(x => x.id !== id);
+  saveCart(); renderCart();
+}
+
+function cartSubtotal() {
+  return cart.reduce((s, it) => {
+    const p = activeProducts.find(x => x.id === it.id);
+    return s + (p ? p.price_cents * it.q : 0);
+  }, 0);
+}
+
+function renderCart() {
+  document.getElementById('cart-count').textContent = cart.reduce((s, x) => s + x.q, 0);
+  const list = document.getElementById('cart-list');
+  if (!cart.length) {
+    list.innerHTML = '<div class="cart-empty">seu carrinho esta vazio.</div>';
+    document.getElementById('checkout-btn').disabled = true;
+  } else {
+    list.innerHTML = cart.map(it => {
+      const p = activeProducts.find(x => x.id === it.id);
+      if (!p) return '';
+      return `<div class="cart-item">
+        <div class="cart-thumb" style="background-image:url('${p.image_url || ''}')"></div>
+        <div class="cart-info">
+          <div class="cart-name">${esc(p.name)}</div>
+          <div class="cart-price">R$ ${(p.price_cents / 100).toFixed(2).replace('.', ',')}</div>
+        </div>
+        <div class="cart-qty">
+          <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
+          <span class="qty-num">${it.q}</span>
+          <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
+        </div>
+        <button class="cart-remove" onclick="removeFromCart(${p.id})">🗑</button>
+      </div>`;
+    }).join('');
+    document.getElementById('checkout-btn').disabled = false;
+  }
+  const sub = cartSubtotal();
+  document.getElementById('cart-subtotal').textContent = 'R$ ' + (sub / 100).toFixed(2).replace('.', ',');
+  let total = sub;
+  if (appliedCoupon) {
+    const discount = Math.round(sub * appliedCoupon.discount_percent / 100);
+    document.getElementById('cart-discount-row').style.display = 'flex';
+    document.getElementById('cart-discount').textContent = '-R$ ' + (discount / 100).toFixed(2).replace('.', ',');
+    total = sub - discount;
+  } else {
+    document.getElementById('cart-discount-row').style.display = 'none';
+  }
+  document.getElementById('cart-total').textContent = 'R$ ' + (total / 100).toFixed(2).replace('.', ',');
+}
+
+function toggleCart() {
+  document.getElementById('cart').classList.toggle('open');
+  document.getElementById('cart-overlay').classList.toggle('show');
+}
+
+function renderProducts() {
+  const grid = document.getElementById('grid');
+  if (!activeProducts.length) { grid.innerHTML = '<div class="empty">nenhum produto disponivel no momento.</div>'; return; }
+  const durMap = { permanent: 'permanente', '30d': '30 dias', '7d': '7 dias', '1d': '1 dia', '1y': 'anual' };
+  grid.innerHTML = activeProducts.map(p => {
+    const accent = p.accent_color || '#5865f2';
+    let stockHtml = '';
+    if (p.stock != null) {
+      if (p.stock === 0) stockHtml = '<div class="stock out">● esgotado</div>';
+      else if (p.stock <= 5) stockHtml = `<div class="stock low">● só ${p.stock} restante${p.stock > 1 ? 's' : ''}</div>`;
+      else stockHtml = `<div class="stock ok">● ${p.stock} em estoque</div>`;
+    }
+    const isOut = p.stock === 0;
+    const btn = isOut
+      ? `<button class="btn notify" onclick="notifyMe(${p.id})">avise-me quando voltar</button>`
+      : `<button class="btn" onclick="addToCart(${p.id})">+ adicionar ao carrinho</button>`;
+    return `<div class="card" style="--accent:${accent}">
+      <div class="thumb" style="background-image:url('${p.image_url || ''}')"></div>
+      <div class="name">${esc(p.name)}</div>
+      <div class="desc">${esc(p.description || 'Sem descricao.')}</div>
+      ${stockHtml}
+      <div class="row">
+        <div class="price">R$ ${(p.price_cents / 100).toFixed(2).replace('.', ',')}</div>
+        <div class="dur">${durMap[p.duration] || p.duration}</div>
+      </div>
+      ${btn}
+    </div>`;
+  }).join('');
+}
+
+async function load() {
+  try {
+    activeProducts = await fetch('/api/checkout/products').then(r => r.json());
+    renderProducts(); renderCart();
+  } catch {
+    document.getElementById('grid').innerHTML = '<div class="empty">erro ao carregar produtos.</div>';
+  }
+}
+
+async function notifyMe(productId) {
+  const discord_id = document.getElementById('discord-id').value.trim();
+  if (!/^\d{16,20}$/.test(discord_id)) { flash('Informe seu ID do Discord primeiro.', 'err'); document.getElementById('discord-id').focus(); return; }
+  const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ discord_id, product_id: productId }) });
+  if (r.ok) flash('✅ Você sera avisado quando voltar ao estoque (via DM).', 'ok');
+  else flash('Erro ao inscrever.', 'err');
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+  const status = document.getElementById('coupon-status');
+  if (!code) { appliedCoupon = null; renderCart(); status.textContent = 'cupom removido.'; status.style.color = '#666'; return; }
+  const subtotal = cartSubtotal();
+  try {
+    const r = await fetch('/api/coupons/validate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, cart_total_cents: subtotal })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d })));
+    if (!r.ok) { appliedCoupon = null; renderCart(); status.textContent = '✗ ' + (r.d.error || 'cupom invalido'); status.style.color = '#ff5f5f'; return; }
+    appliedCoupon = r.d;
+    status.textContent = `✓ cupom -${r.d.discount_percent}% aplicado`;
+    status.style.color = '#5fff5f';
+    renderCart();
+  } catch { status.textContent = 'erro ao validar cupom.'; status.style.color = '#ff5f5f'; }
+}
+
+async function checkout() {
+  const discord_id = document.getElementById('discord-id').value.trim();
+  if (!/^\d{16,20}$/.test(discord_id)) { flash('Informe um ID do Discord valido.', 'err'); toggleCart(); document.getElementById('discord-id').focus(); return; }
+  if (!cart.length) return;
+  const btn = document.getElementById('checkout-btn');
+  btn.disabled = true; btn.textContent = 'redirecionando...';
+
+  // Provider selecionado (Wallet) tem prioridade. Cai pro gateway legado se nenhum.
+  const provider = window.__selectedProvider;
+  const payload = {
+    items: cart.map(it => ({ product_id: it.id, quantity: it.q })),
+    discord_id,
+    coupon_code: appliedCoupon?.code || null,
+    affiliate_code: affiliateCode
+  };
+
+  try {
+    if (provider) {
+      payload.provider = provider;
+      const r = await fetch('/api/checkout/wallet/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+      if (r.qr_code || r.pay_url) {
+        if (r.qr_image) sessionStorage.setItem('pix_qr_' + r.sale_id, r.qr_image.startsWith('data:') ? r.qr_image : 'data:image/png;base64,' + r.qr_image);
+        if (r.qr_code) sessionStorage.setItem('pix_code_' + r.sale_id, r.qr_code);
+        if (r.pay_url && !r.qr_code) { location.href = r.pay_url; return; }
+        let pixUrl = `/checkout-pix.html?tx=${encodeURIComponent(r.sale_id)}&amount=${r.amount_cents}&provider=${encodeURIComponent(provider)}`;
+        if (r.pay_currency) pixUrl += `&pay_currency=${encodeURIComponent(r.pay_currency)}`;
+        if (r.pay_amount)   pixUrl += `&pay_amount=${encodeURIComponent(r.pay_amount)}`;
+        location.href = pixUrl;
+        return;
+      }
+      flash(r.error || 'Erro ao iniciar pagamento.', 'err');
+      btn.disabled = false; btn.textContent = 'finalizar compra';
+      return;
+    }
+
+    // Fallback: gateway legado (Stripe / MisticPay)
+    const gateway = window.__gateway || 'stripe';
+    const endpoint = gateway === 'misticpay' ? '/api/checkout/pix/create' : '/api/checkout/create-session';
+    const r = await fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+
+    if (gateway === 'misticpay') {
+      if (r.transaction_id) {
+        sessionStorage.setItem('pix_qr_' + r.transaction_id, r.qr_code_base64 || '');
+        sessionStorage.setItem('pix_code_' + r.transaction_id, r.copy_paste || '');
+        location.href = `/checkout-pix.html?tx=${encodeURIComponent(r.transaction_id)}&amount=${r.amount_cents}`;
+        return;
+      }
+    } else {
+      if (r.url) { location.href = r.url; return; }
+    }
+    flash(r.error || 'Erro ao iniciar pagamento.', 'err');
+    btn.disabled = false; btn.textContent = 'finalizar compra';
+  } catch { flash('Erro de conexao.', 'err'); btn.disabled = false; btn.textContent = 'finalizar compra'; }
+}
+
+// Carrega PSPs configurados pelo vendedor (modelo Wallet)
+async function loadProviders() {
+  try {
+    const list = await fetch('/api/payment-providers/public').then(r => r.json());
+    if (!Array.isArray(list) || !list.length) return;
+    const box = document.getElementById('provider-box');
+    const ul  = document.getElementById('provider-list');
+    const methodIcon = { pix: '💸 PIX', card: '💳 Cartao', crypto: '₿ Cripto' };
+    ul.innerHTML = list.map((p, i) => `
+      <button type="button" class="prov-btn" data-id="${esc(p.id)}" onclick="pickProvider('${esc(p.id)}')"
+              style="flex:1;min-width:120px;background:#161616;border:1px solid #2a2a2a;color:#fff;padding:11px 12px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;transition:all .15s;text-align:left;">
+        <div style="font-size:10px;color:#666;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">${methodIcon[p.method] || p.method}</div>
+        <div>${esc(p.label)}</div>
+      </button>
+    `).join('');
+    // Seleciona o primeiro por default
+    if (list[0]) pickProvider(list[0].id);
+    box.style.display = 'block';
+  } catch {}
+}
+function pickProvider(id) {
+  window.__selectedProvider = id;
+  document.querySelectorAll('.prov-btn').forEach(b => {
+    if (b.dataset.id === id) {
+      b.style.borderColor = '#8b6fff';
+      b.style.background = 'rgba(139,111,255,0.08)';
+    } else {
+      b.style.borderColor = '#2a2a2a';
+      b.style.background = '#161616';
+    }
+  });
+}
+
+loadProviders();
+
+// Detecta gateway legado disponivel
+fetch('/api/checkout/gateway').then(r => r.json()).then(d => { window.__gateway = d.gateway || 'stripe'; }).catch(() => {});
+
+function flash(msg, type) {
+  alertEl.className = 'alert ' + type;
+  alertEl.textContent = msg;
+  setTimeout(() => { alertEl.className = ''; alertEl.textContent = ''; }, 4000);
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+load();
+</script>
+</body>
+</html>

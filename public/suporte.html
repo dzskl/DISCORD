@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suporte — Abrir Ticket — BotDash</title>
+<meta name="description" content="Abra um ticket de suporte para o BotDash. Nossa equipe responde em até 24h úteis.">
+<link rel="stylesheet" href="/_legal-shared.css">
+<style>
+  .sup-grid { display: grid; grid-template-columns: 1fr 360px; gap: 22px; margin: 32px 0 60px; }
+  @media (max-width: 900px) { .sup-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px;
+  }
+  .card h2 { color: #fff; font-size: 19px; margin-bottom: 6px; }
+  .card .desc { color: var(--text-dim); font-size: 13.5px; margin-bottom: 22px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 11px 13px;
+    background: var(--bg-soft); border: 1px solid var(--border-strong);
+    border-radius: 8px; color: var(--text); font: inherit; font-size: 13.5px;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--primary);
+  }
+  .field textarea { resize: vertical; min-height: 130px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .row2 { grid-template-columns: 1fr; } }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(90deg, var(--primary), #7758ff);
+    color: #fff; padding: 12px 22px; border-radius: 9px;
+    font-weight: 700; font-size: 13.5px; border: 0; cursor: pointer;
+    transition: filter .15s;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: .55; cursor: wait; }
+
+  .alert {
+    padding: 12px 14px; border-radius: 9px; font-size: 13px;
+    margin-bottom: 16px; display: none;
+  }
+  .alert.ok { background: rgba(34,197,94,.10); border: 1px solid rgba(34,197,94,.3); color: #7dd3a4; display: block; }
+  .alert.err { background: rgba(239,68,68,.10); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; display: block; }
+
+  .side h3 { color: #fff; font-size: 15px; margin-bottom: 14px; }
+  .side ul { list-style: none; padding: 0; margin: 0; }
+  .side li {
+    display: flex; align-items: flex-start; gap: 10px;
+    color: var(--text-dim); font-size: 13px; margin-bottom: 12px;
+  }
+  .side li svg { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+
+  .tabs { display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 18px; cursor: pointer; color: var(--text-dim);
+    font-size: 13.5px; font-weight: 600; border-bottom: 2px solid transparent;
+    background: transparent; border-top: 0; border-left: 0; border-right: 0;
+  }
+  .tab.active { color: #fff; border-bottom-color: var(--primary); }
+
+  .ticket-list { display: flex; flex-direction: column; gap: 10px; }
+  .ticket-item {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .ticket-item:hover { border-color: var(--border-strong); }
+  .ticket-item .head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; margin-bottom: 4px;
+  }
+  .ticket-item .subj { color: #fff; font-weight: 600; font-size: 14px; }
+  .ticket-item .meta { color: var(--text-faint); font-size: 11.5px; }
+  .chip {
+    display: inline-block; padding: 2px 8px; border-radius: 30px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .chip.open { background: rgba(34,197,94,.13); color: #7dd3a4; }
+  .chip.in_progress { background: rgba(139,111,255,.15); color: var(--primary-soft); }
+  .chip.waiting_user { background: rgba(245,197,66,.13); color: var(--warn); }
+  .chip.closed { background: #1f1f1f; color: var(--text-faint); }
+
+  .thread {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+  }
+  .msg {
+    padding: 12px 14px; border-radius: 10px;
+    margin-bottom: 10px; font-size: 13.5px;
+    white-space: pre-wrap; line-height: 1.55;
+  }
+  .msg.user { background: #1a1a1a; border: 1px solid var(--border); }
+  .msg.admin { background: rgba(139,111,255,.08); border: 1px solid rgba(139,111,255,.2); }
+  .msg .auth { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .back-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 7px 14px; border-radius: 7px; cursor: pointer; font-size: 12.5px; }
+  .back-btn:hover { color: #fff; }
+
+  .empty { color: var(--text-faint); font-size: 13px; padding: 24px; text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="nav-wrap">
+    <a class="nav-brand" href="/">
+      <div class="lg">B</div>
+      <div class="nm">BotDash</div>
+    </a>
+    <div class="nav-links">
+      <a href="/">Início</a>
+      <a href="/#planos">Planos</a>
+      <a href="/tutoriais.html">Tutoriais</a>
+      <a href="/suporte.html" class="active">Suporte</a>
+    </div>
+    <a href="/login.html" class="nav-cta">Entrar</a>
+  </div>
+</nav>
+
+<section class="page-hero">
+  <div class="wrap">
+    <div class="pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Suporte
+    </div>
+    <h1>Abrir um <span class="accent">ticket</span></h1>
+    <p class="lead">Descreva sua dúvida ou problema. Nossa equipe responde em até 24h úteis.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="new">Abrir ticket</button>
+    <button class="tab" data-tab="mine" id="tabMine" style="display:none">Meus tickets</button>
+  </div>
+
+  <!-- ABRIR TICKET -->
+  <div id="paneNew">
+    <div class="sup-grid">
+      <div class="card">
+        <h2>Conte o que está acontecendo</h2>
+        <div class="desc">Quanto mais detalhes, mais rápido conseguimos resolver.</div>
+
+        <div id="alert" class="alert"></div>
+
+        <form id="ticketForm">
+          <div class="row2">
+            <div class="field">
+              <label for="name">Seu nome</label>
+              <input type="text" id="name" name="name" maxlength="120" placeholder="João Silva">
+            </div>
+            <div class="field">
+              <label for="email">Email *</label>
+              <input type="email" id="email" name="email" required maxlength="200" placeholder="voce@email.com">
+            </div>
+          </div>
+          <div class="field">
+            <label for="subject">Assunto *</label>
+            <input type="text" id="subject" name="subject" required maxlength="200" placeholder="Resumo curto do problema">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="category">Categoria</label>
+              <select id="category" name="category">
+                <option value="duvida">Dúvida</option>
+                <option value="bug">Bug / Problema técnico</option>
+                <option value="cobranca">Cobrança / Financeiro</option>
+                <option value="feature">Sugestão de funcionalidade</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="priority">Prioridade</label>
+              <select id="priority" name="priority">
+                <option value="low">Baixa</option>
+                <option value="normal" selected>Normal</option>
+                <option value="high">Alta</option>
+                <option value="urgent">Urgente</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="message">Mensagem *</label>
+            <textarea id="message" name="message" required maxlength="5000" placeholder="Descreva o problema, passos pra reproduzir, screenshots..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary" id="submitBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Enviar ticket
+          </button>
+        </form>
+      </div>
+
+      <div class="card side">
+        <h3>Antes de abrir um ticket</h3>
+        <ul>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+            Confira a <a href="/faq.html" style="color:var(--primary-soft)">FAQ</a> — muitas dúvidas já estão respondidas lá.
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+            Veja nossos <a href="/tutoriais.html" style="color:var(--primary-soft)">tutoriais em vídeo</a>.
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+            Para suporte em tempo real, entre no nosso <a href="https://discord.gg/" target="_blank" rel="noopener" style="color:var(--primary-soft)">Discord</a>.
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+            Inclua prints, IDs e horário aproximado do problema.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEUS TICKETS -->
+  <div id="paneMine" style="display:none">
+    <div class="card">
+      <h2 id="mineTitle">Meus tickets</h2>
+      <div class="desc">Acompanhe e responda seus tickets abertos.</div>
+      <div id="mineList" class="ticket-list"></div>
+      <div id="mineEmpty" class="empty" style="display:none">Voce ainda nao abriu nenhum ticket.</div>
+    </div>
+  </div>
+
+  <!-- VISUALIZAR TICKET -->
+  <div id="paneView" style="display:none">
+    <div style="margin-bottom:14px;">
+      <button class="back-btn" onclick="backToList()">← Voltar</button>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+        <div>
+          <h2 id="vSubject" style="margin-bottom:8px;"></h2>
+          <div style="color:var(--text-faint); font-size:12px;" id="vMeta"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+          <span class="chip" id="vStatus"></span>
+          <span style="color:var(--text-faint); font-family:'IBM Plex Mono',monospace; font-size:11.5px;" id="vProto"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="thread" id="vThread"></div>
+
+    <div class="card" id="vReplyBox" style="margin-top:18px;">
+      <h2 style="font-size:15px;">Responder</h2>
+      <div class="field" style="margin-top:12px;">
+        <textarea id="vReplyMsg" placeholder="Sua resposta..." maxlength="5000"></textarea>
+      </div>
+      <button class="btn-primary" id="vReplyBtn">Enviar resposta</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-bottom">
+      <div>© 2026 BotDash. Todos os direitos reservados.</div>
+      <div class="foot-bottom-links">
+        <a href="/faq.html">FAQ</a>
+        <a href="/legal/termos.html">Termos</a>
+        <a href="/legal/privacidade.html">Privacidade</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/_nav-profile.js" defer></script>
+<script>
+let currentUser = null;
+let currentTicket = null;
+
+async function loadMe() {
+  try {
+    const r = await fetch('/auth/me', { credentials: 'same-origin' });
+    if (r.ok) {
+      const data = await r.json();
+      if (data && data.id) {
+        currentUser = data;
+        document.getElementById('tabMine').style.display = '';
+        const e = document.getElementById('email');
+        if (data.email && !e.value) e.value = data.email;
+        const n = document.getElementById('name');
+        if (data.display_name && !n.value) n.value = data.display_name;
+      }
+    }
+  } catch {}
+}
+
+document.querySelectorAll('#tabs .tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('#tabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.getElementById('paneNew').style.display = tab === 'new' ? '' : 'none';
+    document.getElementById('paneMine').style.display = tab === 'mine' ? '' : 'none';
+    document.getElementById('paneView').style.display = 'none';
+    if (tab === 'mine') loadMine();
+  });
+});
+
+document.getElementById('ticketForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const al = document.getElementById('alert');
+  al.className = 'alert'; al.textContent = '';
+  btn.disabled = true;
+
+  const body = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    subject: document.getElementById('subject').value,
+    category: document.getElementById('category').value,
+    priority: document.getElementById('priority').value,
+    message: document.getElementById('message').value
+  };
+
+  try {
+    const r = await fetch('/api/support-inquiries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      al.className = 'alert err';
+      al.textContent = data.error || 'Erro ao enviar.';
+    } else {
+      al.className = 'alert ok';
+      al.innerHTML = `Ticket enviado! Protocolo <b>${data.protocol}</b>. Responderemos por email em até 24h úteis.`;
+      document.getElementById('ticketForm').reset();
+    }
+  } catch (e) {
+    al.className = 'alert err';
+    al.textContent = 'Erro de rede.';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadMine() {
+  if (!currentUser) return;
+  const list = document.getElementById('mineList');
+  const empty = document.getElementById('mineEmpty');
+  list.innerHTML = '<div class="empty">Carregando...</div>';
+  empty.style.display = 'none';
+  try {
+    const r = await fetch('/api/support-inquiries/mine', { credentials: 'same-origin' });
+    const rows = await r.json();
+    list.innerHTML = '';
+    if (!Array.isArray(rows) || !rows.length) {
+      empty.style.display = '';
+      return;
+    }
+    for (const t of rows) {
+      const date = new Date(t.created_at * 1000).toLocaleString('pt-BR');
+      const item = document.createElement('div');
+      item.className = 'ticket-item';
+      item.innerHTML = `
+        <div class="head">
+          <span class="subj">${escapeHtml(t.subject)}</span>
+          <span class="chip ${t.status}">${statusLabel(t.status)}</span>
+        </div>
+        <div class="meta">SUP-${String(t.id).padStart(6,'0')} · ${escapeHtml(t.category)} · ${date}</div>
+      `;
+      item.onclick = () => openTicket(t.id);
+      list.appendChild(item);
+    }
+  } catch {
+    list.innerHTML = '<div class="empty">Erro ao carregar.</div>';
+  }
+}
+
+async function openTicket(id) {
+  document.getElementById('paneMine').style.display = 'none';
+  document.getElementById('paneNew').style.display = 'none';
+  document.getElementById('paneView').style.display = '';
+  try {
+    const r = await fetch('/api/support-inquiries/' + id, { credentials: 'same-origin' });
+    const t = await r.json();
+    currentTicket = t;
+    document.getElementById('vSubject').textContent = t.subject;
+    document.getElementById('vMeta').textContent = `Categoria: ${t.category} · Prioridade: ${t.priority} · Criado em ${new Date(t.created_at*1000).toLocaleString('pt-BR')}`;
+    document.getElementById('vProto').textContent = 'SUP-' + String(t.id).padStart(6,'0');
+    const chip = document.getElementById('vStatus');
+    chip.className = 'chip ' + t.status;
+    chip.textContent = statusLabel(t.status);
+
+    const th = document.getElementById('vThread');
+    th.innerHTML = '';
+    for (const m of (t.messages || [])) {
+      const el = document.createElement('div');
+      el.className = 'msg ' + m.author_type;
+      el.innerHTML = `<div class="auth">${m.author_type === 'admin' ? 'Equipe BotDash' : 'Você'} · ${new Date(m.created_at*1000).toLocaleString('pt-BR')}</div>${escapeHtml(m.message)}`;
+      th.appendChild(el);
+    }
+    document.getElementById('vReplyBox').style.display = t.status === 'closed' ? 'none' : '';
+  } catch {}
+}
+
+function backToList() {
+  document.getElementById('paneView').style.display = 'none';
+  document.getElementById('paneMine').style.display = '';
+}
+
+document.getElementById('vReplyBtn').addEventListener('click', async () => {
+  if (!currentTicket) return;
+  const msg = document.getElementById('vReplyMsg').value.trim();
+  if (!msg) return;
+  const btn = document.getElementById('vReplyBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/support-inquiries/${currentTicket.id}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ message: msg })
+    });
+    if (r.ok) {
+      document.getElementById('vReplyMsg').value = '';
+      openTicket(currentTicket.id);
+    }
+  } finally { btn.disabled = false; }
+});
+
+function statusLabel(s) {
+  return { open: 'Aberto', in_progress: 'Em análise', waiting_user: 'Aguarda você', closed: 'Fechado' }[s] || s;
+}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+loadMe();
+</script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BotDash — vende no Discord automaticamente</title>
+<meta name="description" content="Sistema de vendas pro seu Discord. Stripe + PIX, cargo automático, dashboard com lucro real, cupons, sorteios. Plug & play em 10 minutos.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --hero-bg: #0e0e2e;
+  --hero-bg-2: #14143a;
+  --hero-ink: #ffffff;
+  --hero-dim: #9a9bc8;
+  --hero-border: rgba(255,255,255,0.08);
+  --body-bg: #fafafa;
+  --body-surface: #ffffff;
+  --body-ink: #0e0e2e;
+  --body-dim: #5a5b6e;
+  --body-faint: #9a9ab0;
+  --body-line: #e8e8ee;
+  --primary: #8b6fff;
+  --primary-hov: #7758ff;
+  --primary-soft: #b9a8ff;
+  --primary-bg: #f0ebff;
+  --accent-glow: rgba(139,111,255,0.15);
+  --mockup-bg: #0e0e2e;
+  --mockup-inner: #191947;
+  --shadow-card: 0 16px 40px rgba(14,14,46,0.08);
+  --shadow-mockup: 0 20px 60px rgba(14,14,46,0.18);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --hero-bg: #07071a;
+  --hero-bg-2: #0e0e2e;
+  --hero-ink: #f5f5fa;
+  --hero-dim: #8888b8;
+  --hero-border: rgba(255,255,255,0.06);
+  --body-bg: #0a0a1e;
+  --body-surface: #12122e;
+  --body-ink: #f5f5fa;
+  --body-dim: #a0a0c0;
+  --body-faint: #6a6a90;
+  --body-line: #1f1f3a;
+  --primary: #9d83ff;
+  --primary-hov: #b09cff;
+  --primary-soft: #b9a8ff;
+  --primary-bg: rgba(139,111,255,0.12);
+  --accent-glow: rgba(139,111,255,0.3);
+  --mockup-bg: #07071a;
+  --mockup-inner: #14143a;
+  --shadow-card: 0 16px 40px rgba(0,0,0,0.4);
+  --shadow-mockup: 0 20px 60px rgba(0,0,0,0.5);
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;color:var(--body-ink);background:var(--body-bg);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+.serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;}
+
+/* ========= HERO SECTION (dark) ========= */
+.hero-section{background:var(--hero-bg);color:var(--hero-ink);position:relative;overflow:hidden;border-bottom-left-radius:28px;border-bottom-right-radius:28px;}
+.hero-bg-decor{position:absolute;inset:0;pointer-events:none;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139,111,255,0.18), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(80,60,180,0.15), transparent 55%);}
+.hero-grid-decor{position:absolute;inset:0;pointer-events:none;opacity:.6;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse at center, #000 30%, transparent 75%);}
+
+/* nav */
+nav.top{position:relative;z-index:10;}
+.nav-wrap{max-width:1200px;margin:0 auto;padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:30px;}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--hero-ink);}
+.brand-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-hov));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:15px;}
+.brand-name{font-weight:600;letter-spacing:-.01em;font-size:17px;}
+.nav-links{display:flex;align-items:center;gap:32px;}
+.nav-links a{color:var(--hero-dim);text-decoration:none;font-size:14.5px;font-weight:500;transition:color .15s;}
+.nav-links a:hover{color:var(--hero-ink);}
+.nav-links a.active{color:var(--hero-ink);}
+.nav-actions{display:flex;align-items:center;gap:10px;}
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;border-radius:10px;padding:11px 20px;transition:all .15s;}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 20px var(--accent-glow);}
+.btn-primary:hover{background:var(--primary-hov);transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-glow);}
+.btn-light{background:rgba(255,255,255,0.92);color:#0e0e2e;}
+.btn-light:hover{background:#fff;}
+[data-theme="dark"] .btn-light{background:rgba(255,255,255,0.12);color:#fff;}
+[data-theme="dark"] .btn-light:hover{background:rgba(255,255,255,0.18);}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.2);color:var(--hero-ink);}
+.btn-outline:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);}
+.btn-lg{padding:14px 28px;font-size:15px;border-radius:12px;}
+
+/* hero */
+.hero{position:relative;z-index:5;padding:50px 32px 80px;text-align:center;max-width:1100px;margin:0 auto;}
+.hero-decor-row{position:relative;display:flex;align-items:center;justify-content:center;gap:40px;margin-bottom:35px;opacity:.4;}
+.hero-decor-icon{width:48px;height:48px;border:1.5px solid rgba(255,255,255,0.3);border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--hero-dim);}
+.hero-decor-icon.center{width:120px;height:120px;border-radius:50%;border:2px solid var(--primary);background:linear-gradient(135deg,rgba(139,111,255,0.15),rgba(139,111,255,0.02));position:relative;opacity:1;color:var(--primary-soft);box-shadow:0 8px 40px rgba(139,111,255,0.25);}
+.hero-decor-icon.center::after{content:'';position:absolute;width:40px;height:40px;border:2px solid var(--primary-soft);border-radius:50%;bottom:-12px;right:-12px;background:rgba(139,111,255,0.3);}
+.pill{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.06);border:1px solid var(--hero-border);padding:6px 14px;border-radius:30px;font-size:12.5px;font-weight:500;color:var(--hero-ink);backdrop-filter:blur(8px);}
+.pill .pill-ico{width:14px;height:14px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;}
+.pill-float{position:absolute;}
+.pill-float.tl{top:30px;left:50%;transform:translateX(-180%);}
+.pill-float.bl{bottom:30px;left:50%;transform:translateX(-220%);}
+.hero h1{font-size:54px;font-weight:600;letter-spacing:-.025em;line-height:1.1;margin-bottom:22px;max-width:760px;margin-left:auto;margin-right:auto;}
+.hero h1 .serif{font-style:italic;color:var(--primary-soft);font-weight:400;}
+.hero p{font-size:16px;color:var(--hero-dim);max-width:560px;margin:0 auto 32px;line-height:1.6;}
+.hero-cta{display:flex;justify-content:center;}
+
+/* ========= LIGHT SECTIONS ========= */
+.light-wrap{padding:0 32px;}
+.section{max-width:1200px;margin:0 auto;}
+
+/* trust */
+.trust{padding:60px 0 30px;text-align:center;}
+.trust-label{font-size:14px;color:var(--body-dim);margin-bottom:30px;}
+.trust-row{display:flex;align-items:center;justify-content:center;gap:60px;flex-wrap:wrap;opacity:.55;}
+.trust-logo{display:flex;align-items:center;gap:9px;color:var(--body-ink);font-weight:700;font-size:17px;letter-spacing:-.01em;}
+.trust-logo small{font-size:11px;font-weight:400;color:var(--body-dim);}
+
+/* section title */
+.section-title{text-align:center;padding:70px 0 50px;}
+.section-title h2{font-size:42px;font-weight:600;letter-spacing:-.025em;line-height:1.15;max-width:760px;margin:0 auto 16px;}
+.section-title h2 .serif{font-style:italic;color:var(--primary);font-weight:400;}
+.section-title p{font-size:16px;color:var(--body-dim);max-width:580px;margin:0 auto;line-height:1.6;}
+
+/* feature row */
+.feat-row{display:grid;grid-template-columns:1fr 1.3fr;gap:50px;align-items:center;padding:30px 0 80px;}
+.feat-row.reverse{grid-template-columns:1.3fr 1fr;direction:rtl;}
+.feat-row.reverse > *{direction:ltr;}
+.feat-text h3{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.2;margin-bottom:16px;}
+.feat-text h3 .accent{color:var(--primary);font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;}
+.feat-text p{font-size:15px;color:var(--body-dim);line-height:1.6;margin-bottom:22px;max-width:440px;}
+.feat-list{list-style:none;display:flex;flex-direction:column;gap:12px;}
+.feat-list li{display:flex;align-items:center;gap:11px;font-size:14.5px;color:var(--body-ink);font-weight:500;}
+.feat-list .check{width:22px;height:22px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:12px;}
+
+/* mockup card (dark UI preview) */
+.mockup{background:#0e0e2e;border-radius:16px;padding:18px;box-shadow:0 20px 60px rgba(14,14,46,0.18),0 0 0 1px var(--body-line);overflow:hidden;position:relative;}
+.mockup-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.mockup-bar .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.15);}
+.mockup-bar .url{margin-left:12px;font-size:11px;color:#9a9bc8;font-family:'Inter',monospace;}
+.mockup-content{background:#191947;border-radius:10px;padding:16px;}
+.mp-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.mp-row:last-child{border-bottom:none;}
+.mp-row.head{font-size:11px;color:#9a9bc8;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;}
+.mp-cell{font-size:13px;color:#fff;}
+.mp-cell.pri{color:var(--primary-soft);font-weight:600;}
+.mp-cell.green{color:#7fffae;font-weight:600;}
+.mp-pill{background:rgba(139,111,255,0.18);color:var(--primary-soft);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;display:inline-block;}
+.mp-pill.green{background:rgba(127,255,174,0.12);color:#7fffae;}
+.mp-cta{margin-top:14px;background:var(--primary);color:#fff;padding:10px 14px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;}
+
+/* feature cards row (small features) */
+.fcards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:30px 0 80px;}
+.fcard{background:#fff;border:1px solid var(--body-line);border-radius:18px;padding:28px;transition:all .2s;}
+.fcard:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(14,14,46,0.08);}
+.fcard-ico{width:46px;height:46px;border-radius:12px;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+.fcard h4{font-size:18px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px;}
+.fcard p{font-size:14px;color:var(--body-dim);line-height:1.55;}
+
+/* stats strip */
+.stats{background:var(--hero-bg);color:var(--hero-ink);border-radius:24px;padding:50px;margin:60px 0;position:relative;overflow:hidden;}
+.stats::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at left, rgba(139,111,255,0.2), transparent 60%);}
+.stats-content{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+.stat-item{}
+.stat-num{font-size:42px;font-weight:600;letter-spacing:-.025em;color:var(--primary-soft);margin-bottom:6px;}
+.stat-label{font-size:13px;color:var(--hero-dim);}
+
+/* pricing */
+.pricing-section{padding:70px 0 90px;}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto;}
+.price{background:#fff;border:1px solid var(--body-line);border-radius:20px;padding:34px;}
+.price.featured{background:linear-gradient(180deg, #fff, var(--primary-bg) 200%);border-color:var(--primary);position:relative;box-shadow:0 20px 50px rgba(139,111,255,0.12);}
+.price-tag{position:absolute;top:18px;right:18px;background:var(--primary);color:#fff;padding:4px 12px;border-radius:30px;font-size:11px;font-weight:600;}
+.price-name{font-size:13px;color:var(--body-dim);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:14px;}
+.price-amount{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;}
+.price-amount .val{font-size:44px;font-weight:600;letter-spacing:-.025em;}
+.price-amount .per{font-size:14px;color:var(--body-dim);}
+.price-desc{font-size:14px;color:var(--body-dim);margin-bottom:24px;}
+.price ul{list-style:none;margin-bottom:24px;display:flex;flex-direction:column;gap:11px;}
+.price li{font-size:14px;display:flex;align-items:flex-start;gap:10px;color:var(--body-ink);}
+.price li .check{color:var(--primary);flex-shrink:0;margin-top:2px;font-weight:700;}
+.price .btn{width:100%;justify-content:center;}
+.price.featured .btn{background:var(--primary);color:#fff;}
+.price:not(.featured) .btn{background:var(--body-ink);color:#fff;}
+
+/* faq */
+.faq-section{padding:70px 0 90px;max-width:780px;margin:0 auto;}
+.faq-item{border-bottom:1px solid var(--body-line);}
+.faq-q{padding:24px 0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:500;font-size:17px;letter-spacing:-.01em;}
+.faq-q:hover{color:var(--primary);}
+.faq-plus{width:32px;height:32px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0;}
+
+/* CTA */
+.cta{background:var(--hero-bg);color:var(--hero-ink);border-radius:24px;padding:80px 50px;text-align:center;margin:60px 0;position:relative;overflow:hidden;}
+.cta::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(circle at 30% 30%, rgba(139,111,255,0.25), transparent 50%),
+  radial-gradient(circle at 70% 70%, rgba(80,60,180,0.15), transparent 50%);}
+.cta-content{position:relative;}
+.cta h2{font-size:44px;font-weight:600;letter-spacing:-.025em;line-height:1.15;margin-bottom:18px;}
+.cta h2 .serif{font-style:italic;color:var(--primary-soft);font-weight:400;}
+.cta p{font-size:16px;color:var(--hero-dim);max-width:520px;margin:0 auto 32px;}
+.cta-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+
+/* footer */
+footer{background:#fff;border-top:1px solid var(--body-line);padding:60px 32px 30px;}
+.footer-grid{max-width:1200px;margin:0 auto 40px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;}
+.foot-col h4{font-size:13px;font-weight:600;color:var(--body-ink);margin-bottom:16px;text-transform:uppercase;letter-spacing:.06em;}
+.foot-col a{display:block;color:var(--body-dim);text-decoration:none;padding:6px 0;font-size:14px;}
+.foot-col a:hover{color:var(--primary);}
+.foot-desc{font-size:14px;color:var(--body-dim);line-height:1.55;margin-top:14px;max-width:280px;}
+.foot-bottom{max-width:1200px;margin:0 auto;border-top:1px solid var(--body-line);padding-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--body-faint);}
+
+/* responsive */
+@media(max-width:920px){
+  .nav-links{display:none;}
+  .hero h1{font-size:36px;}
+  .hero p{font-size:15px;}
+  .feat-row,.feat-row.reverse{grid-template-columns:1fr;direction:ltr;gap:30px;}
+  .fcards,.stats-content,.price-grid{grid-template-columns:1fr;}
+  .stats,.cta{padding:40px 24px;border-radius:18px;}
+  .stats-content{gap:32px;}
+  .section-title h2,.cta h2{font-size:30px;}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:30px;}
+  .foot-bottom{flex-direction:column;gap:8px;}
+  .pill-float.tl,.pill-float.bl{display:none;}
+}
+</style>
+</head>
+<body>
+
+<section class="hero-section">
+  <div class="hero-bg-decor"></div>
+  <div class="hero-grid-decor"></div>
+
+  <nav class="top">
+    <div class="nav-wrap">
+      <a class="brand" href="/modern/">
+        <div class="brand-logo">B</div>
+        <div class="brand-name">BotDash</div>
+      </a>
+      <div class="nav-links">
+        <a href="#" class="active">início</a>
+        <a href="#features">por que nós?</a>
+        <a href="#planos">planos</a>
+        <a href="#beneficios">benefícios</a>
+        <a href="/loja.html">loja demo</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/login.html" class="btn btn-outline">entrar</a>
+        <a href="/register.html" class="btn btn-light">criar conta</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div style="position:relative;height:60px;margin-bottom:18px;">
+      <div class="pill pill-float tl">
+        <span class="pill-ico">✓</span> cargo automático
+      </div>
+      <div class="pill pill-float bl">
+        <span class="pill-ico">✓</span> pix + cartão
+      </div>
+    </div>
+
+    <div class="hero-decor-row">
+      <div class="hero-decor-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="hero-decor-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 11 12 8 15 11"/><line x1="12" y1="2" x2="12" y2="14"/></svg>
+      </div>
+      <div class="hero-decor-icon center">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M11 8v3l2 2"/></svg>
+      </div>
+      <div class="hero-decor-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="hero-decor-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+      </div>
+    </div>
+
+    <h1>Vendas automatizadas no Discord<br>com <span class="serif">cargo entregue</span> em segundos</h1>
+    <p>O sistema completo pra quem vende no Discord: Stripe + PIX, dashboard com lucro real, cupons, sorteios, tickets — sem mensalidade do bot.</p>
+    <div class="hero-cta">
+      <a href="/register.html" class="btn btn-primary btn-lg">começar agora →</a>
+    </div>
+  </div>
+</section>
+
+<!-- Trust -->
+<div class="light-wrap">
+  <div class="section trust">
+    <div class="trust-label">Construído com tecnologia de ponta</div>
+    <div class="trust-row">
+      <div class="trust-logo">discord<small>.js</small></div>
+      <div class="trust-logo">Stripe</div>
+      <div class="trust-logo">MisticPay</div>
+      <div class="trust-logo">Node<small>.js</small></div>
+      <div class="trust-logo">Railway</div>
+    </div>
+  </div>
+</div>
+
+<!-- Section title -->
+<div class="light-wrap">
+  <div class="section section-title">
+    <h2>Acelere suas vendas com<br>uma loja <span class="serif">verdadeiramente</span> integrada</h2>
+    <p>Não é só um bot. É o sistema completo de e-commerce dentro do seu Discord.</p>
+  </div>
+
+  <!-- Feature row 1 -->
+  <div class="section feat-row" id="features">
+    <div class="feat-text">
+      <h3><span class="accent">Configuração</span> simples<br>para qualquer pessoa</h3>
+      <p>Nosso wizard valida cada credencial Discord e Stripe em tempo real. Sem ler documentação. Sem dor de cabeça.</p>
+      <ul class="feat-list">
+        <li><span class="check">✓</span>Setup em 10 minutos, com testes ao vivo</li>
+        <li><span class="check">✓</span>Cargo entregue automaticamente após pagamento</li>
+        <li><span class="check">✓</span>Funciona com Stripe e MisticPay</li>
+      </ul>
+    </div>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="url">/dashboard/vendas</div>
+      </div>
+      <div class="mockup-content">
+        <div class="mp-row head">
+          <div>Data</div><div>Produto</div><div>Status</div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">22/03 22:23</div><div class="mp-cell">VIP Mensal</div><div><span class="mp-pill green">pago</span></div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">22/03 21:14</div><div class="mp-cell">Cargo Especial</div><div><span class="mp-pill green">pago</span></div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">22/03 19:41</div><div class="mp-cell">VIP Anual</div><div><span class="mp-pill green">pago</span></div>
+        </div>
+        <div class="mp-row" style="margin-top:8px;">
+          <div class="mp-cell" style="font-weight:600;">Total hoje</div>
+          <div class="mp-cell"></div>
+          <div class="mp-cell pri">R$ 287,40</div>
+        </div>
+        <div class="mp-cta">ver dashboard completo →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature row 2 (reversed) -->
+  <div class="section feat-row reverse">
+    <div class="feat-text">
+      <h3>Dashboard com <span class="accent">lucro real</span>,<br>não só vaidade</h3>
+      <p>Veja custo, margem, top produto, ticket médio. Exporte CSV. Saiba exatamente quanto você está ganhando — não só quantas vendas teve.</p>
+      <ul class="feat-list">
+        <li><span class="check">✓</span>Lucro mensal calculado automaticamente</li>
+        <li><span class="check">✓</span>Custo + margem por produto</li>
+        <li><span class="check">✓</span>Export CSV pras finanças</li>
+      </ul>
+    </div>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="url">/dashboard/produtos</div>
+      </div>
+      <div class="mockup-content">
+        <div class="mp-row head">
+          <div>Produto</div><div>Vendas</div><div>Lucro</div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">VIP Mensal</div><div class="mp-cell">42</div><div class="mp-cell green">R$ 1.847</div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">VIP Anual</div><div class="mp-cell">18</div><div class="mp-cell green">R$ 2.180</div>
+        </div>
+        <div class="mp-row">
+          <div class="mp-cell">Cargo Especial</div><div class="mp-cell">27</div><div class="mp-cell green">R$ 425</div>
+        </div>
+        <div class="mp-row" style="margin-top:8px;">
+          <div class="mp-cell" style="font-weight:600;">Margem média</div>
+          <div class="mp-cell"></div>
+          <div class="mp-cell pri">68%</div>
+        </div>
+        <div class="mp-cta">ver relatório →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature cards strip -->
+<div class="light-wrap">
+  <div class="section section-title" style="padding-bottom:30px;" id="beneficios">
+    <h2>Tudo que importa, <span class="serif">nada que sobra</span></h2>
+    <p>9 sistemas integrados que conversam entre si. Cada um pensado pra resolver um problema real de quem vende.</p>
+  </div>
+
+  <div class="section fcards">
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+      <h4>Carrinho multi-produto</h4>
+      <p>Cliente compra vários itens num pagamento só. Cupom valida valor mínimo, cargo requerido e qty.</p>
+    </div>
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div>
+      <h4>Sorteios automáticos</h4>
+      <p>Cria com prêmio + canal + duração. Bot publica embed com botão e sorteia sozinho no fim.</p>
+    </div>
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <h4>Afiliados com comissão</h4>
+      <p>Cadastra galera com código. Eles divulgam, recebem comissão automática a cada venda.</p>
+    </div>
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <h4>Auto-mod inteligente</h4>
+      <p>Anti-spam, anti-flood, filtro de links e palavras. Toggles que de fato agem no Discord.</p>
+    </div>
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+      <h4>Tickets tipados</h4>
+      <p>Suporte, Resgate, Customizado. Cada tipo pode exigir cargo específico antes de abrir.</p>
+    </div>
+    <div class="fcard">
+      <div class="fcard-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <h4>Invite tracker</h4>
+      <p>Sabe quem trouxe cada novo membro. Ranking de top recrutadores e mensagens custom.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="light-wrap">
+  <div class="section">
+    <div class="stats">
+      <div class="stats-content">
+        <div class="stat-item">
+          <div class="stat-num">&lt;5s</div>
+          <div class="stat-label">cargo entregue após pagamento</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">0%</div>
+          <div class="stat-label">de taxa do bot — só Stripe</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">10min</div>
+          <div class="stat-label">do zero ao primeiro produto</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">100%</div>
+          <div class="stat-label">do lucro vai pra sua conta</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pricing -->
+<div class="light-wrap">
+  <div class="section section-title" id="planos">
+    <h2>Preço honesto, <span class="serif">sem letra miúda</span></h2>
+    <p>O código é seu, o servidor é seu, o lucro é todo seu. Só paga o Stripe e hospedagem.</p>
+  </div>
+
+  <div class="section pricing-section" style="padding-top:0;">
+    <div class="price-grid">
+      <div class="price">
+        <div class="price-name">DIY</div>
+        <div class="price-amount"><span class="val">R$0</span><span class="per">grátis</span></div>
+        <div class="price-desc">Código aberto pra quem sabe mexer.</div>
+        <ul>
+          <li><span class="check">✓</span>Código completo no GitHub</li>
+          <li><span class="check">✓</span>Roda no seu Railway/VPS</li>
+          <li><span class="check">✓</span>Todas as features</li>
+          <li><span class="check">✓</span>Updates gratuitos</li>
+        </ul>
+        <a href="/register.html" class="btn btn-lg">começar grátis</a>
+      </div>
+
+      <div class="price featured">
+        <div class="price-tag">recomendado</div>
+        <div class="price-name">Setup assistido</div>
+        <div class="price-amount"><span class="val">R$197</span><span class="per">único</span></div>
+        <div class="price-desc">Eu configuro tudo. Você só vende.</div>
+        <ul>
+          <li><span class="check">✓</span>Tudo do plano DIY</li>
+          <li><span class="check">✓</span>Configuração feita pra você</li>
+          <li><span class="check">✓</span>Deploy no Railway</li>
+          <li><span class="check">✓</span>Cores e logo customizados</li>
+          <li><span class="check">✓</span>30 dias de suporte por DM</li>
+        </ul>
+        <a href="#contato" class="btn btn-lg">contratar agora</a>
+      </div>
+
+      <div class="price">
+        <div class="price-name">Managed</div>
+        <div class="price-amount"><span class="val">R$47</span><span class="per">/ mês</span></div>
+        <div class="price-desc">Eu hospedo, você só usa.</div>
+        <ul>
+          <li><span class="check">✓</span>Tudo do Setup assistido</li>
+          <li><span class="check">✓</span>Hospedagem incluída</li>
+          <li><span class="check">✓</span>Backups diários</li>
+          <li><span class="check">✓</span>Updates automáticos</li>
+          <li><span class="check">✓</span>Suporte prioritário</li>
+        </ul>
+        <a href="#contato" class="btn btn-lg">contratar</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="light-wrap">
+  <div class="section section-title">
+    <h2>Perguntas <span class="serif">frequentes</span></h2>
+    <p>Se ainda tiver dúvida depois disso, manda DM. Respondo todas.</p>
+  </div>
+
+  <div class="section faq-section">
+    <div class="faq-item">
+      <div class="faq-q"><span>Posso usar no meu próprio Discord?</span><div class="faq-plus">+</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><span>Preciso saber programar?</span><div class="faq-plus">+</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><span>Quanto custa a taxa do PIX/Stripe?</span><div class="faq-plus">+</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><span>Posso revender pra meus clientes?</span><div class="faq-plus">+</div></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><span>O dinheiro cai direto na minha conta?</span><div class="faq-plus">+</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="light-wrap">
+  <div class="section">
+    <div class="cta" id="contato">
+      <div class="cta-content">
+        <h2>Pronto pra começar a<br>vender <span class="serif">automaticamente</span>?</h2>
+        <p>Setup em 10 minutos. Primeira venda na primeira hora. Sem mensalidade do bot.</p>
+        <div class="cta-actions">
+          <a href="/register.html" class="btn btn-primary btn-lg">começar agora →</a>
+          <a href="/loja.html" class="btn btn-outline btn-lg">ver loja demo</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-grid">
+    <div class="foot-col">
+      <a class="brand" href="/modern/" style="color:var(--body-ink);">
+        <div class="brand-logo">B</div>
+        <div class="brand-name">BotDash</div>
+      </a>
+      <p class="foot-desc">O sistema open-source pra quem vende no Discord. Sem mensalidade, sem taxa adicional, sem amarras.</p>
+    </div>
+    <div class="foot-col">
+      <h4>Produto</h4>
+      <a href="#features">Recursos</a>
+      <a href="#beneficios">Benefícios</a>
+      <a href="#planos">Planos</a>
+      <a href="/loja.html">Loja demo</a>
+    </div>
+    <div class="foot-col">
+      <h4>Painel</h4>
+      <a href="/setup.html">Setup</a>
+      <a href="/login.html">Entrar</a>
+      <a href="/app.html">Dashboard</a>
+    </div>
+    <div class="foot-col">
+      <h4>Outros estilos</h4>
+      <a href="/">versão dark clean</a>
+      <a href="/punky/">versão punky</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>© 2026 BotDash · feito no Brasil</div>
+    <div>open source · self-hosted</div>
+  </div>
+</footer>
+
+</body>
+</html>

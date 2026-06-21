@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar conta — BotDash</title>
+<link rel="stylesheet" href="/_design-system.css">
+<style>
+  body {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(139,111,255,0.12), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(95,255,95,0.04), transparent 50%),
+      #0a0a0a;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .card-login {
+    width: 100%; max-width: 460px;
+    background: #0e0e0e;
+    border: 1px solid #1f1f1f;
+    border-radius: 14px;
+    padding: 38px 36px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(139,111,255,0.06);
+    position: relative; z-index: 1;
+  }
+  .brand-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .brand-logo {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #8b6fff, #5a4ad1);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 19px;
+    box-shadow: 0 6px 20px rgba(139,111,255,0.35);
+  }
+  .brand-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+  .brand-tag {
+    margin-left: auto;
+    font-size: 10px; padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(139,111,255,0.13);
+    color: #b9a8ff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  h1 {
+    font-size: 24px; font-weight: 800;
+    color: #fff; margin-bottom: 6px;
+    letter-spacing: -.01em;
+  }
+  .sub {
+    font-size: 13px;
+    color: #888; margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .field { margin-bottom: 14px; }
+  .flabel {
+    font-size: 11.5px;
+    color: #aaa;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .inp {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 11px 13px;
+    font-size: 13px;
+    color: #fff;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .inp:focus {
+    border-color: #8b6fff;
+    box-shadow: 0 0 0 3px rgba(139,111,255,0.1);
+  }
+  .hint {
+    font-size: 11px;
+    color: #555;
+    margin-top: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .btn {
+    width: 100%;
+    background: linear-gradient(90deg, #8b6fff, #7758ff);
+    color: #fff;
+    border: 0;
+    padding: 13px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter .15s, transform .05s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: translateY(0.5px); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .alert {
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-bottom: 16px;
+    display: none;
+    line-height: 1.5;
+    border: 1px solid;
+  }
+  .alert.err {
+    background: rgba(239,68,68,0.08);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,0.3);
+    display: block;
+  }
+  .alert.info {
+    background: rgba(139,111,255,0.06);
+    color: #b9a8ff;
+    border-color: rgba(139,111,255,0.25);
+    display: block;
+  }
+  .foot-link {
+    font-size: 13px;
+    color: #888;
+    text-align: center;
+    margin-top: 20px;
+  }
+  .foot-link a {
+    color: #b9a8ff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .foot-link a:hover { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="card-login">
+    <div class="brand-row">
+      <div class="brand-logo">B</div>
+      <div class="brand-name">BotDash</div>
+      <span class="brand-tag">Beta</span>
+    </div>
+
+    <h1 id="title">Criar conta</h1>
+    <div class="sub" id="subtitle">cria sua conta pra acessar o painel.</div>
+
+    <div id="alert" class="alert"></div>
+
+    <form onsubmit="doRegister(event)">
+      <div class="field">
+        <div class="flabel">nome</div>
+        <input class="inp" id="display_name" type="text" required placeholder="seu nome ou apelido" autocomplete="name">
+      </div>
+      <div class="field">
+        <div class="flabel">email</div>
+        <input class="inp" id="email" type="email" required placeholder="voce@exemplo.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <div class="flabel">senha</div>
+        <input class="inp" id="password" type="password" required minlength="8" placeholder="••••••••" autocomplete="new-password">
+        <div class="hint">mínimo 8 caracteres</div>
+      </div>
+      <button class="btn" type="submit" id="btn">criar conta →</button>
+    </form>
+
+    <div class="foot-link">
+      já tem conta? <a href="/login.html">entrar →</a>
+    </div>
+  </div>
+
+<script>
+const a = document.getElementById('alert');
+
+fetch('/auth/me').then(r => r.json()).then(d => {
+  if (d.has_users === false) {
+    document.getElementById('title').textContent = 'Crie a conta de owner';
+    document.getElementById('subtitle').textContent = 'nenhum usuário cadastrado — você vai ser o dono do painel.';
+    a.className = 'alert info';
+    a.innerHTML = '👑 essa será a conta principal (owner) com permissão total.';
+    fetch('/api/session/health').then(r => r.json()).then(h => {
+      const inProd = h.env === 'production';
+      const noVolume = !h.volume?.railway;
+      if (inProd && noVolume) {
+        a.className = 'alert err';
+        a.innerHTML = '⚠️ <b>Atenção:</b> Esse servidor está rodando sem Volume persistente. Seu cadastro vai sumir no próximo deploy. <a href="/diagnostico.html" style="color:#fff;text-decoration:underline;">Ver diagnóstico</a>';
+      }
+    }).catch(() => {});
+  } else if (d.authenticated && d.admin) {
+    location.href = '/app.html';
+  }
+}).catch(() => {});
+
+async function doRegister(e) {
+  e.preventDefault();
+  const display_name = document.getElementById('display_name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = 'criando...';
+  try {
+    const r = await fetch('/auth/register', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, display_name })
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      a.className = 'alert err'; a.textContent = '✗ ' + (d.error || 'erro ao registrar');
+      btn.disabled = false; btn.textContent = 'criar conta →';
+      return;
+    }
+    location.href = '/onboarding.html';
+  } catch {
+    a.className = 'alert err'; a.textContent = 'erro de conexão';
+    btn.disabled = false; btn.textContent = 'criar conta →';
+  }
+}
+</script>
+</body>
+</html>

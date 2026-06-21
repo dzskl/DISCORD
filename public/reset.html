@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redefinir senha — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Syne',sans-serif;background:#0a0a0a;color:#e8e8e8;}
+.bg{position:fixed;inset:0;background:radial-gradient(circle at 20% 20%, rgba(88,101,242,0.12), transparent 50%), #0a0a0a;}
+.wrap{position:relative;z-index:1;min-height:100%;display:flex;align-items:center;justify-content:center;padding:30px 20px;}
+.card{width:100%;max-width:420px;background:#0e0e0e;border:1px solid #1f1f1f;border-radius:14px;padding:36px;}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+.logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#5865f2,#404eed);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;}
+.brand-name{font-size:17px;font-weight:700;color:#fff;}
+h1{font-size:21px;color:#fff;margin-bottom:6px;}
+.sub{font-size:12px;font-family:'IBM Plex Mono',monospace;color:#666;margin-bottom:22px;line-height:1.5;}
+.field{margin-bottom:14px;}
+.flabel{font-size:10px;font-family:'IBM Plex Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600;}
+.inp{width:100%;background:#0a0a0a;border:1px solid #222;border-radius:7px;padding:11px 14px;font-size:13px;font-family:'IBM Plex Mono',monospace;color:#fff;outline:none;}
+.inp:focus{border-color:#5865f2;}
+.hint{font-size:10px;color:#444;margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+.btn{width:100%;background:#5865f2;color:#fff;border:none;padding:12px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;}
+.btn:hover{background:#4752c4;}
+.alert{padding:10px 12px;border-radius:6px;font-size:11.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;display:none;line-height:1.5;}
+.alert.ok{background:#0a1f0a;color:#5fff5f;border:1px solid #1a4a1a;display:block;}
+.alert.err{background:#1f0a0a;color:#ff5f5f;border:1px solid #3a1010;display:block;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap"><div class="card">
+  <div class="brand"><div class="logo">B</div><div class="brand-name">BotDash</div></div>
+  <h1>Nova senha</h1>
+  <div class="sub">defina sua nova senha. depois disso vc pode entrar normalmente.</div>
+  <div id="alert" class="alert"></div>
+  <form onsubmit="doReset(event)">
+    <div class="field">
+      <div class="flabel">nova senha</div>
+      <input class="inp" id="pwd" type="password" required minlength="8" placeholder="••••••••" autocomplete="new-password">
+      <div class="hint">mínimo 8 caracteres</div>
+    </div>
+    <button class="btn" type="submit" id="btn">salvar nova senha</button>
+  </form>
+</div></div>
+<script>
+const a = document.getElementById('alert');
+const token = new URLSearchParams(location.search).get('token');
+if (!token) { a.className = 'alert err'; a.textContent = 'token inválido — peça um novo link em /forgot.html'; }
+async function doReset(e) {
+  e.preventDefault();
+  if (!token) return;
+  const new_password = document.getElementById('pwd').value;
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = 'salvando...';
+  try {
+    const r = await fetch('/auth/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, new_password }) });
+    const d = await r.json();
+    if (!r.ok) { a.className = 'alert err'; a.textContent = d.error || 'erro'; btn.disabled = false; btn.textContent = 'salvar nova senha'; return; }
+    a.className = 'alert ok'; a.textContent = '✓ senha alterada. redirecionando...';
+    setTimeout(() => location.href = '/login.html', 1500);
+  } catch { a.className = 'alert err'; a.textContent = 'erro de conexao'; btn.disabled = false; btn.textContent = 'salvar nova senha'; }
+}
+</script>
+</body></html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API & Webhooks — BotDash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap');
+:root{--bg:#0a0a0a;--surface:#111;--surface-2:#161616;--surface-3:#1a1a1a;--border:#1f1f1f;--border-strong:#2a2a2a;--text:#e8e8e8;--text-dim:#888;--text-faint:#555;--primary:#5865f2;--primary-hov:#4752c4;--primary-glow:rgba(88,101,242,0.18);--success:#5fff5f;--success-bg:#0a1f0a;--success-bd:#1a4a1a;--warn:#f5c542;--danger:#ff5f5f;--danger-bg:#1f0a0a;--danger-bd:#3a1010;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:40px 20px 80px;}
+.wrap{max-width:980px;margin:0 auto;}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-faint);text-decoration:none;margin-bottom:16px;font-family:'IBM Plex Mono',monospace;}
+.back:hover{color:var(--text);}
+h1{font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin-bottom:6px;}
+.sub{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);max-width:80ch;line-height:1.6;}
+
+.section-title{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin:30px 0 12px;padding-left:4px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:10px;}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.card-title{font-size:14px;font-weight:600;color:#fff;}
+.muted{font-size:11.5px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
+.chip{display:inline-flex;font-size:9.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;background:var(--surface-3);color:var(--text-dim);border:1px solid var(--border);}
+.chip.ok{background:var(--success-bg);color:var(--success);border-color:var(--success-bd);}
+.chip.err{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-bd);}
+
+.btn{background:transparent;border:1px solid var(--border-strong);color:var(--text);padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Syne',sans-serif;transition:all .12s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{border-color:var(--primary);}
+.btn.primary{background:var(--primary);border-color:var(--primary);}
+.btn.primary:hover{background:var(--primary-hov);}
+.btn.danger{color:var(--danger);border-color:var(--danger-bd);}
+.btn.danger:hover{background:var(--danger-bg);border-color:var(--danger);}
+
+.code{background:#0a0a0a;border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#fff;word-break:break-all;display:flex;align-items:center;gap:10px;}
+.code .copy{margin-left:auto;cursor:pointer;color:var(--text-faint);}
+.code .copy:hover{color:#fff;}
+
+.inp{width:100%;background:#0a0a0a;border:1px solid var(--border-strong);border-radius:8px;padding:9px 12px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:#fff;outline:none;}
+.inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow);}
+
+.alert{padding:10px 14px;border-radius:8px;font-size:12.5px;margin-bottom:12px;display:none;line-height:1.5;border:1px solid;}
+.alert.ok{background:var(--success-bg);color:var(--success);border-color:var(--success-bd);display:block;}
+.alert.err{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-bd);display:block;}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal.open{display:flex;}
+.modal-card{background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:26px;max-width:480px;width:100%;}
+.modal h2{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;}
+.field{margin-bottom:14px;}
+.flabel{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;font-weight:600;}
+.scopes{display:flex;flex-wrap:wrap;gap:6px;}
+.scope-chip{font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;cursor:pointer;color:var(--text-dim);}
+.scope-chip.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.warning{padding:10px 14px;background:var(--surface-3);border-left:3px solid var(--warn);font-size:11.5px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;line-height:1.6;margin-top:10px;border-radius:5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/app.html">← voltar pro painel</a>
+  <h1>API & Webhooks</h1>
+  <div class="sub">crie chaves de API pra integrar o BotDash com seus sistemas (Zapier, n8n, app proprio) e cadastre webhooks pra ser notificado quando algo acontece na sua loja</div>
+
+  <div id="alert" class="alert"></div>
+
+  <!-- API KEYS -->
+  <div class="section-title">API Keys</div>
+  <div id="keys-list">
+    <div class="card"><div class="muted">carregando...</div></div>
+  </div>
+  <button class="btn primary" onclick="openKeyModal()">+ nova api key</button>
+
+  <!-- OUTBOUND WEBHOOKS -->
+  <div class="section-title" style="margin-top:36px;">Webhooks (saida)</div>
+  <div id="hooks-list">
+    <div class="card"><div class="muted">carregando...</div></div>
+  </div>
+  <button class="btn primary" onclick="openHookModal()">+ novo webhook</button>
+</div>
+
+<!-- KEY MODAL -->
+<div class="modal" id="key-modal">
+  <div class="modal-card">
+    <h2 id="key-modal-title">Nova API key</h2>
+    <div class="muted" id="key-modal-sub" style="margin-bottom:14px;">a chave so eh exibida UMA VEZ apos criar</div>
+    <form onsubmit="createKey(event)">
+      <div class="field">
+        <div class="flabel">nome (label)</div>
+        <input class="inp" id="key-label" placeholder="ex: Zapier integracao" required>
+      </div>
+      <div class="field">
+        <div class="flabel">scopes</div>
+        <div class="scopes" id="key-scopes"></div>
+      </div>
+      <div class="field">
+        <div class="flabel">expira em (dias) — opcional</div>
+        <input class="inp" id="key-expires" type="number" placeholder="90" min="1" max="3650">
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#aaa;font-family:'IBM Plex Mono',monospace;">
+          <input type="checkbox" id="key-test-mode" style="cursor:pointer;">
+          modo sandbox (bd_test_*) — nao dispara refund real na PSP
+        </label>
+      </div>
+      <div id="key-result" style="display:none;">
+        <div class="flabel">sua chave (copie agora, nao sera mostrada novamente)</div>
+        <div class="code" id="key-result-value"></div>
+        <div class="warning">⚠️ Guarde essa chave em local seguro. Quem tiver acesso pode ler/modificar suas vendas conforme os scopes.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeKeyModal()">fechar</button>
+        <button type="submit" class="btn primary" id="key-submit">gerar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ATTEMPTS MODAL -->
+<div class="modal" id="attempts-modal">
+  <div class="modal-card" style="max-width:680px;">
+    <h2>Histórico de entregas</h2>
+    <div id="attempts-stats" style="margin:14px 0;"></div>
+    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:var(--surface-2);position:sticky;top:0;">
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">data</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">evento</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">try</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">status</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">ms</th>
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--text-faint);text-transform:uppercase;">erro</th>
+        </tr></thead>
+        <tbody id="attempts-body"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="closeAttempts()">fechar</button></div>
+  </div>
+</div>
+
+<!-- HOOK MODAL -->
+<div class="modal" id="hook-modal">
+  <div class="modal-card">
+    <h2 id="hook-modal-title">Novo webhook</h2>
+    <div class="muted" style="margin-bottom:14px;">o secret eh exibido UMA VEZ apos criar — use-o pra validar HMAC-SHA256 do header X-BotDash-Signature</div>
+    <form onsubmit="createHook(event)">
+      <div class="field">
+        <div class="flabel">URL (https recomendado)</div>
+        <input class="inp" id="hook-url" placeholder="https://seu-site.com/webhook" type="url" required>
+      </div>
+      <div class="field">
+        <div class="flabel">eventos</div>
+        <div class="scopes" id="hook-events"></div>
+      </div>
+      <div id="hook-result" style="display:none;">
+        <div class="flabel">secret (copie agora)</div>
+        <div class="code" id="hook-result-secret"></div>
+        <div class="warning">⚠️ Use esse secret pra calcular HMAC-SHA256 do body recebido e comparar com o header X-BotDash-Signature.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeHookModal()">fechar</button>
+        <button type="submit" class="btn primary" id="hook-submit">criar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let allScopes = [];
+let allEvents = [];
+let selectedScopes = new Set();
+let selectedEvents = new Set();
+
+async function load() {
+  try {
+    const [sc, ev] = await Promise.all([
+      fetch('/api/api-keys/scopes', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/outbound-webhooks/events', { credentials: 'include' }).then(r => r.json())
+    ]);
+    allScopes = sc.scopes || [];
+    allEvents = ev.events || [];
+  } catch {}
+  loadKeys();
+  loadHooks();
+}
+
+async function loadKeys() {
+  const r = await fetch('/api/api-keys', { credentials: 'include' });
+  if (r.status === 401) { location.href = '/login.html'; return; }
+  const d = await r.json();
+  const box = document.getElementById('keys-list');
+  if (!d.keys.length) { box.innerHTML = `<div class="card"><div class="muted">nenhuma api key criada</div></div>`; return; }
+  box.innerHTML = d.keys.map(k => {
+    const expires = k.expires_at ? new Date(k.expires_at*1000).toLocaleDateString('pt-BR') : 'nunca';
+    const lastUsed = k.last_used_at ? new Date(k.last_used_at*1000).toLocaleString('pt-BR') : 'nunca usada';
+    const scopeChips = (k.scopes||[]).map(s => `<span class="chip">${esc(s)}</span>`).join(' ');
+    const isTest = String(k.key_prefix).startsWith('bd_test_');
+    const testChip = isTest ? '<span class="chip" style="background:#1f1900;color:#f5c542;border-color:rgba(245,197,66,0.3);">SANDBOX</span>' : '';
+    return `<div class="card">
+      <div class="card-head">
+        <div class="card-title">${esc(k.label || k.key_prefix)}</div>
+        ${k.active ? '<span class="chip ok">ativa</span>' : '<span class="chip err">revogada</span>'}
+        ${testChip}
+        <span class="muted" style="margin-left:auto;">${esc(k.key_prefix)}...</span>
+      </div>
+      <div class="muted">criada ${new Date(k.created_at*1000).toLocaleDateString('pt-BR')} · expira em ${expires} · ${lastUsed}</div>
+      <div style="margin-top:8px;">${scopeChips}</div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        ${k.active ? `<button class="btn" onclick="rotateKey(${k.id})">rotacionar</button>` : ''}
+        ${k.active ? `<button class="btn danger" onclick="revokeKey(${k.id})">revogar</button>` : ''}
+        <button class="btn" onclick="viewAudit(${k.id})">audit log</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadHooks() {
+  const r = await fetch('/api/outbound-webhooks', { credentials: 'include' });
+  const d = await r.json();
+  const box = document.getElementById('hooks-list');
+  if (!d.webhooks.length) { box.innerHTML = `<div class="card"><div class="muted">nenhum webhook cadastrado</div></div>`; return; }
+  box.innerHTML = d.webhooks.map(w => {
+    const evChips = (w.events||[]).map(e => `<span class="chip">${esc(e)}</span>`).join(' ');
+    const status = !w.active ? '<span class="chip err">desativado</span>' :
+                   w.failure_count >= 3 ? '<span class="chip err">com falhas</span>' :
+                   '<span class="chip ok">ativo</span>';
+    const lastTry = w.last_attempt_at ? new Date(w.last_attempt_at*1000).toLocaleString('pt-BR') : 'sem tentativas';
+    return `<div class="card">
+      <div class="card-head">
+        <div class="card-title" style="word-break:break-all;">${esc(w.url)}</div>
+        ${status}
+      </div>
+      <div style="margin-top:6px;">${evChips}</div>
+      <div class="muted" style="margin-top:6px;">${lastTry} · falhas: ${w.failure_count}</div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn" onclick="testHook(${w.id})">testar</button>
+        <button class="btn" onclick="viewAttempts(${w.id})">historico</button>
+        <button class="btn" onclick="rotateSecret(${w.id})">rotacionar secret</button>
+        ${!w.active ? `<button class="btn primary" onclick="enableHook(${w.id})">reativar</button>` : ''}
+        <button class="btn danger" onclick="deleteHook(${w.id})">excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openKeyModal() {
+  selectedScopes = new Set(['read:sales']);
+  document.getElementById('key-scopes').innerHTML = allScopes.map(s =>
+    `<span class="scope-chip ${selectedScopes.has(s) ? 'on' : ''}" data-scope="${esc(s)}" onclick="toggleScope(this)">${esc(s)}</span>`
+  ).join('');
+  document.getElementById('key-result').style.display = 'none';
+  document.getElementById('key-label').value = '';
+  document.getElementById('key-expires').value = '';
+  document.getElementById('key-submit').disabled = false;
+  document.getElementById('key-submit').textContent = 'gerar';
+  document.getElementById('key-modal').classList.add('open');
+}
+function closeKeyModal() { document.getElementById('key-modal').classList.remove('open'); loadKeys(); }
+
+function toggleScope(el) {
+  const s = el.dataset.scope;
+  if (selectedScopes.has(s)) { selectedScopes.delete(s); el.classList.remove('on'); }
+  else { selectedScopes.add(s); el.classList.add('on'); }
+}
+
+async function createKey(e) {
+  e.preventDefault();
+  const btn = document.getElementById('key-submit');
+  btn.disabled = true; btn.textContent = 'gerando...';
+  const body = {
+    label: document.getElementById('key-label').value.trim(),
+    scopes: [...selectedScopes],
+    expires_in_days: parseInt(document.getElementById('key-expires').value) || null,
+    test_mode: document.getElementById('key-test-mode').checked
+  };
+  try {
+    const r = await fetch('/api/api-keys', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); btn.disabled = false; btn.textContent = 'gerar'; return; }
+    const result = document.getElementById('key-result');
+    result.style.display = 'block';
+    document.getElementById('key-result-value').innerHTML = `<span>${esc(d.full_key)}</span><span class="copy" onclick="navigator.clipboard.writeText('${esc(d.full_key)}');this.textContent='copiado!'">copiar</span>`;
+    btn.textContent = 'feito';
+  } catch { showAlert('erro de conexao', 'err'); btn.disabled = false; btn.textContent = 'gerar'; }
+}
+
+async function rotateKey(id) {
+  if (!confirm('Rotacionar essa chave?\n\nA antiga sera revogada e uma NOVA sera gerada (com mesmas configs). A nova chave so eh exibida uma vez.')) return;
+  const r = await fetch(`/api/api-keys/${id}/rotate`, { method: 'POST', credentials: 'include' });
+  const d = await r.json();
+  if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+  prompt('Nova chave gerada — copie agora (nao sera mostrada novamente):', d.full_key);
+  loadKeys();
+}
+
+async function viewAudit(id) {
+  const r = await fetch(`/api/api-keys/${id}/audit`, { credentials: 'include' });
+  const d = await r.json();
+  const lines = (d.audit || []).map(a =>
+    `[${new Date(a.created_at*1000).toLocaleString('pt-BR')}] ${a.method} ${a.path} -> ${a.status_code||'?'} · ${a.duration_ms||0}ms${a.test_mode ? ' · sandbox' : ''}${a.ip ? ' · '+a.ip : ''}`
+  ).join('\n');
+  alert(lines || 'sem uso registrado');
+}
+
+async function revokeKey(id) {
+  if (!confirm('Revogar essa chave? Sistemas que usam ela vao parar de funcionar.')) return;
+  const r = await fetch(`/api/api-keys/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (r.ok) { showAlert('✓ chave revogada', 'ok'); loadKeys(); }
+}
+
+function openHookModal() {
+  selectedEvents = new Set(['sale.paid']);
+  document.getElementById('hook-events').innerHTML = allEvents.map(e =>
+    `<span class="scope-chip ${selectedEvents.has(e) ? 'on' : ''}" data-event="${esc(e)}" onclick="toggleEvent(this)">${esc(e)}</span>`
+  ).join('');
+  document.getElementById('hook-result').style.display = 'none';
+  document.getElementById('hook-url').value = '';
+  document.getElementById('hook-submit').disabled = false;
+  document.getElementById('hook-submit').textContent = 'criar';
+  document.getElementById('hook-modal').classList.add('open');
+}
+function closeHookModal() { document.getElementById('hook-modal').classList.remove('open'); loadHooks(); }
+function toggleEvent(el) {
+  const e = el.dataset.event;
+  if (selectedEvents.has(e)) { selectedEvents.delete(e); el.classList.remove('on'); }
+  else { selectedEvents.add(e); el.classList.add('on'); }
+}
+
+async function createHook(e) {
+  e.preventDefault();
+  const btn = document.getElementById('hook-submit');
+  btn.disabled = true; btn.textContent = 'criando...';
+  try {
+    const r = await fetch('/api/outbound-webhooks', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: document.getElementById('hook-url').value.trim(),
+        events: [...selectedEvents]
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); btn.disabled = false; btn.textContent = 'criar'; return; }
+    document.getElementById('hook-result').style.display = 'block';
+    document.getElementById('hook-result-secret').innerHTML = `<span>${esc(d.secret)}</span><span class="copy" onclick="navigator.clipboard.writeText('${esc(d.secret)}');this.textContent='copiado!'">copiar</span>`;
+    btn.textContent = 'feito';
+  } catch { showAlert('erro de conexao', 'err'); btn.disabled = false; btn.textContent = 'criar'; }
+}
+
+async function deleteHook(id) {
+  if (!confirm('Excluir esse webhook?')) return;
+  const r = await fetch(`/api/outbound-webhooks/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (r.ok) { showAlert('✓ webhook excluido', 'ok'); loadHooks(); }
+}
+async function enableHook(id) {
+  await fetch(`/api/outbound-webhooks/${id}`, {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: true })
+  });
+  loadHooks();
+}
+async function rotateSecret(id) {
+  if (!confirm('Rotacionar o secret? Voce precisa atualizar a verificacao HMAC no seu servidor — eventos antigos do BotDash continuam vindo com o secret novo.')) return;
+  const r = await fetch(`/api/outbound-webhooks/${id}/rotate-secret`, { method: 'POST', credentials: 'include' });
+  const d = await r.json();
+  if (!r.ok) { showAlert('erro: ' + (d.error || 'falha'), 'err'); return; }
+  prompt('Novo secret (copie agora):', d.secret);
+}
+async function testHook(id) {
+  const r = await fetch(`/api/outbound-webhooks/${id}/test`, { method: 'POST', credentials: 'include' });
+  const d = await r.json();
+  showAlert(d.succeeded ? `✓ teste OK (HTTP ${d.status} em ${d.duration}ms)` : `✗ teste falhou (HTTP ${d.status || '?'})`, d.succeeded ? 'ok' : 'err');
+  setTimeout(loadHooks, 1000);
+}
+async function viewAttempts(id) {
+  const r = await fetch(`/api/outbound-webhooks/${id}/attempts`, { credentials: 'include' });
+  const d = await r.json();
+  const attempts = d.attempts || [];
+
+  // Estatisticas agregadas
+  const total = attempts.length;
+  const ok = attempts.filter(a => a.succeeded).length;
+  const failed = total - ok;
+  const successRate = total ? Math.round(ok / total * 100) : 0;
+  const avgMs = total ? Math.round(attempts.reduce((s, a) => s + (a.duration_ms || 0), 0) / total) : 0;
+
+  const rows = attempts.map(a => {
+    const when = new Date(a.created_at * 1000).toLocaleString('pt-BR');
+    const color = a.succeeded ? 'var(--success)' : 'var(--danger)';
+    return `<tr style="border-bottom:1px solid var(--surface-3);">
+      <td style="padding:6px 8px;font-size:11px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${esc(when)}</td>
+      <td style="padding:6px 8px;font-size:11.5px;">${esc(a.event)}</td>
+      <td style="padding:6px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;">#${a.attempt_number}</td>
+      <td style="padding:6px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:${color};">${a.succeeded ? '✓' : '✗'} ${a.status_code || '—'}</td>
+      <td style="padding:6px 8px;font-size:11px;color:var(--text-faint);">${a.duration_ms || 0}ms</td>
+      <td style="padding:6px 8px;font-size:10.5px;color:var(--danger);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.error || '')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('attempts-stats').innerHTML = `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+      <div><div class="muted">taxa sucesso</div><div style="font-size:20px;font-weight:700;color:${successRate >= 90 ? 'var(--success)' : successRate >= 50 ? 'var(--warn)' : 'var(--danger)'};">${successRate}%</div></div>
+      <div><div class="muted">total</div><div style="font-size:20px;font-weight:700;color:#fff;">${total}</div></div>
+      <div><div class="muted">falhas</div><div style="font-size:20px;font-weight:700;color:${failed ? 'var(--danger)' : '#fff'};">${failed}</div></div>
+      <div><div class="muted">latencia media</div><div style="font-size:20px;font-weight:700;color:#fff;">${avgMs}ms</div></div>
+    </div>`;
+  document.getElementById('attempts-body').innerHTML = rows || `<tr><td colspan="6" style="padding:30px;text-align:center;color:var(--text-faint);">sem tentativas registradas</td></tr>`;
+  document.getElementById('attempts-modal').classList.add('open');
+}
+function closeAttempts() { document.getElementById('attempts-modal').classList.remove('open'); }
+
+function showAlert(msg, type) {
+  const a = document.getElementById('alert');
+  a.className = 'alert ' + type;
+  a.textContent = msg;
+  setTimeout(() => { a.className = 'alert'; a.textContent = ''; }, 4500);
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+load();
+</script>
+</body>
+</html>
