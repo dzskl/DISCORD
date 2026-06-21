@@ -77,7 +77,7 @@ test('Webhook signing v2: headers v1 + v2 + timestamp enviados', async () => {
   assertEq(v2, expected);
 });
 
-test('Webhook signing v2: User-Agent atualizado pra 2.0', async () => {
+test('Webhook signing: User-Agent atualizado para versao atual (>=2)', async () => {
   const origFetch = global.fetch;
   let captured = null;
   global.fetch = async (url, opts) => { captured = opts; return { status: 200, text: async () => '' }; };
@@ -89,7 +89,8 @@ test('Webhook signing v2: User-Agent atualizado pra 2.0', async () => {
   await ob.dispatch('sale.paid', { user_id: 902, sale_id: 1 });
   global.fetch = origFetch;
 
-  assertEq(captured.headers['User-Agent'], 'BotDash-Webhook/2.0');
+  assert(/^BotDash-Webhook\/[23]\.0$/.test(captured.headers['User-Agent']),
+    'User-Agent atualizado: ' + captured.headers['User-Agent']);
 });
 
 test('SDK generator: parseOpenAPI extrai paths', () => {

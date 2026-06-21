@@ -10,10 +10,18 @@ const { requireOwner } = require('../middlewares/auth.middleware');
 const router = express.Router();
 router.use(requireOwner);
 
-// GET /api/admin/logs/audit — audit_log com filtros
+// GET /api/admin/logs/audit — audit_log com filtros OR query Lucene-like
+//   Filtros simples: ?actor=X&action=Y&target_type=&target_id=&since=&until=
+//   Query avancada:  ?q=action:refund* status:>=400
 router.get('/audit', (req, res) => {
-  const wheres = [];
+  let wheres = [];
   const args = [];
+
+  if (req.query.q) {
+    const parsed = require('../services/query-parser.service').parse(String(req.query.q));
+    wheres.push(...parsed.wheres);
+    args.push(...parsed.args);
+  }
   if (req.query.actor)       { wheres.push('actor_id = ?');     args.push(String(req.query.actor)); }
   if (req.query.action)      { wheres.push('action LIKE ?');    args.push('%' + req.query.action + '%'); }
   if (req.query.target_type) { wheres.push('target_type = ?');  args.push(String(req.query.target_type)); }
@@ -129,6 +137,20 @@ router.get('/summary', (req, res) => {
   try { summary.rate_limit_24h = db.prepare(`SELECT COUNT(*) AS c FROM rate_limit_violations WHERE created_at >= ?`).get(since).c; } catch {}
   try { summary.api_key_audit_24h = db.prepare(`SELECT COUNT(*) AS c FROM api_key_audit WHERE created_at >= ?`).get(since).c; } catch {}
   res.json({ since, summary });
+});
+
+// Traces (OTLP-style spans)
+const tracing = require('../services/tracing.service');
+
+router.get('/traces', (req, res) => {
+  const limit = Math.min(500, parseInt(req.query.limit) || 100);
+  res.json({ spans: tracing.recent(limit).map(tracing.toOTLP) });
+});
+
+router.get('/traces/:trace_id', (req, res) => {
+  const spans = tracing.findByTraceId(String(req.params.trace_id));
+  if (!spans.length) return res.status(404).json({ error: 'trace nao encontrado' });
+  res.json({ trace_id: req.params.trace_id, spans: spans.map(tracing.toOTLP) });
 });
 
 // System flags (maintenance mode etc)

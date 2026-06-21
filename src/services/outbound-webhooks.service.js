@@ -56,6 +56,13 @@ async function sendOne(hook, event, payload, attemptNumber = 1) {
   const sigV1 = 'sha256=' + crypto.createHmac('sha256', hook.secret).update(body).digest('hex');
   // v2: sha256(timestamp + '.' + body) — anti-replay (Stripe-style)
   const sigV2 = 't=' + timestamp + ',v2=' + crypto.createHmac('sha256', hook.secret).update(`${timestamp}.${body}`).digest('hex');
+  // v3: ed25519(timestamp + '.' + body) — public-key signing (vendedor verifica via /.well-known)
+  let sigV3 = null;
+  try {
+    const signing = require('./signing-keys.service');
+    const r = signing.sign(`${timestamp}.${body}`);
+    sigV3 = 't=' + timestamp + ',kid=' + r.kid + ',v3=' + r.signature;
+  } catch {}
 
   let status = 0, respBody = null, error = null;
   try {
@@ -69,8 +76,9 @@ async function sendOne(hook, event, payload, attemptNumber = 1) {
         'X-BotDash-Delivery': delivery,
         'X-BotDash-Timestamp': String(timestamp),
         'X-BotDash-Signature': sigV1,            // legado
-        'X-BotDash-Signature-V2': sigV2,         // recomendado (anti-replay)
-        'User-Agent': 'BotDash-Webhook/2.0'
+        'X-BotDash-Signature-V2': sigV2,         // anti-replay (HMAC SHA256)
+        ...(sigV3 ? { 'X-BotDash-Signature-V3': sigV3 } : {}),   // ed25519 keypair
+        'User-Agent': 'BotDash-Webhook/3.0'
       },
       body,
       signal: ctrl.signal

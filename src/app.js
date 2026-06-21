@@ -25,6 +25,7 @@ function buildApp() {
   app.use(logging);
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
   app.use(require('./middlewares/request-id.middleware').requestIdMiddleware);
+  app.use(require('./services/tracing.service').tracingMiddleware);
   app.use(require('./services/graceful-shutdown.service').shutdownMiddleware);
   app.use(require('./middlewares/maintenance.middleware').maintenanceMiddleware);
   app.use(cors({ origin: true, credentials: true }));
