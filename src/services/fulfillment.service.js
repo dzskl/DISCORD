@@ -20,9 +20,20 @@ function computeExpiry(duration) {
 }
 
 async function fulfillSale(saleId, opts = {}) {
+  // Span raiz da fulfillment — child do request span se disponivel
+  let span = null;
+  try {
+    span = require('./tracing.service').start('fulfillment.process', {
+      parent: opts.parentSpan || null,
+      attributes: { sale_id: saleId }
+    });
+  } catch {}
+  const _end = (extra = {}) => { try { if (span) { for (const [k, v] of Object.entries(extra)) span.setAttribute(k, v); span.end(); } } catch {} };
+
   const sale = db.prepare('SELECT * FROM sales WHERE id=?').get(saleId);
-  if (!sale) return { ok: false, error: 'sale_not_found' };
-  if (sale.status === 'paid') return { ok: true, already_paid: true, sale };
+  if (!sale) { _end({ result: 'not_found' }); return { ok: false, error: 'sale_not_found' }; }
+  if (sale.status === 'paid') { _end({ result: 'already_paid' }); return { ok: true, already_paid: true, sale }; }
+  if (span) { span.setAttribute('provider', sale.provider || 'unknown'); span.setAttribute('amount_cents', sale.amount_cents || 0); }
 
   const meta = opts.metadata || {};
   const cartItems = parseCart(sale.cart_items);
@@ -163,6 +174,7 @@ async function fulfillSale(saleId, opts = {}) {
     try { sse.emit('sale.paid', payload); } catch {}
   } catch {}
 
+  _end({ result: 'ok', products_delivered: tagsBought.length });
   return { ok: true, sale: db.prepare('SELECT * FROM sales WHERE id=?').get(sale.id), tagsBought };
 }
 

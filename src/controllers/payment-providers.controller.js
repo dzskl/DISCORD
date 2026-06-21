@@ -207,6 +207,80 @@ router.post('/backfill', requireAuth, (req, res) => {
   res.json({ ok: true, dry_run: dry, ...r });
 });
 
+// GET /api/payment-providers/usage-report — relatorio mensal do vendedor
+//   ?month=YYYY-MM (default mes atual)
+//   Retorna: vendas, GMV, refunds, MEDs, breakdown por provider, ticket medio
+router.get('/usage-report', requireAuth, (req, res) => {
+  const dbConn = require('../database/connection').db;
+  // Determina janela do mes
+  const month = String(req.query.month || '').match(/^\d{4}-\d{2}$/)
+    ? req.query.month
+    : new Date().toISOString().slice(0, 7);
+  const start = Math.floor(new Date(month + '-01T00:00:00Z').getTime() / 1000);
+  const nextMonth = new Date(month + '-01T00:00:00Z');
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const end = Math.floor(nextMonth.getTime() / 1000);
+
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+
+  // Resumo geral
+  const summary = dbConn.prepare(`
+    SELECT
+      COUNT(*) AS total_sales,
+      COALESCE(SUM(amount_cents), 0) AS gmv_cents,
+      COALESCE(SUM(net_to_owner_cents), 0) AS net_cents,
+      COALESCE(AVG(amount_cents), 0) AS avg_ticket_cents
+    FROM sales
+    WHERE status='paid' AND provider IS NOT NULL AND paid_at >= ? AND paid_at < ? ${gFilter}
+  `).get(start, end, ...gArgs);
+
+  const refunds = dbConn.prepare(`
+    SELECT COUNT(*) AS c, COALESCE(SUM(amount_cents),0) AS cents
+    FROM sales WHERE status='refunded' AND provider IS NOT NULL
+      AND COALESCE(paid_at, created_at) >= ? AND COALESCE(paid_at, created_at) < ? ${gFilter}
+  `).get(start, end, ...gArgs);
+
+  const meds = dbConn.prepare(`
+    SELECT COUNT(*) AS c, COALESCE(SUM(amount_cents),0) AS cents
+    FROM sales WHERE status='med_returned' AND provider IS NOT NULL
+      AND COALESCE(paid_at, created_at) >= ? AND COALESCE(paid_at, created_at) < ? ${gFilter}
+  `).get(start, end, ...gArgs);
+
+  // Breakdown por provider
+  const byProvider = dbConn.prepare(`
+    SELECT provider, COUNT(*) AS sales, COALESCE(SUM(amount_cents),0) AS gmv_cents
+    FROM sales
+    WHERE status='paid' AND provider IS NOT NULL AND paid_at >= ? AND paid_at < ? ${gFilter}
+    GROUP BY provider ORDER BY gmv_cents DESC
+  `).all(start, end, ...gArgs);
+
+  const refundRate = summary.total_sales > 0
+    ? Math.round((refunds.c / summary.total_sales) * 1000) / 10
+    : 0;
+  const medRate = summary.total_sales > 0
+    ? Math.round((meds.c / summary.total_sales) * 1000) / 10
+    : 0;
+
+  res.json({
+    month,
+    period: { start, end },
+    summary: {
+      total_sales: summary.total_sales,
+      gmv_cents: summary.gmv_cents,
+      net_cents: summary.net_cents,
+      avg_ticket_cents: Math.round(summary.avg_ticket_cents),
+      refunds: refunds.c,
+      refunds_cents: refunds.cents,
+      refund_rate_pct: refundRate,
+      meds: meds.c,
+      meds_cents: meds.cents,
+      med_rate_pct: medRate
+    },
+    by_provider: byProvider
+  });
+});
+
 // GET /api/payment-providers/yearly — receita por mes x PSP (12 meses)
 router.get('/yearly', requireAuth, (req, res) => {
   const now = Math.floor(Date.now() / 1000);

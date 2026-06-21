@@ -128,7 +128,7 @@ router.post('/:provider', bodyParser, async (req, res) => {
       return res.status(200).json({ ok: true, duplicate: true });
     }
     try {
-      const result = await fulfillSale(sale.id, { metadata: { discord_id: sale.discord_id } });
+      const result = await fulfillSale(sale.id, { metadata: { discord_id: sale.discord_id }, parentSpan: req.span });
       markEventStatus(webhookEventId, result.ok ? 'processed' : 'failed', sale.id, result.error);
       return res.status(200).json({ ok: !!result.ok });
     } catch (e) {

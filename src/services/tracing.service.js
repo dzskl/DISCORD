@@ -84,6 +84,23 @@ function start(name, { parent, attributes } = {}) {
   });
 }
 
+// Helper: wrappa fn (sync ou async) numa span. Mede duracao + captura erro.
+//   await traced('refund.psp', { parent: req.span }, async (span) => {...});
+async function traced(name, opts, fn) {
+  const span = start(name, opts);
+  try {
+    const r = await fn(span);
+    span.setStatus(1);
+    return r;
+  } catch (e) {
+    span.setStatus(2, e.message);
+    span.setAttribute('error', e.message);
+    throw e;
+  } finally {
+    span.end();
+  }
+}
+
 function recent(n = 100) { return spans.slice(-Math.min(n, RING_SIZE)); }
 
 function findByTraceId(traceId) { return spans.filter(s => s.traceId === traceId); }
@@ -165,4 +182,4 @@ function tracingMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { start, recent, findByTraceId, toOTLP, tracingMiddleware, Span, shouldSample, SAMPLE_RATE };
+module.exports = { start, traced, recent, findByTraceId, toOTLP, tracingMiddleware, Span, shouldSample, SAMPLE_RATE };

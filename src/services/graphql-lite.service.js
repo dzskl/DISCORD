@@ -95,7 +95,40 @@ function pick(obj, fields) {
   return out;
 }
 
+// Schema introspection (subset) — descreve os tipos disponiveis pra que
+// ferramentas/clientes auto-documentem. Nao eh GraphQL spec completo, mas
+// suficiente pra discovery.
+const SCHEMA = {
+  queries: {
+    sales: {
+      args: { status: 'String', provider: 'String', limit: 'Int' },
+      returns: '[Sale]',
+      fields: ['id', 'discord_id', 'discord_tag', 'amount_cents', 'net_to_owner_cents', 'status', 'provider', 'provider_charge_id', 'paid_at', 'created_at', 'guild_id']
+    },
+    sale: {
+      args: { id: 'Int!' },
+      returns: 'Sale',
+      fields: ['id', 'status', 'provider', 'amount_cents', 'timeline']
+    },
+    providers: {
+      args: {},
+      returns: '[Provider]',
+      fields: ['id', 'label', 'method', 'country', 'configured']
+    },
+    stats: {
+      args: {},
+      returns: 'Stats',
+      fields: ['gmv_30d_cents', 'active_sellers']
+    }
+  }
+};
+
 const resolvers = {
+  __schema(args, fields) {
+    // Retorna a descricao do schema
+    return SCHEMA;
+  },
+
   sales(args, fields, ctx) {
     const wheres = ['provider IS NOT NULL'];
     const a = [];
@@ -175,4 +208,4 @@ function execute(query, ctx = {}) {
   return errors.length ? { data, errors } : { data };
 }
 
-module.exports = { execute, parse, resolvers };
+module.exports = { execute, parse, resolvers, SCHEMA };
