@@ -22,6 +22,8 @@ function start() {
   cron.schedule('17 * * * *', runCryptoRecon);
   // Monitor de fraude/MED — a cada 6h verifica ratio MED/total nas ultimas 24h
   cron.schedule('23 */6 * * *', runFraudMonitor);
+  // Anomaly detector: queda GMV vs baseline 7d, a cada hora
+  cron.schedule('37 * * * *', runAnomalyDetector);
   // Retry de outbound webhooks falhados — a cada 5min
   cron.schedule('*/5 * * * *', runOutboundRetry);
   // Cleanup diario das tabelas que crescem (webhook_events, outbound_attempts, audit)
@@ -65,6 +67,13 @@ async function runFraudMonitor() {
     .catch(e => ({ error: e.message }));
   if (r.result?.alerts > 0) logger.warn(r.result, 'fraud monitor disparou');
   if (r.error) logger.error({ err: r.error }, 'fraud monitor falhou');
+}
+
+async function runAnomalyDetector() {
+  const r = await _lock().withLock('anomaly-detector', 120, () => require('../services/anomaly-detector.service').run())
+    .catch(e => ({ error: e.message }));
+  if (r.result?.alerted) logger.warn(r.result, 'anomalia GMV detectada');
+  if (r.error) logger.error({ err: r.error }, 'anomaly detector falhou');
 }
 
 async function runOutboundRetry() {

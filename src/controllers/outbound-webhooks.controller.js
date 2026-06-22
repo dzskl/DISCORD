@@ -148,4 +148,33 @@ router.post('/attempts/:attempt_id/resend', async (req, res) => {
   }
 });
 
+// Dead-letter: tentativas que falharam todas as 5 atempts + hook desativado
+router.get('/dead-letter', (req, res) => {
+  const limit = Math.min(200, parseInt(req.query.limit) || 50);
+  // Pega ultima attempt de cada (webhook,event,sale_id), filtrando attempt_number=5 e succeeded=0
+  const rows = db.prepare(`
+    SELECT a.id, a.webhook_id, a.event, a.status_code, a.error,
+           a.attempt_number, a.duration_ms, a.created_at,
+           w.url, w.active AS hook_active
+    FROM outbound_webhook_attempts a
+    JOIN outbound_webhooks w ON w.id = a.webhook_id
+    WHERE w.user_id = ?
+      AND a.succeeded = 0
+      AND a.attempt_number >= 5
+    ORDER BY a.created_at DESC
+    LIMIT ?
+  `).all(req.appUser.id, limit);
+  res.json({ dead_letter: rows, count: rows.length });
+});
+
+router.post('/dead-letter/:attempt_id/replay', async (req, res) => {
+  try {
+    const r = await obService.resend(parseInt(req.params.attempt_id), req.appUser.id);
+    audit.log({ req, action: 'webhook.dlq_replay', target_type: 'attempt', target_id: parseInt(req.params.attempt_id) });
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(e.code === 'forbidden' ? 403 : 404).json({ error: e.message });
+  }
+});
+
 module.exports = router;

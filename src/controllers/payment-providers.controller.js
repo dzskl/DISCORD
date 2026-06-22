@@ -207,6 +207,52 @@ router.post('/backfill', requireAuth, (req, res) => {
   res.json({ ok: true, dry_run: dry, ...r });
 });
 
+// GET /api/payment-providers/usage-report.csv — mesma data do JSON, CSV
+router.get('/usage-report.csv', requireAuth, (req, res) => {
+  const dbConn = require('../database/connection').db;
+  const month = String(req.query.month || '').match(/^\d{4}-\d{2}$/)
+    ? req.query.month
+    : new Date().toISOString().slice(0, 7);
+  const start = Math.floor(new Date(month + '-01T00:00:00Z').getTime() / 1000);
+  const nextMonth = new Date(month + '-01T00:00:00Z');
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const end = Math.floor(nextMonth.getTime() / 1000);
+  const gFilter = req.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+  const gArgs = req.guildId ? [req.guildId] : [];
+
+  // Cada venda do mes
+  const rows = dbConn.prepare(`
+    SELECT id, paid_at, amount_cents, net_to_owner_cents, status, provider,
+           provider_charge_id, discord_id, discord_tag, guild_id
+    FROM sales
+    WHERE provider IS NOT NULL
+      AND COALESCE(paid_at, created_at) >= ? AND COALESCE(paid_at, created_at) < ?
+      ${gFilter}
+    ORDER BY paid_at ASC, id ASC
+  `).all(start, end, ...gArgs);
+
+  const headers = ['id','date_iso','status','provider','charge_id','amount_brl','net_brl','discord_id','discord_tag','guild_id'];
+  const lines = [headers.join(',')];
+  for (const r of rows) {
+    const wrap = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    lines.push([
+      r.id,
+      r.paid_at ? new Date(r.paid_at * 1000).toISOString() : '',
+      r.status, r.provider, r.provider_charge_id || '',
+      (r.amount_cents / 100).toFixed(2),
+      ((r.net_to_owner_cents || r.amount_cents) / 100).toFixed(2),
+      r.discord_id || '', r.discord_tag || '', r.guild_id || ''
+    ].map(wrap).join(','));
+  }
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="usage-${month}.csv"`);
+  res.send(lines.join('\n'));
+});
+
 // GET /api/payment-providers/usage-report — relatorio mensal do vendedor
 //   ?month=YYYY-MM (default mes atual)
 //   Retorna: vendas, GMV, refunds, MEDs, breakdown por provider, ticket medio

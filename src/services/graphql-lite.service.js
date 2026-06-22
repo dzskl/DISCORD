@@ -22,11 +22,21 @@ function parseSelection(str, pos) {
   while (pos < str.length) {
     skipWs(str, pos); pos = skipWsIdx(str, pos);
     if (str[pos] === '}') { pos++; break; }
-    // nome do campo
-    const nameMatch = /^[a-zA-Z_][a-zA-Z0-9_]*/.exec(str.slice(pos));
-    if (!nameMatch) { pos++; continue; }
+    // alias opcional: "myAlias: realField"
+    let alias = null;
+    const aliasMatch = /^([a-zA-Z_]\w*)\s*:\s*([a-zA-Z_]\w*)/.exec(str.slice(pos));
+    let nameMatch;
+    if (aliasMatch && str.slice(pos + aliasMatch[0].length).match(/^\s*[({]/)) {
+      alias = aliasMatch[1];
+      const name = aliasMatch[2];
+      pos += aliasMatch[0].length;
+      nameMatch = { 0: name };
+    } else {
+      nameMatch = /^[a-zA-Z_][a-zA-Z0-9_]*/.exec(str.slice(pos));
+      if (!nameMatch) { pos++; continue; }
+      pos += nameMatch[0].length;
+    }
     const name = nameMatch[0];
-    pos += name.length;
     pos = skipWsIdx(str, pos);
 
     // args opcionais (...)
@@ -46,7 +56,7 @@ function parseSelection(str, pos) {
       sub = r.fields;
       pos = r.pos;
     }
-    fields.push({ name, args, fields: sub });
+    fields.push({ name, alias, args, fields: sub });
   }
   return { fields, pos };
 }
@@ -119,6 +129,11 @@ const SCHEMA = {
       args: {},
       returns: 'Stats',
       fields: ['gmv_30d_cents', 'active_sellers']
+    },
+    monthlyReport: {
+      args: { month: 'String' },
+      returns: 'MonthlyReport',
+      fields: ['month', 'gmv_cents', 'total_sales', 'refunds', 'refund_rate_pct', 'meds', 'med_rate_pct']
     }
   }
 };
@@ -177,6 +192,29 @@ const resolvers = {
     const gmv = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS v FROM sales WHERE status='paid' AND paid_at >= ? ${gFilter}`).get(d30, ...gArgs).v;
     const sellers = db.prepare(`SELECT COUNT(DISTINCT COALESCE(guild_id,'_')) AS c FROM sales WHERE status='paid' AND paid_at >= ?`).get(d30).c;
     return pick({ gmv_30d_cents: gmv, active_sellers: sellers }, fields);
+  },
+
+  monthlyReport(args, fields, ctx) {
+    const month = String(args.month || '').match(/^\d{4}-\d{2}$/)
+      ? args.month
+      : new Date().toISOString().slice(0, 7);
+    const start = Math.floor(new Date(month + '-01T00:00:00Z').getTime() / 1000);
+    const nm = new Date(month + '-01T00:00:00Z'); nm.setUTCMonth(nm.getUTCMonth() + 1);
+    const end = Math.floor(nm.getTime() / 1000);
+    const gFilter = ctx.guildId ? 'AND (guild_id = ? OR guild_id IS NULL)' : '';
+    const gArgs = ctx.guildId ? [ctx.guildId] : [];
+    const paid = db.prepare(`SELECT COUNT(*) AS c, COALESCE(SUM(amount_cents),0) AS gmv FROM sales WHERE status='paid' AND provider IS NOT NULL AND paid_at >= ? AND paid_at < ? ${gFilter}`).get(start, end, ...gArgs);
+    const refs = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='refunded' AND provider IS NOT NULL AND COALESCE(paid_at,created_at) >= ? AND COALESCE(paid_at,created_at) < ? ${gFilter}`).get(start, end, ...gArgs);
+    const meds = db.prepare(`SELECT COUNT(*) AS c FROM sales WHERE status='med_returned' AND provider IS NOT NULL AND COALESCE(paid_at,created_at) >= ? AND COALESCE(paid_at,created_at) < ? ${gFilter}`).get(start, end, ...gArgs);
+    return pick({
+      month,
+      gmv_cents: paid.gmv,
+      total_sales: paid.c,
+      refunds: refs.c,
+      refund_rate_pct: paid.c > 0 ? Math.round((refs.c / paid.c) * 1000) / 10 : 0,
+      meds: meds.c,
+      med_rate_pct: paid.c > 0 ? Math.round((meds.c / paid.c) * 1000) / 10 : 0
+    }, fields);
   }
 };
 
@@ -195,14 +233,15 @@ function execute(query, ctx = {}) {
   const errors = [];
   for (const f of fields) {
     const resolver = resolvers[f.name];
+    const outKey = f.alias || f.name;
     if (!resolver) {
       errors.push({ message: `campo desconhecido: ${f.name}` });
       continue;
     }
     try {
-      data[f.name] = resolver(f.args, f.fields, ctx);
+      data[outKey] = resolver(f.args, f.fields, ctx);
     } catch (e) {
-      errors.push({ message: e.message, path: [f.name] });
+      errors.push({ message: e.message, path: [outKey] });
     }
   }
   return errors.length ? { data, errors } : { data };
